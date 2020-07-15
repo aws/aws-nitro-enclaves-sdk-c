@@ -1,3 +1,5 @@
+# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0.
 
 cmake_minimum_required(VERSION 3.1)
 project(aws-nitro-enclaves-sdk-c C)
@@ -70,6 +72,10 @@ endif()
 target_include_directories(${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
+find_package(LibJsonC REQUIRED)
+set(PLATFORM_LIBS LibJsonC::Json)
 
 aws_use_package(aws-c-common)
 aws_use_package(aws-c-io)

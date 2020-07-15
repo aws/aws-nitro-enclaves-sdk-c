@@ -2,7 +2,7 @@
 #define AWS_NITRO_ENCLAVES_REST_H
 
 /**
- * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
 #include <aws/common/macros.h>
