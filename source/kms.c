@@ -382,6 +382,22 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
                 continue;
             }
 
+            if (AWS_SAFE_COMPARE(key, KMS_KEY_ID)) {
+                req->key_id = s_aws_string_from_json(allocator, value);
+                if (req->key_id == NULL) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            if (AWS_SAFE_COMPARE(key, KMS_ENCRYPTION_ALGORITHM)) {
+                req->encryption_algorithm = s_aws_string_from_json(allocator, value);
+                if (req->encryption_algorithm == NULL) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
             /* Unexpected key for string type. */
             goto clean_up;
         }
