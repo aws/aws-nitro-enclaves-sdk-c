@@ -211,6 +211,71 @@ clean_up:
 }
 
 /**
+ * Obtains a @ref aws_hash_table from a map of strings represented by a json object.
+ *
+ * @param[in]   allocator  The allocator used for memory management.
+ * @param[in]   obj        The json object that contains a list of strings.
+ * @param[out]  map        The aws_hash_table that is obtained from the json object.
+ *
+ * @return                 AWS_OP_SUCCESS on success, AWS_OP_ERR otherwise.
+ */
+static int s_aws_hash_table_from_json(
+    struct aws_allocator *allocator,
+    struct json_object *obj,
+    struct aws_hash_table *map) {
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(obj);
+    AWS_PRECONDITION(map);
+
+    if (aws_hash_table_init(
+            map,
+            allocator,
+            json_object_object_length(obj),
+            aws_hash_string,
+            aws_hash_callback_string_eq,
+            aws_hash_callback_string_destroy,
+            aws_hash_callback_string_destroy) != AWS_OP_SUCCESS) {
+        return AWS_OP_ERR;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+
+        if (json_object_get_type(value) != json_type_string) {
+            goto clean_up;
+        }
+
+        struct aws_string *map_key = aws_string_new_from_c_str(allocator, key);
+        if (map_key == NULL) {
+            goto clean_up;
+        }
+
+        struct aws_string *map_value = s_aws_string_from_json(allocator, value);
+        if (map_value == NULL) {
+            aws_string_destroy(map_key);
+            goto clean_up;
+        }
+
+        if (aws_hash_table_put(map, map_key, map_value, NULL) != AWS_OP_SUCCESS) {
+            aws_string_destroy(map_key);
+            aws_string_destroy(map_value);
+            goto clean_up;
+        }
+    }
+
+    return AWS_OP_SUCCESS;
+
+clean_up:
+    aws_hash_table_clean_up(map);
+
+    return AWS_OP_ERR;
+}
+
+/**
  * Adds a aws_array_list as a list of strings to the json object at the provided key.
  *
  * @param[out]  obj    The json object that will contain the map of strings.
@@ -470,6 +535,18 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
             }
 
             /* Unexpected key for array type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_object) {
+            if (AWS_SAFE_COMPARE(key, KMS_ENCRYPTION_CONTEXT)) {
+                if (s_aws_hash_table_from_json(allocator, value, &req->encryption_context) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for object type. */
             goto clean_up;
         }
 
