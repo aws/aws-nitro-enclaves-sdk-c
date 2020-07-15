@@ -263,6 +263,65 @@ clean_up:
 }
 
 /**
+ * Obtains a @ref aws_array_list from a list of strings represented by a json object.
+ *
+ * @param[in]   allocator  The allocator used for memory management.
+ * @param[in]   obj        The json object that contains a list of strings.
+ * @param[out]  array      The aws_array_list that is obtained from the json object.
+ *
+ * @return                 AWS_OP_SUCCESS on success, AWS_OP_ERR otherwise.
+ */
+static int s_aws_array_list_from_json(
+    struct aws_allocator *allocator,
+    struct json_object *obj,
+    struct aws_array_list *array) {
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(obj);
+    AWS_PRECONDITION(array);
+
+    struct array_list *arr = json_object_get_array(obj);
+    if (arr == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    size_t length = array_list_length(arr);
+    if (aws_array_list_init_dynamic(array, allocator, length, sizeof(struct aws_string *)) != AWS_OP_SUCCESS) {
+        return AWS_OP_ERR;
+    }
+
+    for (size_t i = 0; i < length; i++) {
+        struct json_object *elem = array_list_get_idx(arr, i);
+        if (json_object_get_type(elem) != json_type_string) {
+            goto clean_up;
+        }
+
+        struct aws_string *str = s_aws_string_from_json(allocator, elem);
+        if (str == NULL) {
+            goto clean_up;
+        }
+
+        if (aws_array_list_push_back(array, &str) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    return AWS_OP_SUCCESS;
+
+clean_up:
+    for (size_t i = 0; i < aws_array_list_length(array); i++) {
+        struct aws_string *elem = NULL;
+        AWS_FATAL_ASSERT(aws_array_list_get_at(array, &elem, i) == AWS_OP_SUCCESS);
+
+        aws_string_destroy(elem);
+    }
+
+    aws_array_list_clean_up(array);
+
+    return AWS_OP_ERR;
+}
+
+/**
  * Obtains a @ref json_object from a aws_string representing a valid json.
  *
  * @param[in]  json  The json object represented by a aws_string.
@@ -399,6 +458,18 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
             }
 
             /* Unexpected key for string type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_array) {
+            if (AWS_SAFE_COMPARE(key, KMS_GRANT_TOKENS)) {
+                if (s_aws_array_list_from_json(allocator, value, &req->grant_tokens) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for array type. */
             goto clean_up;
         }
 
