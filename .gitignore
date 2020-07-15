@@ -1,0 +1,23 @@
+# IDE Artifacts
+.metadata
+.build
+.idea
+*.d
+Debug
+Release
+*~
+*#
+*.iml
+tags
+
+#doxygen
+doxygen/html/
+doxygen/latex/
+
+#cmake artifacts
+dependencies
+_build
+build
+_build_*
+cmake-build*
+
