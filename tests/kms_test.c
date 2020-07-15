@@ -19,7 +19,7 @@
 #define TOKEN_SECOND "TokenSecond"
 #define ENCRYPTION_CONTEXT_KEY "EncryptionContextKey"
 #define ENCRYPTION_CONTEXT_VALUE "EncryptionContextValue"
-#define ENCRYPTION_CONTEXT_SUFIX "Sufix"
+#define SUFIX "Sufix"
 
 AWS_TEST_CASE(test_kms_decrypt_request_cipher_to_json, s_test_kms_decrypt_request_cipher_to_json)
 static int s_test_kms_decrypt_request_cipher_to_json(struct aws_allocator *allocator, void *ctx) {
@@ -126,8 +126,8 @@ static int s_test_kms_decrypt_request_context_to_json(struct aws_allocator *allo
     aws_string_destroy(json);
 
     /* Map of multiple elements. */
-    AWS_STATIC_STRING_FROM_LITERAL(context_key_second, ENCRYPTION_CONTEXT_KEY ENCRYPTION_CONTEXT_SUFIX);
-    AWS_STATIC_STRING_FROM_LITERAL(context_value_second, ENCRYPTION_CONTEXT_VALUE ENCRYPTION_CONTEXT_SUFIX);
+    AWS_STATIC_STRING_FROM_LITERAL(context_key_second, ENCRYPTION_CONTEXT_KEY SUFIX);
+    AWS_STATIC_STRING_FROM_LITERAL(context_value_second, ENCRYPTION_CONTEXT_VALUE SUFIX);
     ASSERT_SUCCESS(
         aws_hash_table_put(&request->encryption_context, context_key_second, (void *)context_value_second, NULL));
 
@@ -138,8 +138,8 @@ static int s_test_kms_decrypt_request_context_to_json(struct aws_allocator *allo
         allocator,
         "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
         "\"EncryptionContext\": { \"" ENCRYPTION_CONTEXT_KEY "\": \"" ENCRYPTION_CONTEXT_VALUE "\", "
-        "\"" ENCRYPTION_CONTEXT_KEY ENCRYPTION_CONTEXT_SUFIX "\": "
-        "\"" ENCRYPTION_CONTEXT_VALUE ENCRYPTION_CONTEXT_SUFIX "\" } }");
+        "\"" ENCRYPTION_CONTEXT_KEY SUFIX "\": "
+        "\"" ENCRYPTION_CONTEXT_VALUE SUFIX "\" } }");
     ASSERT_NOT_NULL(expected);
     ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
     aws_string_destroy(expected);
@@ -261,6 +261,290 @@ static int s_test_kms_decrypt_request_to_json(struct aws_allocator *allocator, v
     ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
     aws_string_destroy(expected);
     aws_string_destroy(json);
+    aws_kms_decrypt_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_decrypt_request_cipher_from_json, s_test_kms_decrypt_request_cipher_from_json)
+static int s_test_kms_decrypt_request_cipher_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    /* Validate an invalid JSON. */
+    struct aws_string *json = aws_string_new_from_c_str(allocator, "{");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_kms_decrypt_request *request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NULL(request);
+    aws_string_destroy(json);
+
+    /* Validate an empty JSON. */
+    json = aws_string_new_from_c_str(allocator, "{}");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NULL(request);
+    aws_string_destroy(json);
+
+    /* Validate a non empty JSON without Ciphertext Blob. */
+    json = aws_string_new_from_c_str(allocator, "{ \"EncryptionAlgorithm\": \"" ENCRYPTION_ALGORITHM "\" }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NULL(request);
+    aws_string_destroy(json);
+
+    /* Ensure required Ciphertext Blob is decoded. */
+    json = aws_string_new_from_c_str(allocator, "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->ciphertext_blob.buffer,
+        request->ciphertext_blob.len);
+    aws_kms_decrypt_request_destroy(request);
+
+    /* No key duplicates are allowed. */
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"CiphertextBlob\": \"" CIPHERTEXT_BLOB_DATA "\" }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NULL(request);
+    aws_string_destroy(json);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_decrypt_request_ea_from_json, s_test_kms_decrypt_request_ea_from_json)
+static int s_test_kms_decrypt_request_ea_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_string *json =
+        aws_string_new_from_c_str(allocator, "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_kms_decrypt_request *request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_NULL(request->encryption_algorithm);
+    aws_kms_decrypt_request_destroy(request);
+
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"EncryptionAlgorithm\": \"" ENCRYPTION_ALGORITHM "\" }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->ciphertext_blob.buffer,
+        request->ciphertext_blob.len);
+    ASSERT_STR_EQUALS(ENCRYPTION_ALGORITHM, aws_string_c_str(request->encryption_algorithm));
+    aws_kms_decrypt_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_decrypt_request_context_from_json, s_test_kms_decrypt_request_context_from_json)
+static int s_test_kms_decrypt_request_context_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    /* No Encryption Context. */
+    struct aws_string *json =
+        aws_string_new_from_c_str(allocator, "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_kms_decrypt_request *request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_INT_EQUALS(false, aws_hash_table_is_valid(&request->encryption_context));
+    aws_kms_decrypt_request_destroy(request);
+
+    /* Map of one element. */
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"EncryptionContext\": { "
+        "\"" ENCRYPTION_CONTEXT_KEY "\": \"" ENCRYPTION_CONTEXT_VALUE "\" } }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->ciphertext_blob.buffer,
+        request->ciphertext_blob.len);
+    for (struct aws_hash_iter iter = aws_hash_iter_begin(&request->encryption_context); !aws_hash_iter_done(&iter);
+         aws_hash_iter_next(&iter)) {
+        ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_KEY, aws_string_c_str(iter.element.key));
+        ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_VALUE, aws_string_c_str(iter.element.value));
+    }
+    aws_kms_decrypt_request_destroy(request);
+
+    /* Map of multiple elements. */
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"EncryptionContext\": { "
+        "\"" ENCRYPTION_CONTEXT_KEY "\": \"" ENCRYPTION_CONTEXT_VALUE "\","
+        "\"" ENCRYPTION_CONTEXT_KEY SUFIX "\": \"" ENCRYPTION_CONTEXT_VALUE SUFIX "\" } }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->ciphertext_blob.buffer,
+        request->ciphertext_blob.len);
+    for (struct aws_hash_iter iter = aws_hash_iter_begin(&request->encryption_context); !aws_hash_iter_done(&iter);
+         aws_hash_iter_next(&iter)) {
+        if (strcmp(ENCRYPTION_CONTEXT_KEY, aws_string_c_str(iter.element.key)) == 0) {
+            ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_VALUE, aws_string_c_str(iter.element.value));
+            continue;
+        }
+        if (strcmp(ENCRYPTION_CONTEXT_KEY SUFIX, aws_string_c_str(iter.element.key)) == 0) {
+            ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_VALUE SUFIX, aws_string_c_str(iter.element.value));
+            continue;
+        }
+        /* Wrong size. */
+        ASSERT_FAILS(true);
+    }
+    aws_kms_decrypt_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_decrypt_request_tokens_from_json, s_test_kms_decrypt_request_tokens_from_json)
+static int s_test_kms_decrypt_request_tokens_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    /* No Grant Tokens. */
+    struct aws_string *json =
+        aws_string_new_from_c_str(allocator, "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_kms_decrypt_request *request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_INT_EQUALS(false, aws_array_list_is_valid(&request->grant_tokens));
+    aws_kms_decrypt_request_destroy(request);
+
+    /* Empty Grant Tokens. */
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"GrantTokens\": [ ] } ");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_INT_EQUALS(0, aws_array_list_length(&request->grant_tokens));
+    aws_kms_decrypt_request_destroy(request);
+
+    /* List of one element. */
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"GrantTokens\": [ \"" TOKEN_FIRST "\" ] } ");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_INT_EQUALS(1, aws_array_list_length(&request->grant_tokens));
+    struct aws_string *elem = NULL;
+    AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 0) == AWS_OP_SUCCESS);
+    ASSERT_STR_EQUALS(TOKEN_FIRST, aws_string_c_str(elem));
+    aws_kms_decrypt_request_destroy(request);
+
+    /* List of multiple elements. */
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"GrantTokens\": [ \"" TOKEN_FIRST "\", \"" TOKEN_SECOND "\" ] } ");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_INT_EQUALS(2, aws_array_list_length(&request->grant_tokens));
+    AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 0) == AWS_OP_SUCCESS);
+    ASSERT_STR_EQUALS(TOKEN_FIRST, aws_string_c_str(elem));
+    AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 1) == AWS_OP_SUCCESS);
+    ASSERT_STR_EQUALS(TOKEN_SECOND, aws_string_c_str(elem));
+    aws_kms_decrypt_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_decrypt_request_from_json, s_test_kms_decrypt_request_from_json)
+static int s_test_kms_decrypt_request_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    /* Add Key ID to the JSON. */
+    struct aws_string *json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"EncryptionAlgorithm\": \"" ENCRYPTION_ALGORITHM "\", "
+        "\"EncryptionContext\": { "
+        "\"" ENCRYPTION_CONTEXT_KEY "\": \"" ENCRYPTION_CONTEXT_VALUE "\" }, "
+        "\"GrantTokens\": [ \"" TOKEN_FIRST "\", \"" TOKEN_SECOND "\" ], "
+        "\"KeyId\": \"" KEY_ID "\" }");
+    struct aws_kms_decrypt_request *request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->ciphertext_blob.buffer,
+        request->ciphertext_blob.len);
+    ASSERT_STR_EQUALS(ENCRYPTION_ALGORITHM, aws_string_c_str(request->encryption_algorithm));
+    for (struct aws_hash_iter iter = aws_hash_iter_begin(&request->encryption_context); !aws_hash_iter_done(&iter);
+         aws_hash_iter_next(&iter)) {
+        ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_KEY, aws_string_c_str(iter.element.key));
+        ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_VALUE, aws_string_c_str(iter.element.value));
+    }
+    ASSERT_INT_EQUALS(2, aws_array_list_length(&request->grant_tokens));
+    struct aws_string *elem = NULL;
+    AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 0) == AWS_OP_SUCCESS);
+    ASSERT_STR_EQUALS(TOKEN_FIRST, aws_string_c_str(elem));
+    AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 1) == AWS_OP_SUCCESS);
+    ASSERT_STR_EQUALS(TOKEN_SECOND, aws_string_c_str(elem));
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->key_id));
+
+    /* Ensure we can serialize back to a JSON. */
+    struct aws_string *json_second = aws_kms_decrypt_request_to_json(request);
+    ASSERT_NOT_NULL(json_second);
+    ASSERT_STR_EQUALS(aws_string_c_str(json), aws_string_c_str(json_second));
+
+    aws_string_destroy(json);
+    aws_string_destroy(json_second);
     aws_kms_decrypt_request_destroy(request);
 
     return SUCCESS;
