@@ -37,15 +37,24 @@ RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S aws-c-io -B a
 RUN cmake3 --build aws-c-io/build --target install
 
 RUN git clone -b v0.2.10 http://github.com/awslabs/aws-c-compression.git
-RUN cmake3 -S aws-c-compression -B aws-c-compression/build
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S aws-c-compression -B aws-c-compression/build
 RUN cmake3 --build aws-c-compression/build --target install
 
 RUN git clone -b v0.5.12 https://github.com/awslabs/aws-c-http.git
-RUN cmake3 -S aws-c-http -B aws-c-http/build
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S aws-c-http -B aws-c-http/build
 RUN cmake3 --build aws-c-http/build --target install
 
+RUN git clone -b v0.2.7 https://github.com/awslabs/aws-c-cal.git
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S aws-c-cal -B aws-c-cal/build
+RUN cmake3 --build aws-c-cal/build --target install
+
+RUN git clone -b v0.3.19 https://github.com/awslabs/aws-c-auth.git
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S aws-c-auth -B aws-c-auth/build
+RUN cmake3 --build aws-c-auth/build --target install
+
 COPY . aws-nitro-enclaves-sdk-c
-RUN cmake3 -S aws-nitro-enclaves-sdk-c -B aws-nitro-enclaves-sdk-c/build
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr \
+	-S aws-nitro-enclaves-sdk-c -B aws-nitro-enclaves-sdk-c/build
 RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --target install
 RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --target test
 
