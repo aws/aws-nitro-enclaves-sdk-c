@@ -13,6 +13,8 @@
  */
 #define KEY_ID "1234abcd-12ab-34cd-56ef-1234567890ab"
 #define ENCRYPTION_ALGORITHM "SYMMETRIC_DEFAULT"
+#define ENCRYPTION_ALGORITHM_SHA_1 "RSAES_OAEP_SHA_1"
+#define ENCRYPTION_ALGORITHM_SHA_256 "RSAES_OAEP_SHA_256"
 #define CIPHERTEXT_BLOB_DATA "Hello"
 #define CIPHERTEXT_BLOB_BASE64 "SGVsbG8="
 #define TOKEN_FIRST "TokenFirst"
@@ -59,8 +61,7 @@ static int s_test_kms_decrypt_request_ea_to_json(struct aws_allocator *allocator
         &request->ciphertext_blob, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
 
     /* Add Encryption Algorithm to the KMS Decrypt Request. */
-    request->encryption_algorithm = aws_string_new_from_c_str(allocator, ENCRYPTION_ALGORITHM);
-    ASSERT_NOT_NULL(request->encryption_algorithm);
+    request->encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
 
     struct aws_string *json = aws_kms_decrypt_request_to_json(request);
     ASSERT_NOT_NULL(json);
@@ -73,6 +74,37 @@ static int s_test_kms_decrypt_request_ea_to_json(struct aws_allocator *allocator
     ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
     aws_string_destroy(expected);
     aws_string_destroy(json);
+
+    request->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_1;
+    json = aws_kms_decrypt_request_to_json(request);
+    ASSERT_NOT_NULL(json);
+
+    expected = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"EncryptionAlgorithm\": \"" ENCRYPTION_ALGORITHM_SHA_1 "\" }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+
+    request->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_256;
+    json = aws_kms_decrypt_request_to_json(request);
+    ASSERT_NOT_NULL(json);
+
+    expected = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"EncryptionAlgorithm\": \"" ENCRYPTION_ALGORITHM_SHA_256 "\" }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+
+    request->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_256 + 1;
+    json = aws_kms_decrypt_request_to_json(request);
+    ASSERT_NULL(json);
+
     aws_kms_decrypt_request_destroy(request);
 
     return SUCCESS;
@@ -220,9 +252,7 @@ static int s_test_kms_decrypt_request_to_json(struct aws_allocator *allocator, v
     ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
         &request->ciphertext_blob, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
 
-    request->encryption_algorithm = aws_string_new_from_c_str(allocator, ENCRYPTION_ALGORITHM);
-
-    ASSERT_NOT_NULL(request->encryption_algorithm);
+    request->encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
     ASSERT_SUCCESS(aws_hash_table_init(
         &request->encryption_context,
         allocator,
@@ -335,8 +365,18 @@ static int s_test_kms_decrypt_request_ea_from_json(struct aws_allocator *allocat
     ASSERT_NOT_NULL(request);
     aws_string_destroy(json);
 
-    ASSERT_NULL(request->encryption_algorithm);
+    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_UNINITIALIZED);
     aws_kms_decrypt_request_destroy(request);
+
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"EncryptionAlgorithm\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NULL(request);
+    aws_string_destroy(json);
 
     json = aws_string_new_from_c_str(
         allocator,
@@ -353,7 +393,43 @@ static int s_test_kms_decrypt_request_ea_from_json(struct aws_allocator *allocat
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)request->ciphertext_blob.buffer,
         request->ciphertext_blob.len);
-    ASSERT_STR_EQUALS(ENCRYPTION_ALGORITHM, aws_string_c_str(request->encryption_algorithm));
+    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
+    aws_kms_decrypt_request_destroy(request);
+
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"EncryptionAlgorithm\": \"" ENCRYPTION_ALGORITHM_SHA_1 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->ciphertext_blob.buffer,
+        request->ciphertext_blob.len);
+    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_RSAES_OAEP_SHA_1);
+    aws_kms_decrypt_request_destroy(request);
+
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"EncryptionAlgorithm\": \"" ENCRYPTION_ALGORITHM_SHA_256 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_decrypt_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    aws_string_destroy(json);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->ciphertext_blob.buffer,
+        request->ciphertext_blob.len);
+    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_RSAES_OAEP_SHA_256);
     aws_kms_decrypt_request_destroy(request);
 
     return SUCCESS;
@@ -524,7 +600,7 @@ static int s_test_kms_decrypt_request_from_json(struct aws_allocator *allocator,
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)request->ciphertext_blob.buffer,
         request->ciphertext_blob.len);
-    ASSERT_STR_EQUALS(ENCRYPTION_ALGORITHM, aws_string_c_str(request->encryption_algorithm));
+    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
     for (struct aws_hash_iter iter = aws_hash_iter_begin(&request->encryption_context); !aws_hash_iter_done(&iter);
          aws_hash_iter_next(&iter)) {
         ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_KEY, aws_string_c_str(iter.element.key));

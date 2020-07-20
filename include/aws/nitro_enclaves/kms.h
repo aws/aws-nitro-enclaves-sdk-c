@@ -15,6 +15,21 @@
 
 AWS_EXTERN_C_BEGIN
 
+/**
+ * Specifies the encryption algorithm that will be used to decrypt the ciphertext.
+ */
+enum aws_encryption_algorithm {
+    /* No encryption algorithm is specified. */
+    AWS_EA_UNINITIALIZED = -1,
+
+    /* SYMMETRIC_DEFAULT algorithm. */
+    AWS_EA_SYMMETRIC_DEFAULT,
+    /* RSAES_OAEP_SHA_1 algorithm. */
+    AWS_EA_RSAES_OAEP_SHA_1,
+    /* RSAES_OAEP_SHA_256 algorithm. */
+    AWS_EA_RSAES_OAEP_SHA_256,
+};
+
 struct aws_kms_decrypt_request {
     /**
      * Ciphertext to be decrypted. The blob includes metadata.
@@ -30,7 +45,7 @@ struct aws_kms_decrypt_request {
      *
      * Required: No.
      */
-    struct aws_string *encryption_algorithm;
+    enum aws_encryption_algorithm encryption_algorithm;
 
     /**
      * Specifies the encryption context to use when decrypting the data. An encryption

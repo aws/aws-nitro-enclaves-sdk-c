@@ -23,6 +23,70 @@
 #define AWS_SAFE_COMPARE(C_STR, STR_LIT) aws_array_eq((C_STR), strlen((C_STR)), (STR_LIT), sizeof((STR_LIT)) - 1)
 
 /**
+ * Aws string values for the AWS Encryption Algorithm used by KMS.
+ */
+AWS_STATIC_STRING_FROM_LITERAL(s_ea_symmetric_default, "SYMMETRIC_DEFAULT");
+AWS_STATIC_STRING_FROM_LITERAL(s_ea_rsaes_oaep_sha_1, "RSAES_OAEP_SHA_1");
+AWS_STATIC_STRING_FROM_LITERAL(s_ea_rsaes_oaep_sha_256, "RSAES_OAEP_SHA_256");
+
+/**
+ * Initializes a @ref aws_encryption_algorithm from string.
+ *
+ * @param[in]   str                   The string used to initialize the encryption algorithm.
+ * @param[out]  encryption_algorithm  The initialized encryption algorithm.
+ *
+ * @return                            True if the string is valid, false otherwise.
+ */
+static bool s_aws_encryption_algorithm_from_aws_string(
+    const struct aws_string *str,
+    enum aws_encryption_algorithm *encryption_algorithm) {
+
+    AWS_PRECONDITION(aws_string_c_str(str));
+    AWS_PRECONDITION(encryption_algorithm);
+
+    if (aws_string_compare(str, s_ea_symmetric_default) == 0) {
+        *encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_ea_rsaes_oaep_sha_1) == 0) {
+        *encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_1;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_ea_rsaes_oaep_sha_256) == 0) {
+        *encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_256;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Obtains the string representation of a @ref aws_encryption_algorithm.
+ *
+ * @param[int]  encryption_algorithm  The encryption algorithm that is converted to string.
+ *
+ * @return                            A string representing the encryption algorithm.
+ */
+static const struct aws_string *s_aws_encryption_algorithm_to_aws_string(
+    enum aws_encryption_algorithm encryption_algorithm) {
+
+    switch (encryption_algorithm) {
+        case AWS_EA_SYMMETRIC_DEFAULT:
+            return s_ea_symmetric_default;
+        case AWS_EA_RSAES_OAEP_SHA_1:
+            return s_ea_rsaes_oaep_sha_1;
+        case AWS_EA_RSAES_OAEP_SHA_256:
+            return s_ea_rsaes_oaep_sha_256;
+
+        case AWS_EA_UNINITIALIZED:
+        default:
+            return NULL;
+    }
+}
+
+/**
  * Adds a c string (key, value) pair to the json object.
  *
  * @param[out]  obj    The json object that is modified.
@@ -433,9 +497,14 @@ struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_
     }
 
     /* Optional parameters. */
-    if (req->encryption_algorithm != NULL) {
-        if (s_string_to_json(obj, KMS_ENCRYPTION_ALGORITHM, aws_string_c_str(req->encryption_algorithm)) !=
-            AWS_OP_SUCCESS) {
+    if (req->encryption_algorithm != AWS_EA_UNINITIALIZED) {
+        const struct aws_string *encryption_algorithm =
+            s_aws_encryption_algorithm_to_aws_string(req->encryption_algorithm);
+        if (encryption_algorithm == NULL) {
+            goto clean_up;
+        }
+
+        if (s_string_to_json(obj, KMS_ENCRYPTION_ALGORITHM, aws_string_c_str(encryption_algorithm)) != AWS_OP_SUCCESS) {
             goto clean_up;
         }
     }
@@ -515,10 +584,17 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
             }
 
             if (AWS_SAFE_COMPARE(key, KMS_ENCRYPTION_ALGORITHM)) {
-                req->encryption_algorithm = s_aws_string_from_json(allocator, value);
-                if (req->encryption_algorithm == NULL) {
+                struct aws_string *str = s_aws_string_from_json(allocator, value);
+                if (str == NULL) {
                     goto clean_up;
                 }
+
+                if (!s_aws_encryption_algorithm_from_aws_string(str, &req->encryption_algorithm)) {
+                    aws_string_destroy(str);
+                    goto clean_up;
+                }
+
+                aws_string_destroy(str);
                 continue;
             }
 
@@ -578,6 +654,8 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_new(struct aws_allocator
         return NULL;
     }
 
+    request->encryption_algorithm = AWS_EA_UNINITIALIZED;
+
     /* Ensure allocator constness for customer usage. Utilize the @ref aws_string pattern. */
     *(struct aws_allocator **)(&request->allocator) = allocator;
 
@@ -590,10 +668,6 @@ void aws_kms_decrypt_request_destroy(struct aws_kms_decrypt_request *req) {
 
     if (aws_byte_buf_is_valid(&req->ciphertext_blob)) {
         aws_byte_buf_clean_up_secure(&req->ciphertext_blob);
-    }
-
-    if (aws_string_is_valid(req->encryption_algorithm)) {
-        aws_string_destroy(req->encryption_algorithm);
     }
 
     if (aws_string_is_valid(req->key_id)) {
