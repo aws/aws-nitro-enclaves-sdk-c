@@ -108,7 +108,12 @@ struct aws_kms_decrypt_request {
      */
     struct aws_string *key_id;
 
-    /* TODO: Add Recipient. */
+    /**
+     * Recipient field.
+     *
+     * Required: No.
+     */
+    struct aws_recipient *recipient;
 
     /**
      * Allocator used for memory management of associated resources.

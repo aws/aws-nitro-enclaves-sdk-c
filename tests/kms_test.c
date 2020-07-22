@@ -22,6 +22,9 @@
 #define ENCRYPTION_CONTEXT_KEY "EncryptionContextKey"
 #define ENCRYPTION_CONTEXT_VALUE "EncryptionContextValue"
 #define SUFIX "Sufix"
+#define KEA_RSAES_PKCS1_V1_5 "RSAES_PKCS1_V1_5"
+#define KEA_RSAES_OAEP_SHA_1 "RSAES_OAEP_SHA_1"
+#define KEA_RSAES_OAEP_SHA_256 "RSAES_OAEP_SHA_256"
 
 AWS_TEST_CASE(test_kms_decrypt_request_cipher_to_json, s_test_kms_decrypt_request_cipher_to_json)
 static int s_test_kms_decrypt_request_cipher_to_json(struct aws_allocator *allocator, void *ctx) {
@@ -276,7 +279,13 @@ static int s_test_kms_decrypt_request_to_json(struct aws_allocator *allocator, v
     request->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
     ASSERT_NOT_NULL(request->key_id);
 
-    struct aws_string *json = aws_kms_decrypt_request_to_json(request);
+    struct aws_string *json = aws_string_new_from_c_str(allocator, "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+    request->recipient = aws_recipient_from_json(allocator, json);
+    ASSERT_NOT_NULL(request->recipient);
+    aws_string_destroy(json);
+
+    json = aws_kms_decrypt_request_to_json(request);
     ASSERT_NOT_NULL(json);
 
     struct aws_string *expected = aws_string_new_from_c_str(
@@ -286,7 +295,8 @@ static int s_test_kms_decrypt_request_to_json(struct aws_allocator *allocator, v
         "\"EncryptionContext\": { "
         "\"" ENCRYPTION_CONTEXT_KEY "\": \"" ENCRYPTION_CONTEXT_VALUE "\" }, "
         "\"GrantTokens\": [ \"" TOKEN_FIRST "\", \"" TOKEN_SECOND "\" ], "
-        "\"KeyId\": \"" KEY_ID "\" }");
+        "\"KeyId\": \"" KEY_ID "\", "
+        "\"Recipient\": { \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" } }");
     ASSERT_NOT_NULL(expected);
     ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
     aws_string_destroy(expected);
@@ -591,7 +601,8 @@ static int s_test_kms_decrypt_request_from_json(struct aws_allocator *allocator,
         "\"EncryptionContext\": { "
         "\"" ENCRYPTION_CONTEXT_KEY "\": \"" ENCRYPTION_CONTEXT_VALUE "\" }, "
         "\"GrantTokens\": [ \"" TOKEN_FIRST "\", \"" TOKEN_SECOND "\" ], "
-        "\"KeyId\": \"" KEY_ID "\" }");
+        "\"KeyId\": \"" KEY_ID "\", "
+        "\"Recipient\": { \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" } }");
     struct aws_kms_decrypt_request *request = aws_kms_decrypt_request_from_json(allocator, json);
     ASSERT_NOT_NULL(request);
 
@@ -613,6 +624,12 @@ static int s_test_kms_decrypt_request_from_json(struct aws_allocator *allocator,
     AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 1) == AWS_OP_SUCCESS);
     ASSERT_STR_EQUALS(TOKEN_SECOND, aws_string_c_str(elem));
     ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->key_id));
+    ASSERT_NOT_NULL(request->recipient);
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->recipient->public_key.buffer,
+        request->recipient->public_key.len);
 
     /* Ensure we can serialize back to a JSON. */
     struct aws_string *json_second = aws_kms_decrypt_request_to_json(request);
@@ -622,6 +639,53 @@ static int s_test_kms_decrypt_request_from_json(struct aws_allocator *allocator,
     aws_string_destroy(json);
     aws_string_destroy(json_second);
     aws_kms_decrypt_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_recipient_kea_to_json, s_test_recipient_kea_to_json)
+static int s_test_recipient_kea_to_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_recipient *recipient = aws_recipient_new(allocator);
+    ASSERT_NOT_NULL(recipient);
+
+    recipient->key_encryption_algorithm = AWS_KEA_RSAES_PKCS1_V1_5;
+    struct aws_string *json = aws_recipient_to_json(recipient);
+    ASSERT_NOT_NULL(json);
+
+    struct aws_string *expected =
+        aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_PKCS1_V1_5 "\" }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+
+    recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_1;
+    json = aws_recipient_to_json(recipient);
+    ASSERT_NOT_NULL(json);
+
+    expected = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_1 "\" }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+
+    recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_256;
+    json = aws_recipient_to_json(recipient);
+    ASSERT_NOT_NULL(json);
+
+    expected = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_256 "\" }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+
+    recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_256 + 1;
+    json = aws_recipient_to_json(recipient);
+    ASSERT_NULL(json);
+
+    aws_recipient_destroy(recipient);
 
     return SUCCESS;
 }
@@ -639,18 +703,66 @@ static int s_test_recipient_to_json(struct aws_allocator *allocator, void *ctx) 
     ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
         &recipient->attestation_document, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
 
+    recipient->key_encryption_algorithm = AWS_KEA_RSAES_PKCS1_V1_5;
+
     struct aws_string *json = aws_recipient_to_json(recipient);
     ASSERT_NOT_NULL(json);
 
     struct aws_string *expected = aws_string_new_from_c_str(
         allocator,
         "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"KeyEncryptionAlgorithm\": \"" KEA_RSAES_PKCS1_V1_5 "\", "
         "\"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
     ASSERT_NOT_NULL(expected);
     ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
     aws_string_destroy(expected);
     aws_string_destroy(json);
     aws_recipient_destroy(recipient);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_recipient_kea_from_json, s_test_recipient_kea_from_json)
+static int s_test_recipient_kea_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_string *json =
+        aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_PKCS1_V1_5 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_recipient *recipient = aws_recipient_from_json(allocator, json);
+    ASSERT_NOT_NULL(recipient);
+    aws_string_destroy(json);
+
+    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_PKCS1_V1_5);
+    aws_recipient_destroy(recipient);
+
+    json = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_1 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    recipient = aws_recipient_from_json(allocator, json);
+    ASSERT_NOT_NULL(recipient);
+    aws_string_destroy(json);
+
+    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_OAEP_SHA_1);
+    aws_recipient_destroy(recipient);
+
+    json = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_256 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    recipient = aws_recipient_from_json(allocator, json);
+    ASSERT_NOT_NULL(recipient);
+    aws_string_destroy(json);
+
+    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_OAEP_SHA_256);
+    aws_recipient_destroy(recipient);
+
+    json = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" CIPHERTEXT_BLOB_DATA "\" }");
+    ASSERT_NOT_NULL(json);
+
+    recipient = aws_recipient_from_json(allocator, json);
+    ASSERT_NULL(recipient);
+    aws_string_destroy(json);
 
     return SUCCESS;
 }
@@ -673,6 +785,7 @@ static int s_test_recipient_from_json(struct aws_allocator *allocator, void *ctx
     json = aws_string_new_from_c_str(
         allocator,
         "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"KeyEncryptionAlgorithm\": \"" KEA_RSAES_PKCS1_V1_5 "\", "
         "\"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
     ASSERT_NOT_NULL(json);
 
@@ -680,6 +793,7 @@ static int s_test_recipient_from_json(struct aws_allocator *allocator, void *ctx
     ASSERT_NOT_NULL(recipient);
     aws_string_destroy(json);
 
+    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_PKCS1_V1_5);
     ASSERT_BIN_ARRAYS_EQUALS(
         CIPHERTEXT_BLOB_DATA,
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,

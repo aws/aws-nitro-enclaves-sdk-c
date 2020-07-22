@@ -15,6 +15,7 @@
 #define KMS_ENCRYPTION_CONTEXT "EncryptionContext"
 #define KMS_GRANT_TOKENS "GrantTokens"
 #define KMS_KEY_ID "KeyId"
+#define KMS_RECIPIENT "Recipient"
 #define KMS_PUBLIC_KEY "PublicKey"
 #define KMS_KEY_ENCRYPTION_ALGORITHM "KeyEncryptionAlgorithm"
 #define KMS_ATTESTATION_DOCUMENT "AttestationDocument"
@@ -31,6 +32,13 @@
 AWS_STATIC_STRING_FROM_LITERAL(s_ea_symmetric_default, "SYMMETRIC_DEFAULT");
 AWS_STATIC_STRING_FROM_LITERAL(s_ea_rsaes_oaep_sha_1, "RSAES_OAEP_SHA_1");
 AWS_STATIC_STRING_FROM_LITERAL(s_ea_rsaes_oaep_sha_256, "RSAES_OAEP_SHA_256");
+
+/**
+ * Aws string values for the AWS Key Encryption Algorithm used by KMS.
+ */
+AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_pkcs1_v1_5, "RSAES_PKCS1_V1_5");
+AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_oaep_sha_1, "RSAES_OAEP_SHA_1");
+AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_oaep_sha_256, "RSAES_OAEP_SHA_256");
 
 /**
  * Initializes a @ref aws_encryption_algorithm from string.
@@ -84,6 +92,61 @@ static const struct aws_string *s_aws_encryption_algorithm_to_aws_string(
             return s_ea_rsaes_oaep_sha_256;
 
         case AWS_EA_UNINITIALIZED:
+        default:
+            return NULL;
+    }
+}
+
+/**
+ * Initializes a @ref aws_key_encryption_algorithm from string.
+ *
+ * @param[in]   str  The string used to initialize the key encryption algorithm.
+ * @param[out]  kea  The initialized key encryption algorithm.
+ *
+ * @return           True if the string is valid, false otherwise.
+ */
+static bool s_aws_key_encryption_algorithm_from_aws_string(
+    const struct aws_string *str,
+    enum aws_key_encryption_algorithm *kea) {
+
+    AWS_PRECONDITION(aws_string_c_str(str));
+    AWS_PRECONDITION(kea);
+
+    if (aws_string_compare(str, s_aws_kea_rsaes_pkcs1_v1_5) == 0) {
+        *kea = AWS_KEA_RSAES_PKCS1_V1_5;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_aws_kea_rsaes_oaep_sha_1) == 0) {
+        *kea = AWS_KEA_RSAES_OAEP_SHA_1;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_aws_kea_rsaes_oaep_sha_256) == 0) {
+        *kea = AWS_KEA_RSAES_OAEP_SHA_256;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Obtains the string representation of a @ref aws_request_payer.
+ *
+ * @param[int]  kea  The request payer that is converted to string.
+ *
+ * @return           A string representing the encryption algorithm.
+ */
+static const struct aws_string *s_aws_key_encryption_algorithm_to_aws_string(enum aws_key_encryption_algorithm kea) {
+    switch (kea) {
+        case AWS_KEA_RSAES_PKCS1_V1_5:
+            return s_aws_kea_rsaes_pkcs1_v1_5;
+        case AWS_KEA_RSAES_OAEP_SHA_1:
+            return s_aws_kea_rsaes_oaep_sha_1;
+        case AWS_KEA_RSAES_OAEP_SHA_256:
+            return s_aws_kea_rsaes_oaep_sha_256;
+
+        case AWS_KEA_UNINITIALIZED:
         default:
             return NULL;
     }
@@ -479,6 +542,34 @@ struct json_object *s_json_object_from_string(const struct aws_string *json) {
     return obj;
 }
 
+/**
+ * Adds a @ref aws_string representing a json object
+ * as (key, value) pair to the json object.
+ *
+ * @param[out]  obj    The json object that is modified.
+ * @param[in]   key    The key at which the aws_string json object is added.
+ * @param[in]   value  The aws_string representing a json object.
+ *
+ * @return             AWS_OP_SUCCESS on success, AWS_OP_ERR otherwise.
+ */
+int s_string_to_json_object(struct json_object *obj, const char *const key, const struct aws_string *value) {
+    AWS_PRECONDITION(obj);
+    AWS_PRECONDITION(aws_c_string_is_valid(key));
+    AWS_PRECONDITION(aws_string_is_valid(value));
+
+    struct json_object *json = s_json_object_from_string(value);
+    if (json == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    if (json_object_object_add(obj, key, json) < 0) {
+        json_object_put(json);
+        return AWS_OP_ERR;
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
 struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_request *req) {
     AWS_PRECONDITION(req);
     AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
@@ -529,6 +620,20 @@ struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_
         if (s_string_to_json(obj, KMS_KEY_ID, aws_string_c_str(req->key_id)) != AWS_OP_SUCCESS) {
             goto clean_up;
         }
+    }
+
+    if (req->recipient != NULL) {
+        struct aws_string *str = aws_recipient_to_json(req->recipient);
+        if (str == NULL) {
+            goto clean_up;
+        }
+
+        if (s_string_to_json_object(obj, KMS_RECIPIENT, str) != AWS_OP_SUCCESS) {
+            aws_string_destroy(str);
+            goto clean_up;
+        }
+
+        aws_string_destroy(str);
     }
 
     struct aws_string *json = s_aws_string_from_json(req->allocator, obj);
@@ -626,6 +731,21 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
                 continue;
             }
 
+            if (AWS_SAFE_COMPARE(key, KMS_RECIPIENT)) {
+                struct aws_string *str = s_aws_string_from_json(allocator, value);
+                if (str == NULL) {
+                    goto clean_up;
+                }
+
+                req->recipient = aws_recipient_from_json(allocator, str);
+                if (req->recipient == NULL) {
+                    aws_string_destroy(str);
+                    goto clean_up;
+                }
+
+                aws_string_destroy(str);
+                continue;
+            }
             /* Unexpected key for object type. */
             goto clean_up;
         }
@@ -667,7 +787,17 @@ struct aws_string *aws_recipient_to_json(const struct aws_recipient *recipient) 
         }
     }
 
-    /* TODO: Add @ref aws_key_encryption_algorithm. */
+    if (recipient->key_encryption_algorithm != AWS_KEA_UNINITIALIZED) {
+        const struct aws_string *kea =
+            s_aws_key_encryption_algorithm_to_aws_string(recipient->key_encryption_algorithm);
+        if (kea == NULL) {
+            goto clean_up;
+        }
+
+        if (s_string_to_json(obj, KMS_KEY_ENCRYPTION_ALGORITHM, aws_string_c_str(kea)) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
 
     if (recipient->attestation_document.buffer != NULL) {
         if (s_aws_byte_buf_to_base64_json(
@@ -725,8 +855,18 @@ struct aws_recipient *aws_recipient_from_json(struct aws_allocator *allocator, c
             continue;
         }
 
-        /* TODO: Add Key Encryption Algorithm. */
         if (AWS_SAFE_COMPARE(key, KMS_KEY_ENCRYPTION_ALGORITHM)) {
+            struct aws_string *str = s_aws_string_from_json(allocator, value);
+            if (str == NULL) {
+                goto clean_up;
+            }
+
+            if (!s_aws_key_encryption_algorithm_from_aws_string(str, &recipient->key_encryption_algorithm)) {
+                aws_string_destroy(str);
+                goto clean_up;
+            }
+
+            aws_string_destroy(str);
             continue;
         }
 
@@ -808,6 +948,10 @@ void aws_kms_decrypt_request_destroy(struct aws_kms_decrypt_request *req) {
 
     if (aws_string_is_valid(req->key_id)) {
         aws_string_destroy(req->key_id);
+    }
+
+    if (req->recipient != NULL) {
+        aws_recipient_destroy(req->recipient);
     }
 
     if (aws_hash_table_is_valid(&req->encryption_context)) {
