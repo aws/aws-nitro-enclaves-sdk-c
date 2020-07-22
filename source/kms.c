@@ -15,6 +15,9 @@
 #define KMS_ENCRYPTION_CONTEXT "EncryptionContext"
 #define KMS_GRANT_TOKENS "GrantTokens"
 #define KMS_KEY_ID "KeyId"
+#define KMS_PUBLIC_KEY "PublicKey"
+#define KMS_KEY_ENCRYPTION_ALGORITHM "KeyEncryptionAlgorithm"
+#define KMS_ATTESTATION_DOCUMENT "AttestationDocument"
 
 /**
  * Helper macro for safe comparing a C string with a C string literal.
@@ -557,6 +560,7 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
 
     struct aws_kms_decrypt_request *req = aws_kms_decrypt_request_new(allocator);
     if (req == NULL) {
+        json_object_put(obj);
         return NULL;
     }
 
@@ -642,6 +646,107 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
 clean_up:
     json_object_put(obj);
     aws_kms_decrypt_request_destroy(req);
+
+    return NULL;
+}
+
+struct aws_string *aws_recipient_to_json(const struct aws_recipient *recipient) {
+    AWS_PRECONDITION(recipient);
+    AWS_PRECONDITION(aws_allocator_is_valid(recipient->allocator));
+
+    struct json_object *obj = json_object_new_object();
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    /* Recipient contains no required parameters in the documentation. */
+    if (recipient->public_key.buffer != NULL) {
+        if (s_aws_byte_buf_to_base64_json(recipient->allocator, obj, KMS_PUBLIC_KEY, &recipient->public_key) !=
+            AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    /* TODO: Add @ref aws_key_encryption_algorithm. */
+
+    if (recipient->attestation_document.buffer != NULL) {
+        if (s_aws_byte_buf_to_base64_json(
+                recipient->allocator, obj, KMS_ATTESTATION_DOCUMENT, &recipient->attestation_document) !=
+            AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    struct aws_string *json = s_aws_string_from_json(recipient->allocator, obj);
+    if (json == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return json;
+
+clean_up:
+    json_object_put(obj);
+
+    return NULL;
+}
+
+struct aws_recipient *aws_recipient_from_json(struct aws_allocator *allocator, const struct aws_string *json) {
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_object *obj = s_json_object_from_string(json);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    struct aws_recipient *recipient = aws_recipient_new(allocator);
+    if (recipient == NULL) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+        int value_type = json_object_get_type(value);
+
+        if (value_type != json_type_string) {
+            goto clean_up;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_PUBLIC_KEY)) {
+            if (s_aws_byte_buf_from_base64_json(allocator, value, &recipient->public_key) != AWS_OP_SUCCESS) {
+                goto clean_up;
+            }
+            continue;
+        }
+
+        /* TODO: Add Key Encryption Algorithm. */
+        if (AWS_SAFE_COMPARE(key, KMS_KEY_ENCRYPTION_ALGORITHM)) {
+            continue;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_ATTESTATION_DOCUMENT)) {
+            if (s_aws_byte_buf_from_base64_json(allocator, value, &recipient->attestation_document) != AWS_OP_SUCCESS) {
+                goto clean_up;
+            }
+            continue;
+        }
+
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return recipient;
+
+clean_up:
+    json_object_put(obj);
+    aws_recipient_destroy(recipient);
 
     return NULL;
 }

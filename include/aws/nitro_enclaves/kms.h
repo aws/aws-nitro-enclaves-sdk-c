@@ -129,6 +129,27 @@ AWS_NITRO_ENCLAVES_API
 struct aws_recipient *aws_recipient_new(struct aws_allocator *allocator);
 
 /**
+ * Serializes a Recipient @ref aws_recipient to json.
+ *
+ * @param[in]   req        The Recipient that is to be serialized.
+ *
+ * @return                 The serialized Recipient.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_string *aws_recipient_to_json(const struct aws_recipient *recipient);
+
+/**
+ * Deserialized a Recipient @ref aws_recipient from json.
+ *
+ * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   json       The serialized json Recipient.
+ *
+ * @return                 A new aws_recipient structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_recipient *aws_recipient_from_json(struct aws_allocator *allocator, const struct aws_string *json);
+
+/**
  * Deallocate all internal data for an aws_recipient.
  *
  * @param[in]  recipient  The AWS recipient.
