@@ -30,6 +30,24 @@ enum aws_encryption_algorithm {
     AWS_EA_RSAES_OAEP_SHA_256,
 };
 
+enum aws_key_encryption_algorithm {
+    AWS_KEA_UNINITIALIZED = -1,
+
+    AWS_KEA_RSAES_PKCS1_V1_5,
+    AWS_KEA_RSAES_OAEP_SHA_1,
+    AWS_KEA_RSAES_OAEP_SHA_256,
+};
+
+struct aws_recipient {
+    struct aws_byte_buf public_key;
+
+    enum aws_key_encryption_algorithm key_encryption_algorithm;
+
+    struct aws_byte_buf attestation_document;
+
+    struct aws_allocator *const allocator;
+};
+
 struct aws_kms_decrypt_request {
     /**
      * Ciphertext to be decrypted. The blob includes metadata.
@@ -99,6 +117,24 @@ struct aws_kms_decrypt_request {
      */
     struct aws_allocator *const allocator;
 };
+
+/**
+ * Creates an aws_recipient structure.
+ *
+ * @param[in]  allocator  The allocator used for initialization.
+ *
+ * @return                A new aws_recipient structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_recipient *aws_recipient_new(struct aws_allocator *allocator);
+
+/**
+ * Deallocate all internal data for an aws_recipient.
+ *
+ * @param[in]  recipient  The AWS recipient.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_recipient_destroy(struct aws_recipient *recipient);
 
 /**
  * Creates an aws_kms_decrypt_request structure.

@@ -646,6 +646,37 @@ clean_up:
     return NULL;
 }
 
+struct aws_recipient *aws_recipient_new(struct aws_allocator *allocator) {
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
+    struct aws_recipient *recipient = aws_mem_calloc(allocator, 1, sizeof(struct aws_recipient));
+    if (recipient == NULL) {
+        return NULL;
+    }
+
+    recipient->key_encryption_algorithm = AWS_KEA_UNINITIALIZED;
+
+    /* Ensure allocator constness for customer usage. Utilize the @ref aws_string pattern. */
+    *(struct aws_allocator **)(&recipient->allocator) = allocator;
+
+    return recipient;
+}
+
+void aws_recipient_destroy(struct aws_recipient *recipient) {
+    AWS_PRECONDITION(recipient);
+    AWS_PRECONDITION(aws_allocator_is_valid(recipient->allocator));
+
+    if (aws_byte_buf_is_valid(&recipient->public_key)) {
+        aws_byte_buf_clean_up_secure(&recipient->public_key);
+    }
+
+    if (aws_byte_buf_is_valid(&recipient->attestation_document)) {
+        aws_byte_buf_clean_up_secure(&recipient->attestation_document);
+    }
+
+    aws_mem_release(recipient->allocator, recipient);
+}
+
 struct aws_kms_decrypt_request *aws_kms_decrypt_request_new(struct aws_allocator *allocator) {
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
