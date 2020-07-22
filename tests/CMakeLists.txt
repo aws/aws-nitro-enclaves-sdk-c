@@ -16,6 +16,8 @@ add_test_case(test_kms_decrypt_request_ea_from_json)
 add_test_case(test_kms_decrypt_request_context_from_json)
 add_test_case(test_kms_decrypt_request_tokens_from_json)
 add_test_case(test_kms_decrypt_request_from_json)
+add_test_case(test_recipient_to_json)
+add_test_case(test_recipient_from_json)
 
 set(TEST_BINARY_NAME ${PROJECT_NAME}-tests)
 generate_test_driver(${TEST_BINARY_NAME})

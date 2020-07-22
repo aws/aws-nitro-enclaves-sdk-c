@@ -625,3 +625,73 @@ static int s_test_kms_decrypt_request_from_json(struct aws_allocator *allocator,
 
     return SUCCESS;
 }
+
+AWS_TEST_CASE(test_recipient_to_json, s_test_recipient_to_json)
+static int s_test_recipient_to_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_recipient *recipient = aws_recipient_new(allocator);
+    ASSERT_NOT_NULL(recipient);
+
+    ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
+        &recipient->public_key, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
+
+    ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
+        &recipient->attestation_document, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
+
+    struct aws_string *json = aws_recipient_to_json(recipient);
+    ASSERT_NOT_NULL(json);
+
+    struct aws_string *expected = aws_string_new_from_c_str(
+        allocator,
+        "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+    aws_recipient_destroy(recipient);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_recipient_from_json, s_test_recipient_from_json)
+static int s_test_recipient_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    /* Invalid json. */
+    struct aws_string *json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"CiphertextBlob\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_recipient *recipient = aws_recipient_from_json(allocator, json);
+    ASSERT_NULL(recipient);
+    aws_string_destroy(json);
+
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    recipient = aws_recipient_from_json(allocator, json);
+    ASSERT_NOT_NULL(recipient);
+    aws_string_destroy(json);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)recipient->public_key.buffer,
+        recipient->public_key.len);
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)recipient->attestation_document.buffer,
+        recipient->attestation_document.len);
+
+    aws_recipient_destroy(recipient);
+
+    return SUCCESS;
+}
