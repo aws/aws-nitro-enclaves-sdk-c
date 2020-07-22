@@ -80,6 +80,7 @@ set(PLATFORM_LIBS LibJsonC::Json)
 aws_use_package(aws-c-common)
 aws_use_package(aws-c-io)
 aws_use_package(aws-c-http)
+aws_use_package(aws-c-auth)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS} ${PLATFORM_LIBS})
 
 aws_prepare_shared_lib_exports(${PROJECT_NAME})
