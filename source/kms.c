@@ -11,6 +11,8 @@
  * AWS KMS Request / Response JSON key values.
  */
 #define KMS_CIPHERTEXT_BLOB "CiphertextBlob"
+#define KMS_ENCRYPTION_ALGORITHM "EncryptionAlgorithm"
+#define KMS_ENCRYPTION_CONTEXT "EncryptionContext"
 
 /**
  * Adds a c string (key, value) pair to the json object.
@@ -119,6 +121,46 @@ clean_up:
     return AWS_OP_ERR;
 }
 
+/**
+ * Adds a aws_hash_table as a map of strings to the json object at the provided key.
+ *
+ * @param[out]  obj  The json object that will contain the map of strings.
+ * @param[in]   key  The key at which the map of strings is added.
+ * @param[in]   map  The aws_hash_table value added.
+ *
+ * @return           AWS_OP_SUCCESS on success, AWS_OP_ERR otherwise.
+ */
+static int s_aws_hash_table_to_json(struct json_object *obj, const char *const key, const struct aws_hash_table *map) {
+    AWS_PRECONDITION(obj);
+    AWS_PRECONDITION(aws_c_string_is_valid(key));
+    AWS_PRECONDITION(aws_hash_table_is_valid(map));
+
+    struct json_object *json_obj = json_object_new_object();
+    if (json_obj == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    for (struct aws_hash_iter iter = aws_hash_iter_begin(map); !aws_hash_iter_done(&iter); aws_hash_iter_next(&iter)) {
+        const struct aws_string *map_key = iter.element.key;
+        const struct aws_string *map_value = iter.element.value;
+
+        if (s_string_to_json(json_obj, aws_string_c_str(map_key), aws_string_c_str(map_value)) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (json_object_object_add(obj, key, json_obj) < 0) {
+        goto clean_up;
+    }
+
+    return AWS_OP_SUCCESS;
+
+clean_up:
+    json_object_put(json_obj);
+
+    return AWS_OP_ERR;
+}
+
 struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_request *req) {
     AWS_PRECONDITION(req);
     AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
@@ -137,6 +179,21 @@ struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_
     if (s_aws_byte_buf_to_base64_json(req->allocator, obj, KMS_CIPHERTEXT_BLOB, &req->ciphertext_blob) !=
         AWS_OP_SUCCESS) {
         goto clean_up;
+    }
+
+    /* Optional parameters. */
+    if (req->encryption_algorithm != NULL) {
+        if (s_string_to_json(obj, KMS_ENCRYPTION_ALGORITHM, aws_string_c_str(req->encryption_algorithm)) !=
+            AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (aws_hash_table_is_valid(&req->encryption_context) &&
+        aws_hash_table_get_entry_count(&req->encryption_context) != 0) {
+        if (s_aws_hash_table_to_json(obj, KMS_ENCRYPTION_CONTEXT, &req->encryption_context) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
     }
 
     struct aws_string *json = s_aws_string_from_json(req->allocator, obj);
