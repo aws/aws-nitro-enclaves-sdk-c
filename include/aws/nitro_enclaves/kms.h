@@ -96,6 +96,18 @@ AWS_NITRO_ENCLAVES_API
 struct aws_kms_decrypt_request *aws_kms_decrypt_request_new(struct aws_allocator *allocator);
 
 /**
+ * Serializes a KMS Decrypt Request @ref aws_kms_decrypt_request to json.
+ *
+ * @note The request must contain the required @ref aws_kms_decrypt_request::ciphertext_blob parameter.
+ *
+ * @param[in]   req        The KMS Decrypt Request that is to be serialized.
+ *
+ * @return                 The serialized KMS Decrypt Request.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_request *req);
+
+/**
  * Deallocate all internal data for a KMS Decrypt Request.
  *
  * @param[in]  req  The KMS Decrypt Request.
