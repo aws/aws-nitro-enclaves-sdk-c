@@ -13,6 +13,8 @@
 #define KMS_CIPHERTEXT_BLOB "CiphertextBlob"
 #define KMS_ENCRYPTION_ALGORITHM "EncryptionAlgorithm"
 #define KMS_ENCRYPTION_CONTEXT "EncryptionContext"
+#define KMS_GRANT_TOKENS "GrantTokens"
+#define KMS_KEY_ID "KeyId"
 
 /**
  * Adds a c string (key, value) pair to the json object.
@@ -161,6 +163,58 @@ clean_up:
     return AWS_OP_ERR;
 }
 
+/**
+ * Adds a aws_array_list as a list of strings to the json object at the provided key.
+ *
+ * @param[out]  obj    The json object that will contain the map of strings.
+ * @param[in]   key    The key at which the list of strings is added.
+ * @param[in]   array  The aws_array_list value added.
+ *
+ * @return             AWS_OP_SUCCESS on success, AWS_OP_ERR otherwise.
+ */
+static int s_aws_array_list_to_json(
+    struct json_object *obj,
+    const char *const key,
+    const struct aws_array_list *array) {
+
+    AWS_PRECONDITION(obj);
+    AWS_PRECONDITION(aws_c_string_is_valid(key));
+    AWS_PRECONDITION(aws_array_list_is_valid(array));
+
+    struct json_object *arr = json_object_new_array();
+    if (arr == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    for (size_t i = 0; i < aws_array_list_length(array); i++) {
+        struct aws_string **elem = NULL;
+        if (aws_array_list_get_at_ptr(array, (void **)&elem, i) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+
+        struct json_object *elem_arr = json_object_new_string(aws_string_c_str(*elem));
+        if (elem == NULL) {
+            goto clean_up;
+        }
+
+        if (json_object_array_add(arr, elem_arr) < 0) {
+            json_object_put(elem_arr);
+            goto clean_up;
+        }
+    }
+
+    if (json_object_object_add(obj, key, arr) < 0) {
+        goto clean_up;
+    }
+
+    return AWS_OP_SUCCESS;
+
+clean_up:
+    json_object_put(arr);
+
+    return AWS_OP_ERR;
+}
+
 struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_request *req) {
     AWS_PRECONDITION(req);
     AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
@@ -192,6 +246,18 @@ struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_
     if (aws_hash_table_is_valid(&req->encryption_context) &&
         aws_hash_table_get_entry_count(&req->encryption_context) != 0) {
         if (s_aws_hash_table_to_json(obj, KMS_ENCRYPTION_CONTEXT, &req->encryption_context) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (aws_array_list_is_valid(&req->grant_tokens) && aws_array_list_length(&req->grant_tokens) != 0) {
+        if (s_aws_array_list_to_json(obj, KMS_GRANT_TOKENS, &req->grant_tokens) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (req->key_id != NULL) {
+        if (s_string_to_json(obj, KMS_KEY_ID, aws_string_c_str(req->key_id)) != AWS_OP_SUCCESS) {
             goto clean_up;
         }
     }
