@@ -108,6 +108,19 @@ AWS_NITRO_ENCLAVES_API
 struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_request *req);
 
 /**
+ * Deserialized a KMS Decrypt Request @ref aws_kms_decrypt_request from json.
+ *
+ * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   json       The serialized json KMS Decrypt Request.
+ *
+ * @return                 A new aws_kms_decrypt_request structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json);
+
+/**
  * Deallocate all internal data for a KMS Decrypt Request.
  *
  * @param[in]  req  The KMS Decrypt Request.

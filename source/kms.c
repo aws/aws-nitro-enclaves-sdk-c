@@ -17,6 +17,12 @@
 #define KMS_KEY_ID "KeyId"
 
 /**
+ * Helper macro for safe comparing a C string with a C string literal.
+ * Returns true if the strings are equal, false otherwise.
+ */
+#define AWS_SAFE_COMPARE(C_STR, STR_LIT) aws_array_eq((C_STR), strlen((C_STR)), (STR_LIT), sizeof((STR_LIT)) - 1)
+
+/**
  * Adds a c string (key, value) pair to the json object.
  *
  * @param[out]  obj    The json object that is modified.
@@ -124,6 +130,47 @@ clean_up:
 }
 
 /**
+ * Obtains a decoded aws_byte_buf from a base64 encoded blob represented by a json object.
+ *
+ * @param[in]   allocator  The allocator used for memory management.
+ * @param[in]   obj        The json object that contains the base64 encoded blob.
+ * @param[out]  byte_buf   The aws byte buffer that is decoded from the base64 blob.
+ *
+ * @return                 AWS_OP_SUCCESS on success, AWS_OP_ERR otherwise.
+ */
+static int s_aws_byte_buf_from_base64_json(
+    struct aws_allocator *allocator,
+    struct json_object *obj,
+    struct aws_byte_buf *byte_buf) {
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(obj);
+    AWS_PRECONDITION(byte_buf);
+
+    const char *str = json_object_get_string(obj);
+    if (str == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    size_t needed_capacity = 0;
+    struct aws_byte_cursor cursor = aws_byte_cursor_from_c_str(str);
+    if (aws_base64_compute_decoded_len(&cursor, &needed_capacity) != AWS_OP_SUCCESS) {
+        return AWS_OP_ERR;
+    }
+
+    if (aws_byte_buf_init(byte_buf, allocator, needed_capacity) != AWS_OP_SUCCESS) {
+        return AWS_OP_ERR;
+    }
+
+    if (aws_base64_decode(&cursor, byte_buf) != AWS_OP_SUCCESS) {
+        aws_byte_buf_clean_up_secure(byte_buf);
+        return AWS_OP_ERR;
+    }
+
+    return AWS_OP_SUCCESS;
+}
+
+/**
  * Adds a aws_hash_table as a map of strings to the json object at the provided key.
  *
  * @param[out]  obj  The json object that will contain the map of strings.
@@ -215,6 +262,32 @@ clean_up:
     return AWS_OP_ERR;
 }
 
+/**
+ * Obtains a @ref json_object from a aws_string representing a valid json.
+ *
+ * @param[in]  json  The json object represented by a aws_string.
+ *
+ * @return           A new json_object on success, NULL otherwise.
+ */
+struct json_object *s_json_object_from_string(const struct aws_string *json) {
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_tokener *tok = json_tokener_new_ex(JSON_TOKENER_STRICT | JSON_TOKENER_DEFAULT_DEPTH);
+    if (tok == NULL) {
+        return NULL;
+    }
+
+    struct json_object *obj = json_tokener_parse_ex(tok, aws_string_c_str(json), json->len);
+    if (obj == NULL) {
+        json_tokener_free(tok);
+        return NULL;
+    }
+
+    json_tokener_free(tok);
+
+    return obj;
+}
+
 struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_request *req) {
     AWS_PRECONDITION(req);
     AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
@@ -273,6 +346,62 @@ struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_
 
 clean_up:
     json_object_put(obj);
+
+    return NULL;
+}
+
+struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json) {
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_object *obj = s_json_object_from_string(json);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    struct aws_kms_decrypt_request *req = aws_kms_decrypt_request_new(allocator);
+    if (req == NULL) {
+        return NULL;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+        int value_type = json_object_get_type(value);
+
+        if (value_type == json_type_string) {
+            if (AWS_SAFE_COMPARE(key, KMS_CIPHERTEXT_BLOB)) {
+                if (s_aws_byte_buf_from_base64_json(allocator, value, &req->ciphertext_blob) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for string type. */
+            goto clean_up;
+        }
+
+        /* Unexpected value type. */
+        goto clean_up;
+    }
+
+    /* Validate required parameters. */
+    if (req->ciphertext_blob.buffer == NULL || !aws_byte_buf_is_valid(&req->ciphertext_blob)) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return req;
+
+clean_up:
+    json_object_put(obj);
+    aws_kms_decrypt_request_destroy(req);
 
     return NULL;
 }
