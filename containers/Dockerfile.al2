@@ -52,6 +52,10 @@ RUN git clone -b v0.3.19 https://github.com/awslabs/aws-c-auth.git
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S aws-c-auth -B aws-c-auth/build
 RUN cmake3 --build aws-c-auth/build --target install
 
+RUN git clone -b json-c-0.14-20200419 https://github.com/json-c/json-c.git
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_SHARED_LIBS=OFF -S json-c -B json-c/build
+RUN cmake3 --build json-c/build --target install
+
 COPY . aws-nitro-enclaves-sdk-c
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr \
 	-S aws-nitro-enclaves-sdk-c -B aws-nitro-enclaves-sdk-c/build
