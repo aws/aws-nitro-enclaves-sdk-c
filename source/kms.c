@@ -19,6 +19,8 @@
 #define KMS_PUBLIC_KEY "PublicKey"
 #define KMS_KEY_ENCRYPTION_ALGORITHM "KeyEncryptionAlgorithm"
 #define KMS_ATTESTATION_DOCUMENT "AttestationDocument"
+#define KMS_PLAINTEXT "Plaintext"
+#define KMS_CIPHERTEXT_FOR_RECIPIENT "CiphertextForRecipient"
 
 /**
  * Helper macro for safe comparing a C string with a C string literal.
@@ -887,6 +889,62 @@ struct aws_recipient *aws_recipient_from_json(struct aws_allocator *allocator, c
 clean_up:
     json_object_put(obj);
     aws_recipient_destroy(recipient);
+
+    return NULL;
+}
+
+struct aws_string *aws_kms_decrypt_response_to_json(const struct aws_kms_decrypt_response *res) {
+    AWS_PRECONDITION(res);
+    AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
+    AWS_PRECONDITION(aws_string_is_valid(res->key_id));
+
+    struct json_object *obj = json_object_new_object();
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    /* Required parameter. */
+    if (s_string_to_json(obj, KMS_KEY_ID, aws_string_c_str(res->key_id)) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    /* Optional parameters. */
+    if (res->plaintext.buffer != NULL) {
+        if (s_aws_byte_buf_to_base64_json(res->allocator, obj, KMS_PLAINTEXT, &res->plaintext) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (res->encryption_algorithm != AWS_EA_UNINITIALIZED) {
+        const struct aws_string *encryption_algorithm =
+            s_aws_encryption_algorithm_to_aws_string(res->encryption_algorithm);
+        if (encryption_algorithm == NULL) {
+            goto clean_up;
+        }
+
+        if (s_string_to_json(obj, KMS_ENCRYPTION_ALGORITHM, aws_string_c_str(encryption_algorithm)) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (res->ciphertext_for_recipient.buffer != NULL) {
+        if (s_aws_byte_buf_to_base64_json(
+                res->allocator, obj, KMS_CIPHERTEXT_FOR_RECIPIENT, &res->ciphertext_for_recipient) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    struct aws_string *json = s_aws_string_from_json(res->allocator, obj);
+    if (json == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return json;
+
+clean_up:
+    json_object_put(obj);
 
     return NULL;
 }

@@ -255,6 +255,16 @@ AWS_NITRO_ENCLAVES_API
 struct aws_kms_decrypt_response *aws_kms_decrypt_response_new(struct aws_allocator *allocator);
 
 /**
+ * Serializes a KMS Decrypt Response @ref aws_kms_decrypt_response to json.
+ *
+ * @param[in]   res        The KMS Decrypt Response that is to be serialized.
+ *
+ * @return                 The serialized KMS Decrypt Response.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_string *aws_kms_decrypt_response_to_json(const struct aws_kms_decrypt_response *res);
+
+/**
  * Deallocate all internal data for a KMS Decrypt Response.
  *
  * @param[in]  res  The KMS Decrypt Response.
