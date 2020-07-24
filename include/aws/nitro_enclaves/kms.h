@@ -123,6 +123,45 @@ struct aws_kms_decrypt_request {
     struct aws_allocator *const allocator;
 };
 
+struct aws_kms_decrypt_response {
+    /**
+     * ARN of the key used to perform the decryption. This value is returned if no errors are
+     * encountered during the operation.
+     *
+     * Required: Yes.
+     */
+    struct aws_string *key_id;
+
+    /**
+     * Decrypted plaintext data. This value may not be returned if the customer master key is
+     * not available or if you didn't have permission to use it.
+     *
+     * Required: No.
+     */
+    struct aws_byte_buf plaintext;
+
+    /**
+     * The encryption algorithm that was used to decrypt the ciphertext.
+     *
+     * Required: No.
+     */
+    enum aws_encryption_algorithm encryption_algorithm;
+
+    /**
+     * Ciphertext for recipient field.
+     *
+     * Required: No.
+     */
+    struct aws_byte_buf ciphertext_for_recipient;
+
+    /**
+     * Allocator used for memory management of associated resources.
+     *
+     * Note that this is not part of the response.
+     */
+    struct aws_allocator *const allocator;
+};
+
 /**
  * Creates an aws_recipient structure.
  *
@@ -204,6 +243,24 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
  */
 AWS_NITRO_ENCLAVES_API
 void aws_kms_decrypt_request_destroy(struct aws_kms_decrypt_request *req);
+
+/**
+ * Creates an aws_kms_decrypt_response structure.
+ *
+ * @param[in]  allocator  The allocator used for initialization.
+ *
+ * @return                A new aws_kms_decrypt_response structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_decrypt_response *aws_kms_decrypt_response_new(struct aws_allocator *allocator);
+
+/**
+ * Deallocate all internal data for a KMS Decrypt Response.
+ *
+ * @param[in]  res  The KMS Decrypt Response.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_kms_decrypt_response_destroy(struct aws_kms_decrypt_response *res);
 
 AWS_EXTERN_C_END
 

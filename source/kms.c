@@ -971,3 +971,38 @@ void aws_kms_decrypt_request_destroy(struct aws_kms_decrypt_request *req) {
 
     aws_mem_release(req->allocator, req);
 }
+
+struct aws_kms_decrypt_response *aws_kms_decrypt_response_new(struct aws_allocator *allocator) {
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
+    struct aws_kms_decrypt_response *response = aws_mem_calloc(allocator, 1, sizeof(struct aws_kms_decrypt_response));
+    if (response == NULL) {
+        return NULL;
+    }
+
+    response->encryption_algorithm = AWS_EA_UNINITIALIZED;
+
+    /* Ensure allocator constness for customer usage. Utilize the @ref aws_string pattern. */
+    *(struct aws_allocator **)(&response->allocator) = allocator;
+
+    return response;
+}
+
+void aws_kms_decrypt_response_destroy(struct aws_kms_decrypt_response *res) {
+    AWS_PRECONDITION(res);
+    AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
+
+    if (aws_string_is_valid(res->key_id)) {
+        aws_string_destroy(res->key_id);
+    }
+
+    if (aws_byte_buf_is_valid(&res->plaintext)) {
+        aws_byte_buf_clean_up_secure(&res->plaintext);
+    }
+
+    if (aws_byte_buf_is_valid(&res->ciphertext_for_recipient)) {
+        aws_byte_buf_clean_up_secure(&res->ciphertext_for_recipient);
+    }
+
+    aws_mem_release(res->allocator, res);
+}
