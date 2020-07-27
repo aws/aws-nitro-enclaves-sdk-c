@@ -8,8 +8,6 @@
 
 /**
  * Data used for JSON serialization and deserialization.
- *
- * TODO: Ensure more appropriate values from a dummy REST request.
  */
 #define KEY_ID "1234abcd-12ab-34cd-56ef-1234567890ab"
 #define ENCRYPTION_ALGORITHM "SYMMETRIC_DEFAULT"
@@ -1166,6 +1164,72 @@ static int s_test_kms_generate_random_request_from_json(struct aws_allocator *al
     aws_string_destroy(json);
     aws_string_destroy(json_second);
     aws_kms_generate_random_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_generate_random_response_to_json, s_test_kms_generate_random_response_to_json)
+static int s_test_kms_generate_random_response_to_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_kms_generate_random_response *response = aws_kms_generate_random_response_new(allocator);
+    ASSERT_NOT_NULL(response);
+
+    ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
+        &response->plaintext, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
+
+    ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
+        &response->ciphertext_for_recipient, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
+
+    struct aws_string *json = aws_kms_generate_random_response_to_json(response);
+    ASSERT_NOT_NULL(json);
+
+    struct aws_string *expected = aws_string_new_from_c_str(
+        allocator,
+        "{ \"Plaintext\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"CiphertextForRecipient\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+    aws_kms_generate_random_response_destroy(response);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_generate_random_response_from_json, s_test_kms_generate_random_response_from_json)
+static int s_test_kms_generate_random_response_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_string *json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"Plaintext\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
+        "\"CiphertextForRecipient\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_kms_generate_random_response *response = aws_kms_generate_random_response_from_json(allocator, json);
+    ASSERT_NOT_NULL(response);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)response->plaintext.buffer,
+        response->plaintext.len);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)response->ciphertext_for_recipient.buffer,
+        response->ciphertext_for_recipient.len);
+
+    /* Ensure we can serialize back to a JSON. */
+    struct aws_string *json_second = aws_kms_generate_random_response_to_json(response);
+    ASSERT_NOT_NULL(json_second);
+    ASSERT_STR_EQUALS(aws_string_c_str(json), aws_string_c_str(json_second));
+
+    aws_string_destroy(json);
+    aws_string_destroy(json_second);
+    aws_kms_generate_random_response_destroy(response);
 
     return SUCCESS;
 }
