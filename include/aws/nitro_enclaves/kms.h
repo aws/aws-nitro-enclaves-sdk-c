@@ -239,6 +239,44 @@ struct aws_kms_generate_data_key_request {
     struct aws_allocator *const allocator;
 };
 
+struct aws_kms_generate_data_key_response {
+    /**
+     * The identifier of the CMK under which the data encryption key was generated and encrypted.
+     *
+     * Required: Yes.
+     */
+    struct aws_string *key_id;
+
+    /**
+     * The encrypted data encryption key.
+     *
+     * Required: Yes.
+     */
+    struct aws_byte_buf ciphertext_blob;
+
+    /**
+     * The data encryption key. Use this data key for local encryption and decryption, then
+     * remove it from memory as soon as possible.
+     *
+     * Required: No.
+     */
+    struct aws_byte_buf plaintext;
+
+    /**
+     * Ciphertext for recipient field.
+     *
+     * Required: No.
+     */
+    struct aws_byte_buf ciphertext_for_recipient;
+
+    /**
+     * Allocator used for memory management of associated resources.
+     *
+     * Note that this is not part of the response.
+     */
+    struct aws_allocator *const allocator;
+};
+
 /**
  * Creates an aws_recipient structure.
  *
@@ -404,6 +442,24 @@ struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_from
  */
 AWS_NITRO_ENCLAVES_API
 void aws_kms_generate_data_key_request_destroy(struct aws_kms_generate_data_key_request *req);
+
+/**
+ * Creates an aws_kms_generate_data_key_response structure.
+ *
+ * @param[in]  allocator  The allocator used for initialization.
+ *
+ * @return                A new aws_kms_generate_data_key_response structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_new(struct aws_allocator *allocator);
+
+/**
+ * Deallocate all internal data for a KMS Generate Data Key Response.
+ *
+ * @param[in]  res  The KMS Generate Data Key Request.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_kms_generate_data_key_response_destroy(struct aws_kms_generate_data_key_response *res);
 
 AWS_EXTERN_C_END
 
