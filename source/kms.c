@@ -163,6 +163,31 @@ static const struct aws_string *s_aws_key_encryption_algorithm_to_aws_string(enu
 }
 
 /**
+ * Initializes a @ref aws_key_spec from string.
+ *
+ * @param[in]   str  The string used to initialize the key spec.
+ * @param[out]  ks   The initialized key spec.
+ *
+ * @return           True if the string is valid, false otherwise.
+ */
+static bool s_aws_key_spec_from_aws_string(const struct aws_string *str, enum aws_key_spec *ks) {
+    AWS_PRECONDITION(aws_string_c_str(str));
+    AWS_PRECONDITION(ks);
+
+    if (aws_string_compare(str, s_aws_ks_aes_256) == 0) {
+        *ks = AWS_KS_AES_256;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_aws_ks_aes_128) == 0) {
+        *ks = AWS_KS_AES_128;
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * Obtains the string representation of a @ref aws_key_spec.
  *
  * @param[int]  ks  The key spec that is converted to string.
@@ -258,6 +283,27 @@ static int s_int_to_json(struct json_object *obj, const char *const key, const i
         return AWS_OP_ERR;
     }
 
+    return AWS_OP_SUCCESS;
+}
+
+/**
+ * Obtains a uint32_t from an json object.
+ *
+ * @param[in]   obj      The json object containing the number of interest.
+ * @param[out]  out_val  The number obtained from the json object.
+ *
+ * @return               AWS_OP_SUCCESS on success, AWS_OP_ERR otherwise.
+ */
+static int s_int_from_json(struct json_object *obj, uint32_t *out_val) {
+    AWS_PRECONDITION(obj);
+    AWS_PRECONDITION(out_val);
+
+    int32_t value = json_object_get_int(obj);
+    if (value < 0) {
+        return AWS_OP_ERR;
+    }
+
+    *out_val = (uint32_t)value;
     return AWS_OP_SUCCESS;
 }
 
@@ -1158,6 +1204,139 @@ struct aws_string *aws_kms_generate_data_key_request_to_json(const struct aws_km
 
 clean_up:
     json_object_put(obj);
+
+    return NULL;
+}
+
+struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json) {
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_object *obj = s_json_object_from_string(json);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    struct aws_kms_generate_data_key_request *req = aws_kms_generate_data_key_request_new(allocator);
+    if (req == NULL) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+        int value_type = json_object_get_type(value);
+
+        if (value_type == json_type_string) {
+            if (AWS_SAFE_COMPARE(key, KMS_KEY_ID)) {
+                req->key_id = s_aws_string_from_json(allocator, value);
+                if (req->key_id == NULL) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            if (AWS_SAFE_COMPARE(key, KMS_KEY_SPEC)) {
+                struct aws_string *str = s_aws_string_from_json(allocator, value);
+                if (str == NULL) {
+                    goto clean_up;
+                }
+
+                if (!s_aws_key_spec_from_aws_string(str, &req->key_spec)) {
+                    aws_string_destroy(str);
+                    goto clean_up;
+                }
+
+                aws_string_destroy(str);
+                continue;
+            }
+
+            /* Unexpected key for string type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_array) {
+            if (AWS_SAFE_COMPARE(key, KMS_GRANT_TOKENS)) {
+                if (s_aws_array_list_from_json(allocator, value, &req->grant_tokens) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for array type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_object) {
+            if (AWS_SAFE_COMPARE(key, KMS_ENCRYPTION_CONTEXT)) {
+                if (s_aws_hash_table_from_json(allocator, value, &req->encryption_context) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            if (AWS_SAFE_COMPARE(key, KMS_RECIPIENT)) {
+                struct aws_string *str = s_aws_string_from_json(allocator, value);
+                if (str == NULL) {
+                    goto clean_up;
+                }
+
+                req->recipient = aws_recipient_from_json(allocator, str);
+                if (req->recipient == NULL) {
+                    aws_string_destroy(str);
+                    goto clean_up;
+                }
+
+                aws_string_destroy(str);
+                continue;
+            }
+
+            /* Unexpected key for object type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_int) {
+            if (AWS_SAFE_COMPARE(key, KMS_NUMBER_OF_BYTES)) {
+                if (s_int_from_json(value, &req->number_of_bytes) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for object type. */
+            goto clean_up;
+        }
+
+        /* Unexpected value type. */
+        goto clean_up;
+    }
+
+    /* Validate required parameters. */
+    if (!aws_string_is_valid(req->key_id)) {
+        goto clean_up;
+    }
+
+    /* KeySpec or the NumberOfBytes must be specified, but not both. */
+    if (req->number_of_bytes > 0 && req->key_spec != AWS_KS_UNINITIALIZED) {
+        goto clean_up;
+    }
+
+    if (req->number_of_bytes == 0 && req->key_spec == AWS_KS_UNINITIALIZED) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return req;
+
+clean_up:
+    json_object_put(obj);
+    aws_kms_generate_data_key_request_destroy(req);
 
     return NULL;
 }

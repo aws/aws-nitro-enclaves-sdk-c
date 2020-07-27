@@ -200,7 +200,7 @@ struct aws_kms_generate_data_key_request {
      *
      * Required: No.
      */
-    int32_t number_of_bytes;
+    uint32_t number_of_bytes;
 
     /**
      * Specifies the length of the data key. Use AES_128 to generate a 128-bit symmetric key,
@@ -383,6 +383,19 @@ struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_new(
  */
 AWS_NITRO_ENCLAVES_API
 struct aws_string *aws_kms_generate_data_key_request_to_json(const struct aws_kms_generate_data_key_request *req);
+
+/**
+ * Deserialized a KMS Generate Data Key Request @ref aws_kms_generate_data_key_request from json.
+ *
+ * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   json       The serialized json KMS Generate Data Key Request.
+ *
+ * @return                 A new aws_kms_generate_data_key_request structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json);
 
 /**
  * Deallocate all internal data for a KMS Generate Data Key Request.
