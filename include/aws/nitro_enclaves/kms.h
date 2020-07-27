@@ -277,6 +277,38 @@ struct aws_kms_generate_data_key_response {
     struct aws_allocator *const allocator;
 };
 
+struct aws_kms_generate_random_request {
+    /**
+     * The length of the byte string.
+     *
+     * Required: No.
+     */
+    uint32_t number_of_bytes;
+
+    /**
+     * Generates the random byte string in the AWS CloudHSM cluster that is associated
+     * with the specified custom key store. To find the ID of a custom key store,
+     * use the DescribeCustomKeyStores operation.
+     *
+     * Required: No.
+     */
+    struct aws_string *custom_key_store_id;
+
+    /**
+     * Recipient field.
+     *
+     * Required: No.
+     */
+    struct aws_recipient *recipient;
+
+    /**
+     * Allocator used for memory management of associated resources.
+     *
+     * Note that this is not part of the response.
+     */
+    struct aws_allocator *const allocator;
+};
+
 /**
  * Creates an aws_recipient structure.
  *
@@ -483,6 +515,24 @@ struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_fr
  */
 AWS_NITRO_ENCLAVES_API
 void aws_kms_generate_data_key_response_destroy(struct aws_kms_generate_data_key_response *res);
+
+/**
+ * Creates an aws_kms_generate_random_request structure.
+ *
+ * @param[in]  allocator  The allocator used for initialization.
+ *
+ * @return                A new aws_kms_generate_random_request structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_generate_random_request *aws_kms_generate_random_request_new(struct aws_allocator *allocator);
+
+/**
+ * Deallocate all internal data for a KMS Generate Random Request.
+ *
+ * @param[in]  req  The KMS Generate Random Request.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_kms_generate_random_request_destroy(struct aws_kms_generate_random_request *req);
 
 AWS_EXTERN_C_END
 

@@ -1671,3 +1671,33 @@ void aws_kms_generate_data_key_response_destroy(struct aws_kms_generate_data_key
 
     aws_mem_release(res->allocator, res);
 }
+
+struct aws_kms_generate_random_request *aws_kms_generate_random_request_new(struct aws_allocator *allocator) {
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
+    struct aws_kms_generate_random_request *request =
+        aws_mem_calloc(allocator, 1, sizeof(struct aws_kms_generate_random_request));
+    if (request == NULL) {
+        return NULL;
+    }
+
+    /* Ensure allocator constness for customer usage. Utilize the @ref aws_string pattern. */
+    *(struct aws_allocator **)(&request->allocator) = allocator;
+
+    return request;
+}
+
+void aws_kms_generate_random_request_destroy(struct aws_kms_generate_random_request *req) {
+    AWS_PRECONDITION(req);
+    AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
+
+    if (aws_string_is_valid(req->custom_key_store_id)) {
+        aws_string_destroy(req->custom_key_store_id);
+    }
+
+    if (req->recipient != NULL) {
+        aws_recipient_destroy(req->recipient);
+    }
+
+    aws_mem_release(req->allocator, req);
+}
