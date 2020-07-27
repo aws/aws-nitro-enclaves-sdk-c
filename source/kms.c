@@ -21,6 +21,8 @@
 #define KMS_ATTESTATION_DOCUMENT "AttestationDocument"
 #define KMS_PLAINTEXT "Plaintext"
 #define KMS_CIPHERTEXT_FOR_RECIPIENT "CiphertextForRecipient"
+#define KMS_NUMBER_OF_BYTES "NumberOfBytes"
+#define KMS_KEY_SPEC "KeySpec"
 
 /**
  * Helper macro for safe comparing a C string with a C string literal.
@@ -41,6 +43,12 @@ AWS_STATIC_STRING_FROM_LITERAL(s_ea_rsaes_oaep_sha_256, "RSAES_OAEP_SHA_256");
 AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_pkcs1_v1_5, "RSAES_PKCS1_V1_5");
 AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_oaep_sha_1, "RSAES_OAEP_SHA_1");
 AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_oaep_sha_256, "RSAES_OAEP_SHA_256");
+
+/**
+ * Aws string value for the AWS Key Spec used by KMS.
+ */
+AWS_STATIC_STRING_FROM_LITERAL(s_aws_ks_aes_256, "AES_256");
+AWS_STATIC_STRING_FROM_LITERAL(s_aws_ks_aes_128, "AES_128");
 
 /**
  * Initializes a @ref aws_encryption_algorithm from string.
@@ -155,6 +163,26 @@ static const struct aws_string *s_aws_key_encryption_algorithm_to_aws_string(enu
 }
 
 /**
+ * Obtains the string representation of a @ref aws_key_spec.
+ *
+ * @param[int]  ks  The key spec that is converted to string.
+ *
+ * @return          A string representing the key spec.
+ */
+static const struct aws_string *s_aws_key_spec_to_aws_string(enum aws_key_spec ks) {
+    switch (ks) {
+        case AWS_KS_AES_256:
+            return s_aws_ks_aes_256;
+        case AWS_KS_AES_128:
+            return s_aws_ks_aes_128;
+
+        case AWS_KS_UNINITIALIZED:
+        default:
+            return NULL;
+    }
+}
+
+/**
  * Adds a c string (key, value) pair to the json object.
  *
  * @param[out]  obj    The json object that is modified.
@@ -205,6 +233,32 @@ static struct aws_string *s_aws_string_from_json(struct aws_allocator *allocator
     }
 
     return string;
+}
+
+/**
+ * Adds a int32_t value (key, value) pair to the json object.
+ *
+ * @param[out]  obj    The json object that is modified.
+ * @param[in]   key    The key at which the int32_t value is added.
+ * @param[in]   value  The int32_t value added.
+ *
+ * @return             AWS_OP_SUCCESS on success, AWS_OP_ERR otherwise.
+ */
+static int s_int_to_json(struct json_object *obj, const char *const key, const int32_t value) {
+    AWS_PRECONDITION(obj);
+    AWS_PRECONDITION(aws_c_string_is_valid(key));
+
+    struct json_object *elem = json_object_new_int(value);
+    if (elem == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    if (json_object_object_add(obj, key, elem) < 0) {
+        json_object_put(elem);
+        return AWS_OP_ERR;
+    }
+
+    return AWS_OP_SUCCESS;
 }
 
 /**
@@ -1029,6 +1083,81 @@ struct aws_kms_decrypt_response *aws_kms_decrypt_response_from_json(
 clean_up:
     json_object_put(obj);
     aws_kms_decrypt_response_destroy(response);
+
+    return NULL;
+}
+
+struct aws_string *aws_kms_generate_data_key_request_to_json(const struct aws_kms_generate_data_key_request *req) {
+    AWS_PRECONDITION(req);
+    AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
+    AWS_PRECONDITION(aws_string_is_valid(req->key_id));
+    /* KeySpec or the NumberOfBytes must be specified, but not both. */
+    AWS_PRECONDITION(req->number_of_bytes == 0 || req->key_spec == AWS_KS_UNINITIALIZED);
+    AWS_PRECONDITION(req->number_of_bytes > 0 || req->key_spec != AWS_KS_UNINITIALIZED);
+
+    struct json_object *obj = json_object_new_object();
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    /* Required parameters. */
+    if (s_string_to_json(obj, KMS_KEY_ID, aws_string_c_str(req->key_id)) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    if (req->number_of_bytes > 0) {
+        if (s_int_to_json(obj, KMS_NUMBER_OF_BYTES, req->number_of_bytes) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    } else if (req->key_spec != AWS_KS_UNINITIALIZED) {
+        const struct aws_string *key_spec = s_aws_key_spec_to_aws_string(req->key_spec);
+        if (key_spec == NULL) {
+            goto clean_up;
+        }
+
+        if (s_string_to_json(obj, KMS_KEY_SPEC, aws_string_c_str(key_spec)) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    /* Optional parameters. */
+    if (aws_hash_table_is_valid(&req->encryption_context) &&
+        aws_hash_table_get_entry_count(&req->encryption_context) != 0) {
+        if (s_aws_hash_table_to_json(obj, KMS_ENCRYPTION_CONTEXT, &req->encryption_context) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (aws_array_list_is_valid(&req->grant_tokens) && aws_array_list_length(&req->grant_tokens) != 0) {
+        if (s_aws_array_list_to_json(obj, KMS_GRANT_TOKENS, &req->grant_tokens) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (req->recipient != NULL) {
+        struct aws_string *str = aws_recipient_to_json(req->recipient);
+        if (str == NULL) {
+            goto clean_up;
+        }
+
+        if (s_string_to_json_object(obj, KMS_RECIPIENT, str) != AWS_OP_SUCCESS) {
+            aws_string_destroy(str);
+            goto clean_up;
+        }
+
+        aws_string_destroy(str);
+    }
+
+    struct aws_string *json = s_aws_string_from_json(req->allocator, obj);
+    if (json == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+    return json;
+
+clean_up:
+    json_object_put(obj);
 
     return NULL;
 }
