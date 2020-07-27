@@ -1101,3 +1101,71 @@ static int s_test_kms_generate_data_key_response_from_json(struct aws_allocator 
 
     return SUCCESS;
 }
+
+AWS_TEST_CASE(test_kms_generate_random_request_to_json, s_test_kms_generate_random_request_to_json)
+static int s_test_kms_generate_random_request_to_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_kms_generate_random_request *request = aws_kms_generate_random_request_new(allocator);
+    ASSERT_NOT_NULL(request);
+
+    request->number_of_bytes = 1;
+    request->custom_key_store_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(request->custom_key_store_id);
+    struct aws_string *json = aws_string_new_from_c_str(allocator, "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+    request->recipient = aws_recipient_from_json(allocator, json);
+    ASSERT_NOT_NULL(request->recipient);
+    aws_string_destroy(json);
+
+    json = aws_kms_generate_random_request_to_json(request);
+    ASSERT_NOT_NULL(json);
+
+    struct aws_string *expected = aws_string_new_from_c_str(
+        allocator,
+        "{ \"NumberOfBytes\": 1, "
+        "\"CustomKeyStoreId\": \"" KEY_ID "\", "
+        "\"Recipient\": { \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" } }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+    aws_kms_generate_random_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_generate_random_request_from_json, s_test_kms_generate_random_request_from_json)
+static int s_test_kms_generate_random_request_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_string *json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"NumberOfBytes\": 1, "
+        "\"CustomKeyStoreId\": \"" KEY_ID "\", "
+        "\"Recipient\": { \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" } }");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_kms_generate_random_request *request = aws_kms_generate_random_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+
+    ASSERT_INT_EQUALS(request->number_of_bytes, 1);
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->custom_key_store_id));
+    ASSERT_NOT_NULL(request->recipient);
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->recipient->public_key.buffer,
+        request->recipient->public_key.len);
+
+    /* Ensure we can serialize back to a JSON. */
+    struct aws_string *json_second = aws_kms_generate_random_request_to_json(request);
+    ASSERT_NOT_NULL(json_second);
+    ASSERT_STR_EQUALS(aws_string_c_str(json), aws_string_c_str(json_second));
+
+    aws_string_destroy(json);
+    aws_string_destroy(json_second);
+    aws_kms_generate_random_request_destroy(request);
+
+    return SUCCESS;
+}
