@@ -23,6 +23,7 @@
 #define KMS_CIPHERTEXT_FOR_RECIPIENT "CiphertextForRecipient"
 #define KMS_NUMBER_OF_BYTES "NumberOfBytes"
 #define KMS_KEY_SPEC "KeySpec"
+#define KMS_CUSTOM_KEY_STORE_ID "CustomKeyStoreId"
 
 /**
  * Helper macro for safe comparing a C string with a C string literal.
@@ -1467,6 +1468,56 @@ struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_fr
 clean_up:
     json_object_put(obj);
     aws_kms_generate_data_key_response_destroy(response);
+
+    return NULL;
+}
+
+struct aws_string *aws_kms_generate_random_request_to_json(const struct aws_kms_generate_random_request *req) {
+    AWS_PRECONDITION(req);
+    AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
+
+    struct json_object *obj = json_object_new_object();
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    if (req->number_of_bytes > 0) {
+        if (s_int_to_json(obj, KMS_NUMBER_OF_BYTES, req->number_of_bytes) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (aws_string_is_valid(req->custom_key_store_id)) {
+        if (s_string_to_json(obj, KMS_CUSTOM_KEY_STORE_ID, aws_string_c_str(req->custom_key_store_id)) !=
+            AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (req->recipient != NULL) {
+        struct aws_string *str = aws_recipient_to_json(req->recipient);
+        if (str == NULL) {
+            goto clean_up;
+        }
+
+        if (s_string_to_json_object(obj, KMS_RECIPIENT, str) != AWS_OP_SUCCESS) {
+            aws_string_destroy(str);
+            goto clean_up;
+        }
+
+        aws_string_destroy(str);
+    }
+
+    struct aws_string *json = s_aws_string_from_json(req->allocator, obj);
+    if (json == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+    return json;
+
+clean_up:
+    json_object_put(obj);
 
     return NULL;
 }

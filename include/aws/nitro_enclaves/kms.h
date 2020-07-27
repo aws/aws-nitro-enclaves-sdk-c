@@ -527,6 +527,16 @@ AWS_NITRO_ENCLAVES_API
 struct aws_kms_generate_random_request *aws_kms_generate_random_request_new(struct aws_allocator *allocator);
 
 /**
+ * Serializes a KMS Generate Random Request @ref aws_kms_generate_random_request to json.
+ *
+ * @param[in]   req       The KMS Generate Random Request that is to be serialized.
+ *
+ * @return                The serialized KMS Generate Random Request.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_string *aws_kms_generate_random_request_to_json(const struct aws_kms_generate_random_request *req);
+
+/**
  * Deallocate all internal data for a KMS Generate Random Request.
  *
  * @param[in]  req  The KMS Generate Random Request.
