@@ -1341,6 +1341,53 @@ clean_up:
     return NULL;
 }
 
+struct aws_string *aws_kms_generate_data_key_response_to_json(const struct aws_kms_generate_data_key_response *res) {
+    AWS_PRECONDITION(res);
+    AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
+    AWS_PRECONDITION(aws_string_is_valid(res->key_id));
+    AWS_PRECONDITION(aws_byte_buf_is_valid(&res->ciphertext_blob));
+
+    struct json_object *obj = json_object_new_object();
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    /* Required parameters. */
+    if (s_string_to_json(obj, KMS_KEY_ID, aws_string_c_str(res->key_id)) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    if (s_aws_byte_buf_to_base64_json(res->allocator, obj, KMS_CIPHERTEXT_BLOB, &res->ciphertext_blob) !=
+        AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    /* Optional parameters. */
+    if (s_aws_byte_buf_to_base64_json(res->allocator, obj, KMS_PLAINTEXT, &res->plaintext) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    if (res->ciphertext_for_recipient.buffer != NULL) {
+        if (s_aws_byte_buf_to_base64_json(
+                res->allocator, obj, KMS_CIPHERTEXT_FOR_RECIPIENT, &res->ciphertext_for_recipient) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    struct aws_string *json = s_aws_string_from_json(res->allocator, obj);
+    if (json == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+    return json;
+
+clean_up:
+    json_object_put(obj);
+
+    return NULL;
+}
+
 struct aws_recipient *aws_recipient_new(struct aws_allocator *allocator) {
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 

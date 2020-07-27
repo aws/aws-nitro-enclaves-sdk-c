@@ -454,6 +454,16 @@ AWS_NITRO_ENCLAVES_API
 struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_new(struct aws_allocator *allocator);
 
 /**
+ * Serializes a KMS Generate Data Key Response @ref aws_kms_generate_data_key_response to json.
+ *
+ * @param[in]   res        The KMS Generate Data Key Response that is to be serialized.
+ *
+ * @return                 The serialized KMS Generate Data Key Response.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_string *aws_kms_generate_data_key_response_to_json(const struct aws_kms_generate_data_key_response *res);
+
+/**
  * Deallocate all internal data for a KMS Generate Data Key Response.
  *
  * @param[in]  res  The KMS Generate Data Key Request.
