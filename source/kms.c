@@ -1522,6 +1522,92 @@ clean_up:
     return NULL;
 }
 
+struct aws_kms_generate_random_request *aws_kms_generate_random_request_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json) {
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_object *obj = s_json_object_from_string(json);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    struct aws_kms_generate_random_request *request = aws_kms_generate_random_request_new(allocator);
+    if (request == NULL) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+        int value_type = json_object_get_type(value);
+
+        if (value_type == json_type_string) {
+            if (AWS_SAFE_COMPARE(key, KMS_CUSTOM_KEY_STORE_ID)) {
+                request->custom_key_store_id = s_aws_string_from_json(allocator, value);
+                if (request->custom_key_store_id == NULL) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for object type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_object) {
+            if (AWS_SAFE_COMPARE(key, KMS_RECIPIENT)) {
+                struct aws_string *str = s_aws_string_from_json(allocator, value);
+                if (str == NULL) {
+                    goto clean_up;
+                }
+
+                request->recipient = aws_recipient_from_json(allocator, str);
+                if (request->recipient == NULL) {
+                    aws_string_destroy(str);
+                    goto clean_up;
+                }
+
+                aws_string_destroy(str);
+                continue;
+            }
+
+            /* Unexpected key for object type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_int) {
+            if (AWS_SAFE_COMPARE(key, KMS_NUMBER_OF_BYTES)) {
+                if (s_int_from_json(value, &request->number_of_bytes) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for object type. */
+            goto clean_up;
+        }
+
+        /* Unexpected value type. */
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return request;
+
+clean_up:
+    json_object_put(obj);
+    aws_kms_generate_random_request_destroy(request);
+
+    return NULL;
+}
+
 struct aws_recipient *aws_recipient_new(struct aws_allocator *allocator) {
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
