@@ -1148,3 +1148,50 @@ void aws_kms_decrypt_response_destroy(struct aws_kms_decrypt_response *res) {
 
     aws_mem_release(res->allocator, res);
 }
+
+struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_new(struct aws_allocator *allocator) {
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
+    struct aws_kms_generate_data_key_request *request =
+        aws_mem_calloc(allocator, 1, sizeof(struct aws_kms_generate_data_key_request));
+    if (request == NULL) {
+        return NULL;
+    }
+
+    request->key_spec = AWS_KS_UNINITIALIZED;
+
+    /* Ensure allocator constness for customer usage. Utilize the @ref aws_string pattern. */
+    *(struct aws_allocator **)(&request->allocator) = allocator;
+
+    return request;
+}
+
+void aws_kms_generate_data_key_request_destroy(struct aws_kms_generate_data_key_request *req) {
+    AWS_PRECONDITION(req);
+    AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
+
+    if (aws_string_is_valid(req->key_id)) {
+        aws_string_destroy(req->key_id);
+    }
+
+    if (aws_hash_table_is_valid(&req->encryption_context)) {
+        aws_hash_table_clean_up(&req->encryption_context);
+    }
+
+    if (aws_array_list_is_valid(&req->grant_tokens)) {
+        for (size_t i = 0; i < aws_array_list_length(&req->grant_tokens); i++) {
+            struct aws_string *elem = NULL;
+            AWS_FATAL_ASSERT(aws_array_list_get_at(&req->grant_tokens, &elem, i) == AWS_OP_SUCCESS);
+
+            aws_string_destroy(elem);
+        }
+
+        aws_array_list_clean_up(&req->grant_tokens);
+    }
+
+    if (req->recipient != NULL) {
+        aws_recipient_destroy(req->recipient);
+    }
+
+    aws_mem_release(req->allocator, req);
+}

@@ -38,6 +38,13 @@ enum aws_key_encryption_algorithm {
     AWS_KEA_RSAES_OAEP_SHA_256,
 };
 
+enum aws_key_spec {
+    AWS_KS_UNINITIALIZED = -1,
+
+    AWS_KS_AES_256,
+    AWS_KS_AES_128,
+};
+
 struct aws_recipient {
     struct aws_byte_buf public_key;
 
@@ -153,6 +160,76 @@ struct aws_kms_decrypt_response {
      * Required: No.
      */
     struct aws_byte_buf ciphertext_for_recipient;
+
+    /**
+     * Allocator used for memory management of associated resources.
+     *
+     * Note that this is not part of the response.
+     */
+    struct aws_allocator *const allocator;
+};
+
+struct aws_kms_generate_data_key_request {
+    /**
+     * Identifies the symmetric CMK that encrypts the data key.
+     *
+     * Required: Yes.
+     */
+    struct aws_string *key_id;
+
+    /**
+     * Specifies the encryption context that will be used when encrypting the data key.
+     *
+     * An encryption context is a collection of non-secret key-value pairs that
+     * represents additional authenticated data. When you use an encryption context
+     * to encrypt data, you must specify the same (an exact case-sensitive match)
+     * encryption context to decrypt the data. An encryption context is optional
+     * when encrypting with a symmetric CMK, but it is highly recommended.
+     *
+     * Required: No.
+     */
+    struct aws_hash_table encryption_context;
+
+    /**
+     * Specifies the length of the data key in bytes. For example, use the value 64 to
+     * generate a 512-bit data key (64 bytes is 512 bits). For 128-bit (16-byte) and
+     * 256-bit (32-byte) data keys, use the KeySpec parameter.
+     *
+     * You must specify either the KeySpec or the NumberOfBytes parameter (but not both)
+     * in every GenerateDataKey request.
+     *
+     * Required: No.
+     */
+    int32_t number_of_bytes;
+
+    /**
+     * Specifies the length of the data key. Use AES_128 to generate a 128-bit symmetric key,
+     * or AES_256 to generate a 256-bit symmetric key.
+     *
+     * You must specify either the KeySpec or the NumberOfBytes parameter (but not both)
+     * in every GenerateDataKey request.
+     *
+     * Required: No.
+     */
+    enum aws_key_spec key_spec;
+
+    /**
+     * A list of grant tokens.
+     *
+     * For more information, see
+     * <a href="https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#grant_token">Grant Tokens</a>
+     * in the AWS Key Management Service Developer Guide.
+     *
+     * Required: No.
+     */
+    struct aws_array_list grant_tokens;
+
+    /**
+     * Recipient field.
+     *
+     * Required: No.
+     */
+    struct aws_recipient *recipient;
 
     /**
      * Allocator used for memory management of associated resources.
@@ -284,6 +361,24 @@ struct aws_kms_decrypt_response *aws_kms_decrypt_response_from_json(
  */
 AWS_NITRO_ENCLAVES_API
 void aws_kms_decrypt_response_destroy(struct aws_kms_decrypt_response *res);
+
+/**
+ * Creates an aws_kms_generate_data_key_request structure.
+ *
+ * @param[in]  allocator  The allocator used for initialization.
+ *
+ * @return                A new aws_kms_generate_data_key_request structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_new(struct aws_allocator *allocator);
+
+/**
+ * Deallocate all internal data for a KMS Generate Data Key Request.
+ *
+ * @param[in]  req  The KMS Generate Data Key Request.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_kms_generate_data_key_request_destroy(struct aws_kms_generate_data_key_request *req);
 
 AWS_EXTERN_C_END
 
