@@ -1644,6 +1644,65 @@ clean_up:
     return NULL;
 }
 
+struct aws_kms_generate_random_response *aws_kms_generate_random_response_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json) {
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_object *obj = s_json_object_from_string(json);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    struct aws_kms_generate_random_response *response = aws_kms_generate_random_response_new(allocator);
+    if (response == NULL) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+        int value_type = json_object_get_type(value);
+
+        if (value_type != json_type_string) {
+            goto clean_up;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_PLAINTEXT)) {
+            if (s_aws_byte_buf_from_base64_json(allocator, value, &response->plaintext) != AWS_OP_SUCCESS) {
+                goto clean_up;
+            }
+            continue;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_CIPHERTEXT_FOR_RECIPIENT)) {
+            if (s_aws_byte_buf_from_base64_json(allocator, value, &response->ciphertext_for_recipient) !=
+                AWS_OP_SUCCESS) {
+                goto clean_up;
+            }
+            continue;
+        }
+
+        /* Unexpected value type. */
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return response;
+
+clean_up:
+    json_object_put(obj);
+    aws_kms_generate_random_response_destroy(response);
+
+    return NULL;
+}
+
 struct aws_recipient *aws_recipient_new(struct aws_allocator *allocator) {
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
