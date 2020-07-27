@@ -25,6 +25,7 @@
 #define KEA_RSAES_PKCS1_V1_5 "RSAES_PKCS1_V1_5"
 #define KEA_RSAES_OAEP_SHA_1 "RSAES_OAEP_SHA_1"
 #define KEA_RSAES_OAEP_SHA_256 "RSAES_OAEP_SHA_256"
+#define KS_AES_256 "AES_256"
 
 AWS_TEST_CASE(test_kms_decrypt_request_cipher_to_json, s_test_kms_decrypt_request_cipher_to_json)
 static int s_test_kms_decrypt_request_cipher_to_json(struct aws_allocator *allocator, void *ctx) {
@@ -880,6 +881,142 @@ static int s_test_kms_decrypt_response_from_json(struct aws_allocator *allocator
     aws_string_destroy(json);
     aws_string_destroy(json_second);
     aws_kms_decrypt_response_destroy(response);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_generate_data_key_request_to_json, s_test_kms_generate_data_key_request_to_json)
+static int s_test_kms_generate_data_key_request_to_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_kms_generate_data_key_request *request = aws_kms_generate_data_key_request_new(allocator);
+    ASSERT_NOT_NULL(request);
+
+    request->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(request->key_id);
+
+    ASSERT_SUCCESS(aws_hash_table_init(
+        &request->encryption_context,
+        allocator,
+        2,
+        aws_hash_string,
+        aws_hash_callback_string_eq,
+        aws_hash_callback_string_destroy,
+        aws_hash_callback_string_destroy));
+
+    AWS_STATIC_STRING_FROM_LITERAL(context_key, ENCRYPTION_CONTEXT_KEY);
+    AWS_STATIC_STRING_FROM_LITERAL(context_value, ENCRYPTION_CONTEXT_VALUE);
+    ASSERT_SUCCESS(aws_hash_table_put(&request->encryption_context, context_key, (void *)context_value, NULL));
+
+    request->number_of_bytes = 0;
+    request->key_spec = AWS_KS_AES_256;
+
+    ASSERT_SUCCESS(aws_array_list_init_dynamic(&request->grant_tokens, allocator, 2, sizeof(struct aws_string *)));
+    struct aws_string *token_first = aws_string_new_from_c_str(allocator, TOKEN_FIRST);
+    ASSERT_NOT_NULL(token_first);
+    struct aws_string *token_second = aws_string_new_from_c_str(allocator, TOKEN_SECOND);
+    ASSERT_NOT_NULL(token_second);
+    ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_first));
+    ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_second));
+
+    struct aws_string *json = aws_string_new_from_c_str(allocator, "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    ASSERT_NOT_NULL(json);
+    request->recipient = aws_recipient_from_json(allocator, json);
+    ASSERT_NOT_NULL(request->recipient);
+    aws_string_destroy(json);
+
+    json = aws_kms_generate_data_key_request_to_json(request);
+    ASSERT_NOT_NULL(json);
+
+    struct aws_string *expected = aws_string_new_from_c_str(
+        allocator,
+        "{ \"KeyId\": \"" KEY_ID "\", "
+        "\"KeySpec\": \"" KS_AES_256 "\", "
+        "\"EncryptionContext\": { \"" ENCRYPTION_CONTEXT_KEY "\": \"" ENCRYPTION_CONTEXT_VALUE "\" }, "
+        "\"GrantTokens\": [ \"" TOKEN_FIRST "\", \"" TOKEN_SECOND "\" ], "
+        "\"Recipient\": { \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" } }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+
+    request->number_of_bytes = 1;
+    request->key_spec = AWS_KS_UNINITIALIZED;
+
+    json = aws_kms_generate_data_key_request_to_json(request);
+    ASSERT_NOT_NULL(json);
+
+    expected = aws_string_new_from_c_str(
+        allocator,
+        "{ \"KeyId\": \"" KEY_ID "\", "
+        "\"NumberOfBytes\": 1, "
+        "\"EncryptionContext\": { \"" ENCRYPTION_CONTEXT_KEY "\": \"" ENCRYPTION_CONTEXT_VALUE "\" }, "
+        "\"GrantTokens\": [ \"" TOKEN_FIRST "\", \"" TOKEN_SECOND "\" ], "
+        "\"Recipient\": { \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" } }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+    aws_kms_generate_data_key_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_generate_data_key_request_from_json, s_test_kms_generate_data_key_request_from_json)
+static int s_test_kms_generate_data_key_request_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_string *json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"KeyId\": \"" KEY_ID "\", "
+        "\"KeySpec\": \"" KS_AES_256 "\", "
+        "\"EncryptionContext\": { \"" ENCRYPTION_CONTEXT_KEY "\": \"" ENCRYPTION_CONTEXT_VALUE "\" }, "
+        "\"GrantTokens\": [ \"" TOKEN_FIRST "\", \"" TOKEN_SECOND "\" ], "
+        "\"Recipient\": { \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\" } }");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_kms_generate_data_key_request *request = aws_kms_generate_data_key_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->key_id));
+    ASSERT_INT_EQUALS(request->key_spec, AWS_KS_AES_256);
+    for (struct aws_hash_iter iter = aws_hash_iter_begin(&request->encryption_context); !aws_hash_iter_done(&iter);
+         aws_hash_iter_next(&iter)) {
+        ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_KEY, aws_string_c_str(iter.element.key));
+        ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_VALUE, aws_string_c_str(iter.element.value));
+    }
+    struct aws_string *elem = NULL;
+    ASSERT_INT_EQUALS(2, aws_array_list_length(&request->grant_tokens));
+    AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 0) == AWS_OP_SUCCESS);
+    ASSERT_STR_EQUALS(TOKEN_FIRST, aws_string_c_str(elem));
+    AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 1) == AWS_OP_SUCCESS);
+    ASSERT_STR_EQUALS(TOKEN_SECOND, aws_string_c_str(elem));
+    ASSERT_NOT_NULL(request->recipient);
+    ASSERT_BIN_ARRAYS_EQUALS(
+        CIPHERTEXT_BLOB_DATA,
+        sizeof(CIPHERTEXT_BLOB_DATA) - 1,
+        (char *)request->recipient->public_key.buffer,
+        request->recipient->public_key.len);
+
+    /* Ensure we can serialize back to a JSON. */
+    struct aws_string *json_second = aws_kms_generate_data_key_request_to_json(request);
+    ASSERT_NOT_NULL(json_second);
+    ASSERT_STR_EQUALS(aws_string_c_str(json), aws_string_c_str(json_second));
+    aws_string_destroy(json);
+    aws_string_destroy(json_second);
+    aws_kms_generate_data_key_request_destroy(request);
+
+    json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"KeyId\": \"" KEY_ID "\", "
+        "\"NumberOfBytes\": 1 }");
+    ASSERT_NOT_NULL(json);
+
+    request = aws_kms_generate_data_key_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->key_id));
+    ASSERT_INT_EQUALS(request->number_of_bytes, 1);
+    aws_string_destroy(json);
+    aws_kms_generate_data_key_request_destroy(request);
 
     return SUCCESS;
 }

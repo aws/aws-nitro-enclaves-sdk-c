@@ -22,6 +22,8 @@ add_test_case(test_recipient_kea_from_json)
 add_test_case(test_recipient_from_json)
 add_test_case(test_kms_decrypt_response_to_json)
 add_test_case(test_kms_decrypt_response_from_json)
+add_test_case(test_kms_generate_data_key_request_to_json)
+add_test_case(test_kms_generate_data_key_request_from_json)
 
 set(TEST_BINARY_NAME ${PROJECT_NAME}-tests)
 generate_test_driver(${TEST_BINARY_NAME})
