@@ -591,6 +591,16 @@ AWS_NITRO_ENCLAVES_API
 struct aws_kms_generate_random_response *aws_kms_generate_random_response_new(struct aws_allocator *allocator);
 
 /**
+ * Serializes a KMS Generate Random Response @ref aws_kms_generate_random_response to json.
+ *
+ * @param[in]   res       The KMS Generate Random Response that is to be serialized.
+ *
+ * @return                The serialized KMS Generate Random Response.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_string *aws_kms_generate_random_response_to_json(const struct aws_kms_generate_random_response *res);
+
+/**
  * Deallocate all internal data for a KMS Generate Random Response.
  *
  * @param[in]  res  The KMS Generate Random Response.
