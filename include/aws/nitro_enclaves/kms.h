@@ -309,6 +309,29 @@ struct aws_kms_generate_random_request {
     struct aws_allocator *const allocator;
 };
 
+struct aws_kms_generate_random_response {
+    /**
+     * The random byte string.
+     *
+     * Required: No.
+     */
+    struct aws_byte_buf plaintext;
+
+    /**
+     * Ciphertext for recipient field.
+     *
+     * Required: No.
+     */
+    struct aws_byte_buf ciphertext_for_recipient;
+
+    /**
+     * Allocator used for memory management of associated resources.
+     *
+     * Note that this is not part of the response.
+     */
+    struct aws_allocator *const allocator;
+};
+
 /**
  * Creates an aws_recipient structure.
  *
@@ -556,6 +579,24 @@ struct aws_kms_generate_random_request *aws_kms_generate_random_request_from_jso
  */
 AWS_NITRO_ENCLAVES_API
 void aws_kms_generate_random_request_destroy(struct aws_kms_generate_random_request *req);
+
+/**
+ * Creates an aws_kms_generate_random_response structure.
+ *
+ * @param[in]  allocator  The allocator used for initialization.
+ *
+ * @return                A new aws_kms_generate_random_response structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_generate_random_response *aws_kms_generate_random_response_new(struct aws_allocator *allocator);
+
+/**
+ * Deallocate all internal data for a KMS Generate Random Response.
+ *
+ * @param[in]  res  The KMS Generate Random Response.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_response *res);
 
 AWS_EXTERN_C_END
 
