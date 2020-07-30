@@ -5,6 +5,10 @@
 
 #include <aws/nitro_enclaves/rest.h>
 
+#include <aws/auth/credentials.h>
+#include <aws/auth/signable.h>
+#include <aws/auth/signing.h>
+#include <aws/auth/signing_result.h>
 #include <aws/common/assert.h>
 #include <aws/http/connection.h>
 #include <aws/http/request_response.h>
@@ -46,8 +50,18 @@ static void s_on_client_connection_shutdown(struct aws_http_connection *connecti
 
 struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     struct aws_nitro_enclaves_rest_client_configuration *configuration) {
-    AWS_PRECONDITION(aws_allocator_is_valid(configuration->allocator));
-    AWS_PRECONDITION(aws_byte_cursor_is_valid(&configuration->host_name));
+    AWS_PRECONDITION(aws_string_is_valid(configuration->service));
+    AWS_PRECONDITION(aws_string_is_valid(configuration->region));
+    AWS_PRECONDITION(configuration->credentials != NULL || configuration->credentials_provider != NULL);
+
+    char host_name_str[256];
+    snprintf(
+        host_name_str,
+        sizeof(host_name_str),
+        "%s.%s.amazonaws.com",
+        aws_string_c_str(configuration->service),
+        aws_string_c_str(configuration->region));
+    struct aws_byte_cursor host_name = aws_byte_cursor_from_c_str(host_name_str);
 
     struct aws_nitro_enclaves_rest_client *rest_client =
         aws_mem_calloc(configuration->allocator, 1, sizeof(struct aws_nitro_enclaves_rest_client));
@@ -57,8 +71,23 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     }
     rest_client->allocator = configuration->allocator;
 
-    rest_client->host_name =
-        aws_string_new_from_array(rest_client->allocator, configuration->host_name.ptr, configuration->host_name.len);
+    rest_client->service = aws_string_clone_or_reuse(rest_client->allocator, configuration->service);
+    rest_client->region = aws_string_clone_or_reuse(rest_client->allocator, configuration->region);
+    rest_client->host_name = aws_string_new_from_c_str(rest_client->allocator, host_name_str);
+    if (rest_client->service == NULL || rest_client->region == NULL || rest_client->host_name == NULL) {
+        goto err_clean;
+    }
+
+    if (configuration->credentials_provider != NULL) {
+        aws_credentials_provider_acquire(configuration->credentials_provider);
+    }
+
+    if (configuration->credentials != NULL) {
+        aws_credentials_acquire(configuration->credentials);
+    }
+
+    rest_client->credentials = configuration->credentials;
+    rest_client->credentials_provider = configuration->credentials_provider;
 
     if (aws_mutex_init(&rest_client->mutex) != AWS_OP_SUCCESS ||
         aws_condition_variable_init(&rest_client->c_var) != AWS_OP_SUCCESS) {
@@ -84,8 +113,8 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
 
     aws_tls_connection_options_init_from_ctx(&rest_client->tls_connection_options, rest_client->tls_ctx);
     if (aws_tls_connection_options_set_server_name(
-            &rest_client->tls_connection_options, rest_client->allocator, &configuration->host_name)) {
-        /* TODO: aws_raise */
+            &rest_client->tls_connection_options, rest_client->allocator, &host_name)) {
+        // TODO: aws_raise
         goto err_clean;
     }
 
@@ -124,7 +153,7 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
         .socket_options = &socket_options,
         .allocator = rest_client->allocator,
         .port = 443,
-        .host_name = configuration->host_name,
+        .host_name = host_name,
         .bootstrap = rest_client->bootstrap,
         .initial_window_size = SIZE_MAX,
         .tls_options = &rest_client->tls_connection_options,
@@ -183,7 +212,11 @@ void aws_nitro_enclaves_rest_client_destroy(struct aws_nitro_enclaves_rest_clien
     aws_tls_ctx_destroy(rest_client->tls_ctx);
     aws_mutex_clean_up(&rest_client->mutex);
     aws_condition_variable_clean_up(&rest_client->c_var);
+    aws_string_destroy(rest_client->service);
+    aws_string_destroy(rest_client->region);
     aws_string_destroy(rest_client->host_name);
+    aws_credentials_release(rest_client->credentials);
+    aws_credentials_provider_release(rest_client->credentials_provider);
     aws_mem_release(rest_client->allocator, rest_client);
 }
 
@@ -308,6 +341,42 @@ static struct aws_http_message *s_make_request(
     return request;
 }
 
+static void s_on_sign_complete(struct aws_signing_result *signing_result, int error_code, void *userdata) {
+    struct request_ctx *ctx = userdata;
+
+    if (error_code != AWS_OP_SUCCESS) {
+        goto err_clean;
+    }
+
+    if (aws_apply_signing_result_to_http_request(ctx->request, ctx->rest_client->allocator, signing_result) !=
+        AWS_OP_SUCCESS) {
+        goto err_clean;
+    }
+
+    struct aws_http_make_request_options request_options = {
+        .self_size = sizeof(request_options),
+        .user_data = ctx,
+        .request = ctx->request,
+        .on_response_headers = s_on_incoming_headers_fn,
+        .on_response_header_block_done = s_on_incoming_header_block_done_fn,
+        .on_response_body = s_on_incoming_body_fn,
+        .on_complete = s_on_stream_complete_fn,
+    };
+
+    struct aws_http_stream *stream = aws_http_connection_make_request(ctx->rest_client->connection, &request_options);
+
+    if (stream == NULL || aws_http_stream_activate(stream) != AWS_OP_SUCCESS) {
+        fprintf(stderr, "failed to create request.");
+        goto err_clean;
+    }
+
+    return;
+err_clean:
+    ctx->error_code = AWS_OP_ERR;
+    aws_http_stream_release(stream);
+    aws_condition_variable_notify_all(&ctx->c_var);
+}
+
 struct aws_nitro_enclaves_rest_response *aws_nitro_enclaves_rest_client_request_blocking(
     struct aws_nitro_enclaves_rest_client *rest_client,
     struct aws_byte_cursor method,
@@ -340,20 +409,28 @@ struct aws_nitro_enclaves_rest_response *aws_nitro_enclaves_rest_client_request_
     }
     aws_byte_buf_init(&ctx.response->__data, rest_client->allocator, 0);
 
-    struct aws_http_make_request_options request_options = {
-        .self_size = sizeof(request_options),
-        .user_data = &ctx,
-        .request = ctx.request,
-        .on_response_headers = s_on_incoming_headers_fn,
-        .on_response_header_block_done = s_on_incoming_header_block_done_fn,
-        .on_response_body = s_on_incoming_body_fn,
-        .on_complete = s_on_stream_complete_fn,
+    struct aws_signable *sign_request = aws_signable_new_http_request(rest_client->allocator, ctx.request);
+
+    struct aws_signing_config_aws signing_config = {
+        .config_type = AWS_SIGNING_CONFIG_AWS,
+        .algorithm = AWS_SIGNING_ALGORITHM_V4,
+        .signature_type = AWS_ST_HTTP_REQUEST_HEADERS,
+        .region = aws_byte_cursor_from_string(rest_client->region),
+        .service = aws_byte_cursor_from_string(rest_client->service),
+        .credentials = rest_client->credentials,
+        .credentials_provider = rest_client->credentials_provider,
+        .signed_body_value = AWS_SBVT_PAYLOAD,
+        .signed_body_header = AWS_SBHT_X_AMZ_CONTENT_SHA256,
     };
 
-    struct aws_http_stream *stream = aws_http_connection_make_request(rest_client->connection, &request_options);
+    aws_date_time_init_now(&signing_config.date);
 
-    if (stream != NULL && aws_http_stream_activate(stream) != AWS_OP_SUCCESS) {
-        fprintf(stderr, "failed to create request.");
+    if (aws_sign_request_aws(
+            rest_client->allocator,
+            sign_request,
+            (const struct aws_signing_config_base *)&signing_config,
+            s_on_sign_complete,
+            &ctx) != AWS_OP_SUCCESS) {
         goto err_clean;
     }
 
@@ -368,13 +445,15 @@ struct aws_nitro_enclaves_rest_response *aws_nitro_enclaves_rest_client_request_
 
     aws_http_message_destroy(ctx.request);
     aws_input_stream_destroy(ctx.request_data_stream);
+    aws_signable_destroy(sign_request);
+
     return ctx.response;
 err_clean:
     aws_http_message_destroy(ctx.request);
     aws_input_stream_destroy(ctx.request_data_stream);
+    aws_signable_destroy(sign_request);
 
     aws_nitro_enclaves_rest_response_destroy(ctx.response);
-
     return NULL;
 }
 

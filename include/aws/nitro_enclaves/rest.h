@@ -6,8 +6,8 @@
  */
 #include <aws/nitro_enclaves/exports.h>
 
+#include <aws/auth/credentials.h>
 #include <aws/common/allocator.h>
-#include <aws/common/byte_buf.h>
 #include <aws/common/condition_variable.h>
 #include <aws/common/logging.h>
 #include <aws/common/macros.h>
@@ -21,13 +21,27 @@
 
 struct aws_nitro_enclaves_rest_client_configuration {
     struct aws_allocator *allocator;
-    /* The hostname where the service is accessible. Used in TLS. */
-    struct aws_byte_cursor host_name;
+
+    /* The service and region are used to determine the host name. Used in TLS and signing. */
+    const struct aws_string *service;
+    const struct aws_string *region;
 
     /* Optional endpoint to use instead of the DNS endpoint. */
     struct aws_socket_endpoint *endpoint;
     /* Optional. Specifies the domain of the given endpoint, if the endpoint is set. */
     enum aws_socket_domain domain;
+
+    /*
+     * Signing key control:
+     *
+     *   (1) If "credentials" is valid, use it
+     *   (2) Else if "credentials_provider" is valid, query credentials from the provider and use the result
+     *   (3) Else fail
+     *
+     */
+    struct aws_credentials *credentials;
+
+    struct aws_credentials_provider *credentials_provider;
 };
 
 /**
@@ -36,8 +50,6 @@ struct aws_nitro_enclaves_rest_client_configuration {
 struct aws_nitro_enclaves_rest_client {
     /* The associated allocator from which to allocate internally. */
     struct aws_allocator *allocator;
-
-    struct aws_string *host_name;
 
     /* Internal variables required for creating new connections. */
     struct aws_tls_ctx *tls_ctx;
@@ -52,6 +64,23 @@ struct aws_nitro_enclaves_rest_client {
 
     /* An open connection that is used to create connection streams. */
     struct aws_http_connection *connection;
+
+    /* The service and region are used to determine the host name. Used in TLS and signing. */
+    struct aws_string *service;
+    struct aws_string *region;
+    struct aws_string *host_name;
+
+    /*
+     * Signing key control:
+     *
+     *   (1) If "credentials" is valid, use it
+     *   (2) Else if "credentials_provider" is valid, query credentials from the provider and use the result
+     *   (3) Else fail
+     *
+     */
+    struct aws_credentials *credentials;
+
+    struct aws_credentials_provider *credentials_provider;
 };
 
 /**
