@@ -12,6 +12,7 @@
 #include <aws/common/logging.h>
 #include <aws/common/macros.h>
 #include <aws/common/mutex.h>
+#include <aws/common/string.h>
 #include <aws/http/request_response.h>
 #include <aws/io/event_loop.h>
 #include <aws/io/host_resolver.h>
@@ -36,6 +37,8 @@ struct aws_nitro_enclaves_rest_client {
     /* The associated allocator from which to allocate internally. */
     struct aws_allocator *allocator;
 
+    struct aws_string *host_name;
+
     /* Internal variables required for creating new connections. */
     struct aws_tls_ctx *tls_ctx;
     struct aws_client_bootstrap *bootstrap;
@@ -49,6 +52,23 @@ struct aws_nitro_enclaves_rest_client {
 
     /* An open connection that is used to create connection streams. */
     struct aws_http_connection *connection;
+};
+
+/**
+ * The response from a REST request. The `response` field is the useable part of this structure, __data is purely
+ * internal. Do not call aws_http_message_acquire on the response field.
+ */
+struct aws_nitro_enclaves_rest_response {
+    struct aws_allocator *allocator;
+
+    /* Contains the response from the REST request. */
+    struct aws_http_message *response;
+
+    /* This is the backings store of the aws_input_stream found in the response.
+     * TODO: make a version of aws_input_stream that owns its own data instead.
+     */
+    struct aws_byte_cursor __cursor;
+    struct aws_byte_buf __data;
 };
 
 AWS_EXTERN_C_BEGIN
@@ -71,6 +91,22 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
  */
 AWS_NITRO_ENCLAVES_API
 void aws_nitro_enclaves_rest_client_destroy(struct aws_nitro_enclaves_rest_client *rest_client);
+
+AWS_NITRO_ENCLAVES_API
+struct aws_nitro_enclaves_rest_response *aws_nitro_enclaves_rest_client_request_blocking(
+    struct aws_nitro_enclaves_rest_client *rest_client,
+    struct aws_byte_cursor method,
+    struct aws_byte_cursor path,
+    struct aws_byte_cursor target,
+    struct aws_byte_cursor data);
+
+/**
+ * Frees the resources associated with a REST response.
+ *
+ * @param[in]    response    The REST response to destroy.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_nitro_enclaves_rest_response_destroy(struct aws_nitro_enclaves_rest_response *response);
 
 AWS_EXTERN_C_END
 
