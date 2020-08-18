@@ -75,7 +75,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
 find_package(LibJsonC REQUIRED)
-set(PLATFORM_LIBS LibJsonC::Json)
+find_library(LibNSM NAMES nsm REQUIRED)
+set(PLATFORM_LIBS LibJsonC::Json "${LibNSM}")
 
 aws_use_package(aws-c-common)
 aws_use_package(aws-c-io)
