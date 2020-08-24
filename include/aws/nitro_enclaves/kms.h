@@ -335,7 +335,7 @@ struct aws_kms_generate_random_response {
 /**
  * Creates an aws_recipient structure.
  *
- * @param[in]  allocator  The allocator used for initialization.
+ * @param[in]  allocator  The allocator used for initialization. NULL for default.
  *
  * @return                A new aws_recipient structure.
  */
@@ -355,7 +355,7 @@ struct aws_string *aws_recipient_to_json(const struct aws_recipient *recipient);
 /**
  * Deserialized a Recipient @ref aws_recipient from json.
  *
- * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   allocator  The allocator used for managing resource creation. NULL for default.
  * @param[in]   json       The serialized json Recipient.
  *
  * @return                 A new aws_recipient structure.
@@ -374,7 +374,7 @@ void aws_recipient_destroy(struct aws_recipient *recipient);
 /**
  * Creates an aws_kms_decrypt_request structure.
  *
- * @param[in]  allocator  The allocator used for initialization.
+ * @param[in]  allocator  The allocator used for initialization. NULL for default.
  *
  * @return                A new aws_kms_decrypt_request structure.
  */
@@ -396,7 +396,7 @@ struct aws_string *aws_kms_decrypt_request_to_json(const struct aws_kms_decrypt_
 /**
  * Deserialized a KMS Decrypt Request @ref aws_kms_decrypt_request from json.
  *
- * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   allocator  The allocator used for managing resource creation. NULL for default.
  * @param[in]   json       The serialized json KMS Decrypt Request.
  *
  * @return                 A new aws_kms_decrypt_request structure.
@@ -437,7 +437,7 @@ struct aws_string *aws_kms_decrypt_response_to_json(const struct aws_kms_decrypt
 /**
  * Deserialized a KMS Decrypt Response @ref aws_kms_decrypt_response from json.
  *
- * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   allocator  The allocator used for managing resource creation. NULL for default.
  * @param[in]   json       The serialized json KMS Decrypt Response.
  *
  * @return                 A new aws_kms_decrypt_response structure.
@@ -458,7 +458,7 @@ void aws_kms_decrypt_response_destroy(struct aws_kms_decrypt_response *res);
 /**
  * Creates an aws_kms_generate_data_key_request structure.
  *
- * @param[in]  allocator  The allocator used for initialization.
+ * @param[in]  allocator  The allocator used for initialization. NULL for default.
  *
  * @return                A new aws_kms_generate_data_key_request structure.
  */
@@ -480,7 +480,7 @@ struct aws_string *aws_kms_generate_data_key_request_to_json(const struct aws_km
 /**
  * Deserialized a KMS Generate Data Key Request @ref aws_kms_generate_data_key_request from json.
  *
- * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   allocator  The allocator used for managing resource creation. NULL for default.
  * @param[in]   json       The serialized json KMS Generate Data Key Request.
  *
  * @return                 A new aws_kms_generate_data_key_request structure.
@@ -501,7 +501,7 @@ void aws_kms_generate_data_key_request_destroy(struct aws_kms_generate_data_key_
 /**
  * Creates an aws_kms_generate_data_key_response structure.
  *
- * @param[in]  allocator  The allocator used for initialization.
+ * @param[in]  allocator  The allocator used for initialization. NULL for default.
  *
  * @return                A new aws_kms_generate_data_key_response structure.
  */
@@ -521,7 +521,7 @@ struct aws_string *aws_kms_generate_data_key_response_to_json(const struct aws_k
 /**
  * Deserialized a KMS Generate Data Key Response @ref aws_kms_generate_data_key_response from json.
  *
- * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   allocator  The allocator used for managing resource creation. NULL for default.
  * @param[in]   json       The serialized json KMS Generate Data Key Response.
  *
  * @return                 A new aws_kms_generate_data_key_response structure.
@@ -542,7 +542,7 @@ void aws_kms_generate_data_key_response_destroy(struct aws_kms_generate_data_key
 /**
  * Creates an aws_kms_generate_random_request structure.
  *
- * @param[in]  allocator  The allocator used for initialization.
+ * @param[in]  allocator  The allocator used for initialization. NULL for default.
  *
  * @return                A new aws_kms_generate_random_request structure.
  */
@@ -562,7 +562,7 @@ struct aws_string *aws_kms_generate_random_request_to_json(const struct aws_kms_
 /**
  * Deserialized a KMS Generate Random Request @ref aws_kms_generate_random_request from json.
  *
- * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   allocator  The allocator used for managing resource creation. NULL for default.
  * @param[in]   json       The serialized json KMS Generate Random Request.
  *
  * @return                 A new aws_kms_generate_random_request structure.
@@ -583,7 +583,7 @@ void aws_kms_generate_random_request_destroy(struct aws_kms_generate_random_requ
 /**
  * Creates an aws_kms_generate_random_response structure.
  *
- * @param[in]  allocator  The allocator used for initialization.
+ * @param[in]  allocator  The allocator used for initialization. NULL for default.
  *
  * @return                A new aws_kms_generate_random_response structure.
  */
@@ -603,7 +603,7 @@ struct aws_string *aws_kms_generate_random_response_to_json(const struct aws_kms
 /**
  * Deserialized a KMS Generate Random Response @ref aws_kms_generate_random_response from json.
  *
- * @param[in]   allocator  The allocator used for managing resource creation.
+ * @param[in]   allocator  The allocator used for managing resource creation. NULL for default.
  * @param[in]   json       The serialized json KMS Generate Random Response.
  *
  * @return                 A new aws_kms_generate_random_response structure.
