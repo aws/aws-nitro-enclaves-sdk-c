@@ -1,6 +1,7 @@
 FROM amazonlinux
 
 RUN yum install -y cmake3 gcc git tar make
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 
 WORKDIR /tmp/crt-builder
 
@@ -55,6 +56,14 @@ RUN cmake3 --build aws-c-auth/build --target install
 RUN git clone -b json-c-0.14-20200419 https://github.com/json-c/json-c.git
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_SHARED_LIBS=OFF -S json-c -B json-c/build
 RUN cmake3 --build json-c/build --target install
+
+
+ARG GITHUB_USER
+ARG GITHUB_TOKEN
+RUN git clone https://$GITHUB_USER:$GITHUB_TOKEN@github.com/aws/aws-nitro-enclaves-nsm-api.git
+RUN source $HOME/.cargo/env && cd aws-nitro-enclaves-nsm-api && cargo build --release
+RUN mv aws-nitro-enclaves-nsm-api/target/release/libnsm.so /usr/lib64
+RUN mv aws-nitro-enclaves-nsm-api/target/release/nsm.h /usr/include
 
 COPY . aws-nitro-enclaves-sdk-c
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr \
