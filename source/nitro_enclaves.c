@@ -14,21 +14,37 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <nsm-lib.h>
+#include <nsm.h>
 
 /* Maximum number of bytes NSM random response returns. */
 #define NSM_RANDOM_REQ_SIZE (256)
 
 static bool s_library_initialized = false;
+static struct aws_allocator *s_aws_ne_allocator = NULL;
+
+struct aws_allocator *aws_nitro_enclaves_get_allocator() {
+    AWS_FATAL_ASSERT(s_library_initialized == true);
+    AWS_FATAL_ASSERT(s_aws_ne_allocator != NULL);
+    return s_aws_ne_allocator;
+}
 
 void aws_nitro_enclaves_library_init(struct aws_allocator *allocator) {
     if (s_library_initialized) {
         return;
     }
+
+    if (allocator == NULL) {
+        s_aws_ne_allocator = aws_default_allocator();
+    } else {
+        s_aws_ne_allocator = allocator;
+    }
+
+    AWS_FATAL_ASSERT(s_aws_ne_allocator != NULL);
+
     s_library_initialized = true;
 
-    aws_auth_library_init(allocator);
-    aws_http_library_init(allocator);
+    aws_auth_library_init(s_aws_ne_allocator);
+    aws_http_library_init(s_aws_ne_allocator);
     /* TODO: Initialize NSM */
 }
 
