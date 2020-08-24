@@ -5,6 +5,7 @@
 
 #include <aws/common/encoding.h>
 #include <aws/nitro_enclaves/kms.h>
+#include <aws/nitro_enclaves/nitro_enclaves.h>
 #include <json-c/json.h>
 
 /**
@@ -758,6 +759,10 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_from_json(
     struct aws_allocator *allocator,
     const struct aws_string *json) {
 
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
     AWS_PRECONDITION(aws_string_is_valid(json));
 
@@ -926,6 +931,10 @@ clean_up:
 }
 
 struct aws_recipient *aws_recipient_from_json(struct aws_allocator *allocator, const struct aws_string *json) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
     AWS_PRECONDITION(aws_string_is_valid(json));
 
@@ -1051,6 +1060,10 @@ clean_up:
 struct aws_kms_decrypt_response *aws_kms_decrypt_response_from_json(
     struct aws_allocator *allocator,
     const struct aws_string *json) {
+
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
 
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
     AWS_PRECONDITION(aws_string_is_valid(json));
@@ -1212,6 +1225,11 @@ clean_up:
 struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_from_json(
     struct aws_allocator *allocator,
     const struct aws_string *json) {
+
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
     AWS_PRECONDITION(aws_string_is_valid(json));
 
@@ -1393,6 +1411,10 @@ struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_fr
     struct aws_allocator *allocator,
     const struct aws_string *json) {
 
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
     AWS_PRECONDITION(aws_string_is_valid(json));
 
@@ -1526,6 +1548,10 @@ struct aws_kms_generate_random_request *aws_kms_generate_random_request_from_jso
     struct aws_allocator *allocator,
     const struct aws_string *json) {
 
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
     AWS_PRECONDITION(aws_string_is_valid(json));
 
@@ -1648,6 +1674,10 @@ struct aws_kms_generate_random_response *aws_kms_generate_random_response_from_j
     struct aws_allocator *allocator,
     const struct aws_string *json) {
 
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
     AWS_PRECONDITION(aws_string_is_valid(json));
 
@@ -1704,6 +1734,10 @@ clean_up:
 }
 
 struct aws_recipient *aws_recipient_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
     struct aws_recipient *recipient = aws_mem_calloc(allocator, 1, sizeof(struct aws_recipient));
@@ -1735,6 +1769,10 @@ void aws_recipient_destroy(struct aws_recipient *recipient) {
 }
 
 struct aws_kms_decrypt_request *aws_kms_decrypt_request_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
     struct aws_kms_decrypt_request *request = aws_mem_calloc(allocator, 1, sizeof(struct aws_kms_decrypt_request));
@@ -1785,6 +1823,10 @@ void aws_kms_decrypt_request_destroy(struct aws_kms_decrypt_request *req) {
 }
 
 struct aws_kms_decrypt_response *aws_kms_decrypt_response_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
     struct aws_kms_decrypt_response *response = aws_mem_calloc(allocator, 1, sizeof(struct aws_kms_decrypt_response));
@@ -1820,6 +1862,10 @@ void aws_kms_decrypt_response_destroy(struct aws_kms_decrypt_response *res) {
 }
 
 struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
     struct aws_kms_generate_data_key_request *request =
@@ -1867,6 +1913,10 @@ void aws_kms_generate_data_key_request_destroy(struct aws_kms_generate_data_key_
 }
 
 struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
     struct aws_kms_generate_data_key_response *response =
@@ -1905,6 +1955,10 @@ void aws_kms_generate_data_key_response_destroy(struct aws_kms_generate_data_key
 }
 
 struct aws_kms_generate_random_request *aws_kms_generate_random_request_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
     struct aws_kms_generate_random_request *request =
@@ -1935,6 +1989,10 @@ void aws_kms_generate_random_request_destroy(struct aws_kms_generate_random_requ
 }
 
 struct aws_kms_generate_random_response *aws_kms_generate_random_response_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
     struct aws_kms_generate_random_response *response =

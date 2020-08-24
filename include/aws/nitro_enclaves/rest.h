@@ -20,6 +20,7 @@
 #include <aws/io/tls_channel_handler.h>
 
 struct aws_nitro_enclaves_rest_client_configuration {
+    /* Optional. Will default to library allocator if NULL. */
     struct aws_allocator *allocator;
 
     /* The service and region are used to determine the host name. Used in TLS and signing. */

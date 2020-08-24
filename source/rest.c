@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
+#include <aws/nitro_enclaves/nitro_enclaves.h>
 #include <aws/nitro_enclaves/rest.h>
 
 #include <aws/auth/credentials.h>
@@ -54,6 +55,10 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     AWS_PRECONDITION(aws_string_is_valid(configuration->region));
     AWS_PRECONDITION(configuration->credentials != NULL || configuration->credentials_provider != NULL);
 
+    struct aws_allocator *allocator =
+        configuration->allocator != NULL ? configuration->allocator : aws_nitro_enclaves_get_allocator();
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
     char host_name_str[256];
     snprintf(
         host_name_str,
@@ -64,12 +69,12 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     struct aws_byte_cursor host_name = aws_byte_cursor_from_c_str(host_name_str);
 
     struct aws_nitro_enclaves_rest_client *rest_client =
-        aws_mem_calloc(configuration->allocator, 1, sizeof(struct aws_nitro_enclaves_rest_client));
+        aws_mem_calloc(allocator, 1, sizeof(struct aws_nitro_enclaves_rest_client));
     if (rest_client == NULL) {
         /* TODO: aws_raise */
         return NULL;
     }
-    rest_client->allocator = configuration->allocator;
+    rest_client->allocator = allocator;
 
     rest_client->service = aws_string_clone_or_reuse(rest_client->allocator, configuration->service);
     rest_client->region = aws_string_clone_or_reuse(rest_client->allocator, configuration->region);
