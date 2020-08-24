@@ -74,8 +74,7 @@ int aws_nitro_enclaves_library_seed_entropy(uint64_t num_bytes) {
 
     while (count != num_bytes) {
         uint8_t buf[NSM_RANDOM_REQ_SIZE];
-        size_t buf_len = sizeof(buf) > (num_bytes - count) ?
-            (num_bytes - count) : sizeof(buf);
+        size_t buf_len = sizeof(buf) > (num_bytes - count) ? (num_bytes - count) : sizeof(buf);
 
         /* Yields up to 256 bytes */
         int rc = nsm_get_random(nsm_fd, buf, &buf_len);
