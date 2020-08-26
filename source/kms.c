@@ -4,6 +4,7 @@
  */
 
 #include <aws/common/encoding.h>
+#include <aws/io/stream.h>
 #include <aws/nitro_enclaves/kms.h>
 #include <aws/nitro_enclaves/nitro_enclaves.h>
 #include <json-c/json.h>
@@ -2020,4 +2021,241 @@ void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_res
     }
 
     aws_mem_release(res->allocator, res);
+}
+
+AWS_STATIC_STRING_FROM_LITERAL(s_kms_string, "kms");
+
+struct aws_nitro_enclaves_kms_client *aws_nitro_enclaves_kms_client_new(
+    struct aws_nitro_enclaves_kms_client_configuration *configuration) {
+    struct aws_allocator *allocator =
+        configuration->allocator != NULL ? configuration->allocator : aws_nitro_enclaves_get_allocator();
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
+    struct aws_nitro_enclaves_kms_client *client =
+        aws_mem_calloc(allocator, 1, sizeof(struct aws_nitro_enclaves_kms_client));
+    if (client == NULL) {
+        return NULL;
+    }
+
+    client->allocator = allocator;
+
+    struct aws_nitro_enclaves_rest_client_configuration rest_configuration = {
+        .allocator = allocator,
+        .service = s_kms_string,
+        .region = configuration->region,
+        .credentials = configuration->credentials,
+        .credentials_provider = configuration->credentials_provider,
+    };
+
+    client->rest_client = aws_nitro_enclaves_rest_client_new(&rest_configuration);
+    if (client->rest_client == NULL) {
+        aws_mem_release(allocator, client);
+        return NULL;
+    }
+
+    return client;
+}
+
+void aws_nitro_enclaves_kms_client_destroy(struct aws_nitro_enclaves_kms_client *client) {
+    if (client == NULL) {
+        return;
+    }
+
+    aws_nitro_enclaves_rest_client_destroy(client->rest_client);
+    aws_mem_release(client->allocator, client);
+}
+
+static int s_aws_nitro_enclaves_kms_client_call_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    struct aws_byte_cursor target,
+    struct aws_string *request,
+    struct aws_string **response) {
+    *response = NULL;
+
+    struct aws_nitro_enclaves_rest_response *rest_response = aws_nitro_enclaves_rest_client_request_blocking(
+        client->rest_client,
+        aws_http_method_post,
+        aws_byte_cursor_from_c_str("/"),
+        target,
+        aws_byte_cursor_from_string(request));
+    if (rest_response == NULL) {
+	    return -1;
+    }
+
+    struct aws_input_stream *request_stream = aws_http_message_get_body_stream(rest_response->response);
+    struct aws_byte_buf response_data;
+    int64_t length;
+    aws_input_stream_get_length(request_stream, &length);
+
+    aws_byte_buf_init(&response_data, client->allocator, length);
+    aws_input_stream_read(request_stream, &response_data);
+    *response = aws_string_new_from_array(client->allocator, response_data.buffer, response_data.len);
+    aws_byte_buf_clean_up(&response_data);
+
+    int status = AWS_OP_SUCCESS;
+    aws_http_message_get_response_status(rest_response->response, &status);
+    aws_nitro_enclaves_rest_response_destroy(rest_response);
+
+    return status;
+}
+
+static struct aws_byte_cursor kms_target_decrypt = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.Decrypt");
+static struct aws_byte_cursor kms_target_generate_data_key =
+    AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.GenerateDataKey");
+static struct aws_byte_cursor kms_target_generate_random =
+    AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.GenerateRandom");
+
+int aws_kms_decrypt_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_byte_buf *ciphertext,
+    struct aws_byte_buf *plaintext /* TODO: err_reason */) {
+    AWS_PRECONDITION(client != NULL);
+    AWS_PRECONDITION(ciphertext != NULL);
+    AWS_PRECONDITION(plaintext != NULL);
+
+    struct aws_string *response = NULL;
+    struct aws_string *request = NULL;
+
+    struct aws_kms_decrypt_request *request_structure = aws_kms_decrypt_request_new(client->allocator);
+    if (request_structure == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    aws_byte_buf_init_copy(&request_structure->ciphertext_blob, client->allocator, ciphertext);
+    request = aws_kms_decrypt_request_to_json(request_structure);
+    if (request == NULL) {
+        goto err_clean;
+    }
+
+    int rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_decrypt, request, &response);
+    if (rc != 200) {
+        fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
+        goto err_clean;
+    }
+
+    struct aws_kms_decrypt_response *response_structure =
+        aws_kms_decrypt_response_from_json(client->allocator, response);
+    if (response_structure == NULL) {
+        fprintf(stderr, "Could not read response from KMS: %d\n", rc);
+        goto err_clean;
+    }
+
+    aws_byte_buf_init_copy(plaintext, client->allocator, &response_structure->plaintext);
+    aws_kms_decrypt_request_destroy(request_structure);
+    aws_kms_decrypt_response_destroy(response_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+
+    return AWS_OP_SUCCESS;
+err_clean:
+    aws_kms_decrypt_request_destroy(request_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+    return AWS_OP_ERR;
+}
+
+int aws_kms_generate_data_key_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_string *key_id,
+    enum aws_key_spec key_spec,
+    struct aws_byte_buf *plaintext,
+    struct aws_byte_buf *ciphertext_blob
+    /* TODO: err_reason */) {
+    AWS_PRECONDITION(client != NULL);
+    AWS_PRECONDITION(key_id != NULL);
+    AWS_PRECONDITION(plaintext != NULL);
+    AWS_PRECONDITION(ciphertext_blob != NULL);
+
+    struct aws_string *response = NULL;
+    struct aws_string *request = NULL;
+
+    struct aws_kms_generate_data_key_request *request_structure =
+        aws_kms_generate_data_key_request_new(client->allocator);
+    if (request_structure == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    request_structure->key_id = aws_string_clone_or_reuse(client->allocator, key_id);
+    request_structure->key_spec = key_spec;
+
+    request = aws_kms_generate_data_key_request_to_json(request_structure);
+    if (request == NULL) {
+        goto err_clean;
+    }
+
+    int rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_generate_data_key, request, &response);
+    if (rc != 200) {
+        fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
+        goto err_clean;
+    }
+
+    struct aws_kms_generate_data_key_response *response_structure =
+        aws_kms_generate_data_key_response_from_json(client->allocator, response);
+    if (response_structure == NULL) {
+        fprintf(stderr, "Could not read response from KMS: %d\n", rc);
+        goto err_clean;
+    }
+
+    aws_byte_buf_init_copy(plaintext, client->allocator, &response_structure->plaintext);
+    aws_byte_buf_init_copy(ciphertext_blob, client->allocator, &response_structure->ciphertext_blob);
+    aws_kms_generate_data_key_request_destroy(request_structure);
+    aws_kms_generate_data_key_response_destroy(response_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+
+    return AWS_OP_SUCCESS;
+err_clean:
+    aws_kms_generate_data_key_request_destroy(request_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+    return AWS_OP_ERR;
+}
+
+int aws_kms_generate_random_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    uint32_t number_of_bytes,
+    struct aws_byte_buf *plaintext /* TODO: err_reason */) {
+    AWS_PRECONDITION(client != NULL);
+    AWS_PRECONDITION(number_of_bytes > 0);
+    AWS_PRECONDITION(plaintext != NULL);
+
+    struct aws_string *response = NULL;
+    struct aws_string *request = NULL;
+
+    struct aws_kms_generate_random_request *request_structure = aws_kms_generate_random_request_new(client->allocator);
+    if (request_structure == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    request_structure->number_of_bytes = number_of_bytes;
+    request = aws_kms_generate_random_request_to_json(request_structure);
+    if (request == NULL) {
+        goto err_clean;
+    }
+
+    int rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_generate_random, request, &response);
+    if (rc != 200) {
+        fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
+        goto err_clean;
+    }
+
+    struct aws_kms_generate_random_response *response_structure =
+        aws_kms_generate_random_response_from_json(client->allocator, response);
+    if (response_structure == NULL) {
+        fprintf(stderr, "Could not read response from KMS: %d\n", rc);
+        goto err_clean;
+    }
+
+    aws_byte_buf_init_copy(plaintext, client->allocator, &response_structure->plaintext);
+    aws_kms_generate_random_request_destroy(request_structure);
+    aws_kms_generate_random_response_destroy(response_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+
+    return AWS_OP_SUCCESS;
+err_clean:
+    aws_kms_generate_random_request_destroy(request_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+    return AWS_OP_ERR;
 }
