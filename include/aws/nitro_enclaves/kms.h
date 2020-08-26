@@ -6,12 +6,14 @@
  */
 
 #include <aws/nitro_enclaves/exports.h>
+#include <aws/nitro_enclaves/rest.h>
 
 #include <aws/common/array_list.h>
 #include <aws/common/byte_buf.h>
 #include <aws/common/hash_table.h>
 #include <aws/common/linked_list.h>
 #include <aws/common/string.h>
+#include <aws/io/socket.h>
 
 AWS_EXTERN_C_BEGIN
 
@@ -332,6 +334,36 @@ struct aws_kms_generate_random_response {
     struct aws_allocator *const allocator;
 };
 
+struct aws_nitro_enclaves_kms_client_configuration {
+    /* Optional. Will default to library allocator if NULL. */
+    struct aws_allocator *allocator;
+
+    /** The name of the AWS region this client uses */
+    const struct aws_string *region;
+
+    /* Optional endpoint to use instead of the DNS endpoint. */
+    const struct aws_socket_endpoint *endpoint;
+    /* Optional. Specifies the domain of the given endpoint, if the endpoint is set. */
+    enum aws_socket_domain domain;
+
+    /*
+     * Signing key control:
+     *
+     *   (1) If "credentials" is valid, use it
+     *   (2) Else if "credentials_provider" is valid, query credentials from the provider and use the result
+     *   (3) Else fail
+     *
+     */
+    struct aws_credentials *credentials;
+    struct aws_credentials_provider *credentials_provider;
+};
+
+struct aws_nitro_enclaves_kms_client {
+    struct aws_allocator *allocator;
+
+    struct aws_nitro_enclaves_rest_client *rest_client;
+};
+
 /**
  * Creates an aws_recipient structure.
  *
@@ -620,6 +652,46 @@ struct aws_kms_generate_random_response *aws_kms_generate_random_response_from_j
  */
 AWS_NITRO_ENCLAVES_API
 void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_response *res);
+
+/**
+ * Create a new KMS client based on the given configuration.
+ *
+ * @param[in]    configuration    The configuration parameters of the client.
+ *
+ * @return                        A new aws_nitro_enclaves_kms_client
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_nitro_enclaves_kms_client *aws_nitro_enclaves_kms_client_new(
+    struct aws_nitro_enclaves_kms_client_configuration *configuration);
+
+/**
+ * Deallocate a KMS client.
+ *
+ * @param[in]    client    The KMS client to deallocate.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_nitro_enclaves_kms_client_destroy(struct aws_nitro_enclaves_kms_client *client);
+
+AWS_NITRO_ENCLAVES_API
+int aws_kms_decrypt_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_byte_buf *ciphertext,
+    struct aws_byte_buf *plaintext /* TODO: err_reason */);
+
+AWS_NITRO_ENCLAVES_API
+int aws_kms_generate_data_key_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_string *key_id,
+    enum aws_key_spec key_spec,
+    struct aws_byte_buf *plaintext,
+    struct aws_byte_buf *ciphertext_blob
+    /* TODO: err_reason */);
+
+AWS_NITRO_ENCLAVES_API
+int aws_kms_generate_random_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    uint32_t number_of_bytes,
+    struct aws_byte_buf *plaintext /* TODO: err_reason */);
 
 AWS_EXTERN_C_END
 
