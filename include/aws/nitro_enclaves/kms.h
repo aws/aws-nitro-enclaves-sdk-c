@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0.
  */
 
+#include <aws/nitro_enclaves/attestation.h>
 #include <aws/nitro_enclaves/exports.h>
 #include <aws/nitro_enclaves/rest.h>
 
@@ -362,6 +363,8 @@ struct aws_nitro_enclaves_kms_client {
     struct aws_allocator *allocator;
 
     struct aws_nitro_enclaves_rest_client *rest_client;
+
+    struct aws_rsa_keypair *keypair;
 };
 
 /**
