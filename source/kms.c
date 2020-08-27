@@ -2199,6 +2199,7 @@ int aws_kms_decrypt_blocking(
 
     struct aws_string *response = NULL;
     struct aws_string *request = NULL;
+    int rc = 0;
 
     struct aws_kms_decrypt_request *request_structure = aws_kms_decrypt_request_new(client->allocator);
     if (request_structure == NULL) {
@@ -2206,12 +2207,24 @@ int aws_kms_decrypt_blocking(
     }
 
     aws_byte_buf_init_copy(&request_structure->ciphertext_blob, client->allocator, ciphertext);
+
+    request_structure->recipient = aws_recipient_new(client->allocator);
+    if (request_structure->recipient == NULL) {
+        goto err_clean;
+    }
+    rc = aws_attestation_request(
+        client->allocator, client->keypair, &request_structure->recipient->attestation_document);
+    if (rc != AWS_OP_SUCCESS) {
+        goto err_clean;
+    }
+    request_structure->recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_256;
+
     request = aws_kms_decrypt_request_to_json(request_structure);
     if (request == NULL) {
         goto err_clean;
     }
 
-    int rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_decrypt, request, &response);
+    rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_decrypt, request, &response);
     if (rc != 200) {
         fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
         goto err_clean;
@@ -2224,7 +2237,12 @@ int aws_kms_decrypt_blocking(
         goto err_clean;
     }
 
-    aws_byte_buf_init_copy(plaintext, client->allocator, &response_structure->plaintext);
+    rc = aws_attestation_rsa_decrypt(
+        client->allocator, client->keypair, &response_structure->ciphertext_for_recipient, plaintext);
+    if (rc != AWS_OP_SUCCESS) {
+        goto err_clean;
+    }
+
     aws_kms_decrypt_request_destroy(request_structure);
     aws_kms_decrypt_response_destroy(response_structure);
     aws_string_destroy(request);
@@ -2233,6 +2251,7 @@ int aws_kms_decrypt_blocking(
     return AWS_OP_SUCCESS;
 err_clean:
     aws_kms_decrypt_request_destroy(request_structure);
+    aws_kms_decrypt_response_destroy(response_structure);
     aws_string_destroy(request);
     aws_string_destroy(response);
     return AWS_OP_ERR;
@@ -2252,6 +2271,7 @@ int aws_kms_generate_data_key_blocking(
 
     struct aws_string *response = NULL;
     struct aws_string *request = NULL;
+    int rc = 0;
 
     struct aws_kms_generate_data_key_request *request_structure =
         aws_kms_generate_data_key_request_new(client->allocator);
@@ -2262,12 +2282,23 @@ int aws_kms_generate_data_key_blocking(
     request_structure->key_id = aws_string_clone_or_reuse(client->allocator, key_id);
     request_structure->key_spec = key_spec;
 
+    request_structure->recipient = aws_recipient_new(client->allocator);
+    if (request_structure->recipient == NULL) {
+        goto err_clean;
+    }
+    rc = aws_attestation_request(
+        client->allocator, client->keypair, &request_structure->recipient->attestation_document);
+    if (rc != AWS_OP_SUCCESS) {
+        goto err_clean;
+    }
+    request_structure->recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_256;
+
     request = aws_kms_generate_data_key_request_to_json(request_structure);
     if (request == NULL) {
         goto err_clean;
     }
 
-    int rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_generate_data_key, request, &response);
+    rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_generate_data_key, request, &response);
     if (rc != 200) {
         fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
         goto err_clean;
@@ -2280,7 +2311,12 @@ int aws_kms_generate_data_key_blocking(
         goto err_clean;
     }
 
-    aws_byte_buf_init_copy(plaintext, client->allocator, &response_structure->plaintext);
+    rc = aws_attestation_rsa_decrypt(
+        client->allocator, client->keypair, &response_structure->ciphertext_for_recipient, plaintext);
+    if (rc != AWS_OP_SUCCESS) {
+        goto err_clean;
+    }
+
     aws_byte_buf_init_copy(ciphertext_blob, client->allocator, &response_structure->ciphertext_blob);
     aws_kms_generate_data_key_request_destroy(request_structure);
     aws_kms_generate_data_key_response_destroy(response_structure);
@@ -2290,6 +2326,7 @@ int aws_kms_generate_data_key_blocking(
     return AWS_OP_SUCCESS;
 err_clean:
     aws_kms_generate_data_key_request_destroy(request_structure);
+    aws_kms_generate_data_key_response_destroy(response_structure);
     aws_string_destroy(request);
     aws_string_destroy(response);
     return AWS_OP_ERR;
@@ -2305,6 +2342,7 @@ int aws_kms_generate_random_blocking(
 
     struct aws_string *response = NULL;
     struct aws_string *request = NULL;
+    int rc = 0;
 
     struct aws_kms_generate_random_request *request_structure = aws_kms_generate_random_request_new(client->allocator);
     if (request_structure == NULL) {
@@ -2312,12 +2350,24 @@ int aws_kms_generate_random_blocking(
     }
 
     request_structure->number_of_bytes = number_of_bytes;
+
+    request_structure->recipient = aws_recipient_new(client->allocator);
+    if (request_structure->recipient == NULL) {
+        goto err_clean;
+    }
+    rc = aws_attestation_request(
+        client->allocator, client->keypair, &request_structure->recipient->attestation_document);
+    if (rc != AWS_OP_SUCCESS) {
+        goto err_clean;
+    }
+    request_structure->recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_256;
+
     request = aws_kms_generate_random_request_to_json(request_structure);
     if (request == NULL) {
         goto err_clean;
     }
 
-    int rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_generate_random, request, &response);
+    rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_generate_random, request, &response);
     if (rc != 200) {
         fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
         goto err_clean;
@@ -2330,7 +2380,12 @@ int aws_kms_generate_random_blocking(
         goto err_clean;
     }
 
-    aws_byte_buf_init_copy(plaintext, client->allocator, &response_structure->plaintext);
+    rc = aws_attestation_rsa_decrypt(
+        client->allocator, client->keypair, &response_structure->ciphertext_for_recipient, plaintext);
+    if (rc != AWS_OP_SUCCESS) {
+        goto err_clean;
+    }
+
     aws_kms_generate_random_request_destroy(request_structure);
     aws_kms_generate_random_response_destroy(response_structure);
     aws_string_destroy(request);
@@ -2339,6 +2394,7 @@ int aws_kms_generate_random_blocking(
     return AWS_OP_SUCCESS;
 err_clean:
     aws_kms_generate_random_request_destroy(request_structure);
+    aws_kms_generate_random_response_destroy(response_structure);
     aws_string_destroy(request);
     aws_string_destroy(response);
     return AWS_OP_ERR;
