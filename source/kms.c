@@ -2053,6 +2053,13 @@ struct aws_nitro_enclaves_kms_client *aws_nitro_enclaves_kms_client_new(
         return NULL;
     }
 
+    client->keypair = aws_attestation_rsa_keypair_new(allocator, AWS_RSA_2048);
+    if (client->keypair == NULL) {
+        aws_nitro_enclaves_rest_client_destroy(client->rest_client);
+        aws_mem_release(allocator, client);
+	return NULL;
+    }
+
     return client;
 }
 
@@ -2061,6 +2068,7 @@ void aws_nitro_enclaves_kms_client_destroy(struct aws_nitro_enclaves_kms_client 
         return;
     }
 
+    aws_attestation_rsa_keypair_destroy(client->keypair);
     aws_nitro_enclaves_rest_client_destroy(client->rest_client);
     aws_mem_release(client->allocator, client);
 }
@@ -2079,7 +2087,7 @@ static int s_aws_nitro_enclaves_kms_client_call_blocking(
         target,
         aws_byte_cursor_from_string(request));
     if (rest_response == NULL) {
-	    return -1;
+        return AWS_OP_ERR;
     }
 
     struct aws_input_stream *request_stream = aws_http_message_get_body_stream(rest_response->response);
