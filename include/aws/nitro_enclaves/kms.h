@@ -654,6 +654,38 @@ AWS_NITRO_ENCLAVES_API
 void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_response *res);
 
 /**
+ * Create a default KMS client configuration.
+ * Uses the library default allocator.
+ * uses explicit credentials instead of a credential provider.
+ * The client shall retain ownership on the input parameters after this function returns.
+ *
+ * @param[in]   region              The AWS region.
+ * @param[in]   endpoint            The remote endpoint.
+ * @param[in]   domain              The remote domain. If the endpoint is set.
+ * @param[in]   access_key_id       The AWS_ACCESS_KEY_ID.
+ * @param[in]   secret_access_key   The AWS_SECRET_ACCESS_KEY.
+ * @param[in]   session_token       The AWS_SESSION_TOKEN.
+ *
+ * @return  A valid KMS client configuration.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_nitro_enclaves_kms_client_configuration *aws_nitro_enclaves_kms_client_config_default(
+    struct aws_string *region,
+    struct aws_socket_endpoint *endpoint,
+    enum aws_socket_domain domain,
+    struct aws_string *access_key_id,
+    struct aws_string *secret_access_key,
+    struct aws_string *session_token);
+
+/**
+ * Destroys a previously created KMS client configuration
+ *
+ * @param[in]   config  The KMS client configuration.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_nitro_enclaves_kms_client_config_destroy(struct aws_nitro_enclaves_kms_client_configuration *config);
+
+/**
  * Create a new KMS client based on the given configuration.
  *
  * @param[in]    configuration    The configuration parameters of the client.

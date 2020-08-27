@@ -2025,6 +2025,61 @@ void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_res
 
 AWS_STATIC_STRING_FROM_LITERAL(s_kms_string, "kms");
 
+struct aws_nitro_enclaves_kms_client_configuration *aws_nitro_enclaves_kms_client_config_default(
+    struct aws_string *region,
+    struct aws_socket_endpoint *endpoint,
+    enum aws_socket_domain domain,
+    struct aws_string *access_key_id,
+    struct aws_string *secret_access_key,
+    struct aws_string *session_token) {
+
+    AWS_PRECONDITION(aws_string_is_valid(region));
+    AWS_PRECONDITION(aws_string_is_valid(access_key_id));
+    AWS_PRECONDITION(aws_string_is_valid(secret_access_key));
+    if (session_token != NULL) {
+        AWS_PRECONDITION(aws_string_is_valid(session_token));
+    }
+
+    struct aws_allocator *allocator = aws_nitro_enclaves_get_allocator();
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
+    struct aws_nitro_enclaves_kms_client_configuration *config =
+        aws_mem_calloc(allocator, 1, sizeof(struct aws_nitro_enclaves_kms_client_configuration));
+    if (config == NULL) {
+        return NULL;
+    }
+
+    config->allocator = allocator;
+    config->region = region;
+    config->endpoint = endpoint;
+    config->domain = domain;
+
+    struct aws_credentials *creds = aws_credentials_new(allocator,
+            aws_byte_cursor_from_string(access_key_id),
+            aws_byte_cursor_from_string(secret_access_key),
+            aws_byte_cursor_from_string(session_token),
+            48 * 3600); /* Expiration in seconds */
+
+    config->credentials = creds;
+    config->credentials_provider = NULL;
+
+    return config;
+}
+
+void aws_nitro_enclaves_kms_client_config_destroy(struct aws_nitro_enclaves_kms_client_configuration *config) {
+    if (config == NULL) {
+        return;
+    }
+
+    AWS_PRECONDITION(aws_allocator_is_valid(config->allocator));
+
+    if (config->credentials != NULL) {
+        aws_credentials_release(config->credentials);
+    }
+
+    aws_mem_release(config->allocator, config);
+}
+
 struct aws_nitro_enclaves_kms_client *aws_nitro_enclaves_kms_client_new(
     struct aws_nitro_enclaves_kms_client_configuration *configuration) {
     struct aws_allocator *allocator =
