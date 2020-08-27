@@ -34,7 +34,9 @@ struct aws_rsa_keypair {
  * @return                  The generated keypair.
  */
 AWS_NITRO_ENCLAVES_API
-struct aws_rsa_keypair * aws_attestation_rsa_keypair_new(struct aws_allocator *allocator, enum aws_rsa_key_size key_size);
+struct aws_rsa_keypair *aws_attestation_rsa_keypair_new(
+    struct aws_allocator *allocator,
+    enum aws_rsa_key_size key_size);
 
 /**
  * Cleanups internal structures for a previously generated RSA keypair.
@@ -54,7 +56,10 @@ void aws_attestation_rsa_keypair_destroy(struct aws_rsa_keypair *keypair);
  * @return                       Returns the error code. If SUCCESS, then attestation_doc is populated.
  */
 AWS_NITRO_ENCLAVES_API
-int aws_attestation_request(struct aws_allocator *allocator, struct aws_rsa_keypair *keypair, struct aws_byte_buf *attestion_doc);
+int aws_attestation_request(
+    struct aws_allocator *allocator,
+    struct aws_rsa_keypair *keypair,
+    struct aws_byte_buf *attestion_doc);
 
 /**
  * Decrypts the provided ciphertext data using the specified private key.
@@ -68,7 +73,11 @@ int aws_attestation_request(struct aws_allocator *allocator, struct aws_rsa_keyp
  * @return                  The result of the operation. On SUCCESS, the result will be placed in plaintext.
  */
 AWS_NITRO_ENCLAVES_API
-int aws_attestation_rsa_decrypt(struct aws_allocator *allocator, struct aws_rsa_keypair *keypair, struct aws_byte_buf *ciphertext, struct aws_byte_buf *plaintext);
+int aws_attestation_rsa_decrypt(
+    struct aws_allocator *allocator,
+    struct aws_rsa_keypair *keypair,
+    struct aws_byte_buf *ciphertext,
+    struct aws_byte_buf *plaintext);
 
 AWS_EXTERN_C_END
 

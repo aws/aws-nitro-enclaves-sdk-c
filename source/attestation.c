@@ -26,7 +26,9 @@
  *
  * @return                  The generated keypair.
  */
-struct aws_rsa_keypair *aws_attestation_rsa_keypair_new(struct aws_allocator *allocator, enum aws_rsa_key_size key_size) {
+struct aws_rsa_keypair *aws_attestation_rsa_keypair_new(
+    struct aws_allocator *allocator,
+    enum aws_rsa_key_size key_size) {
     if (allocator == NULL) {
         allocator = aws_nitro_enclaves_get_allocator();
     }
@@ -118,7 +120,10 @@ void aws_attestation_rsa_keypair_destroy(struct aws_rsa_keypair *keypair) {
  *
  * @return                       Returns the error code. If SUCCESS, then attestation_doc is populated.
  */
-int aws_attestation_request(struct aws_allocator *allocator, struct aws_rsa_keypair *keypair, struct aws_byte_buf *attestation_document) {
+int aws_attestation_request(
+    struct aws_allocator *allocator,
+    struct aws_rsa_keypair *keypair,
+    struct aws_byte_buf *attestation_document) {
     AWS_PRECONDITION(aws_byte_buf_is_valid(&keypair->public_key));
 
     if (allocator == NULL) {
@@ -133,8 +138,8 @@ int aws_attestation_request(struct aws_allocator *allocator, struct aws_rsa_keyp
     /* Get the attestation document. */
     uint8_t att_doc[NSM_MAX_ATTESTATION_DOC_SIZE];
     uint32_t att_doc_len = NSM_MAX_ATTESTATION_DOC_SIZE;
-    int rc =
-        nsm_get_attestation_doc(nsm_fd, NULL, 0, NULL, 0, keypair->public_key.buffer, keypair->public_key.len, att_doc, &att_doc_len);
+    int rc = nsm_get_attestation_doc(
+        nsm_fd, NULL, 0, NULL, 0, keypair->public_key.buffer, keypair->public_key.len, att_doc, &att_doc_len);
     if (rc) {
         nsm_lib_exit(nsm_fd);
         return AWS_OP_ERR;
@@ -166,8 +171,7 @@ int aws_attestation_rsa_decrypt(
     struct aws_allocator *allocator,
     struct aws_rsa_keypair *keypair,
     struct aws_byte_buf *ciphertext,
-    struct aws_byte_buf *plaintext
-    ) {
+    struct aws_byte_buf *plaintext) {
     AWS_PRECONDITION(aws_byte_buf_is_valid(&keypair->private_key));
     AWS_PRECONDITION(aws_byte_buf_is_valid(ciphertext));
 
@@ -203,8 +207,7 @@ int aws_attestation_rsa_decrypt(
     }
 
     /* Initialize the decryption context. */
-    if (EVP_PKEY_decrypt_init(pkey_ctx) != 1 ||
-        EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_OAEP_PADDING) != 1 ||
+    if (EVP_PKEY_decrypt_init(pkey_ctx) != 1 || EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_OAEP_PADDING) != 1 ||
         EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha256()) != 1 ||
         EVP_PKEY_CTX_set_rsa_oaep_md(pkey_ctx, EVP_sha256()) != 1) {
 
