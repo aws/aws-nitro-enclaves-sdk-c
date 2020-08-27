@@ -2112,7 +2112,7 @@ struct aws_nitro_enclaves_kms_client *aws_nitro_enclaves_kms_client_new(
     if (client->keypair == NULL) {
         aws_nitro_enclaves_rest_client_destroy(client->rest_client);
         aws_mem_release(allocator, client);
-	return NULL;
+        return NULL;
     }
 
     return client;
