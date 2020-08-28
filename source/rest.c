@@ -189,7 +189,9 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
 
     return rest_client;
 err_clean:
-    aws_http_connection_release(rest_client->connection);
+    if (rest_client->connection != NULL) {
+        aws_http_connection_release(rest_client->connection);
+    }
     aws_client_bootstrap_release(rest_client->bootstrap);
 
     aws_tls_connection_options_clean_up(&rest_client->tls_connection_options);
