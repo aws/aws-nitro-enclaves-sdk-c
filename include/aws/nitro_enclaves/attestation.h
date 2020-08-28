@@ -21,8 +21,7 @@ enum aws_rsa_key_size {
 
 struct aws_rsa_keypair {
     struct aws_allocator *allocator;
-    struct aws_byte_buf public_key;
-    struct aws_byte_buf private_key;
+    void *key_impl;
 };
 
 /**

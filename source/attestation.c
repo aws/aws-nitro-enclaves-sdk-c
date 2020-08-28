@@ -9,6 +9,7 @@
 
 /* Low level crypto backend interfaces */
 #include <openssl/bn.h>
+#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -53,45 +54,20 @@ struct aws_rsa_keypair *aws_attestation_rsa_keypair_new(
 
     BN_free(e);
 
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    if (pkey == NULL || EVP_PKEY_assign_RSA(pkey, key) != 1) {
+        RSA_free(key);
+        return NULL;
+    }
+
     /* Create a keypair container and store the key streams in it */
-    struct aws_byte_cursor cursor;
     struct aws_rsa_keypair *keypair = aws_mem_calloc(allocator, 1, sizeof(struct aws_rsa_keypair));
     if (keypair == NULL) {
-        RSA_free(key);
+        EVP_PKEY_free(pkey);
         return NULL;
     }
     keypair->allocator = allocator;
-
-    /* Private Key */
-    size_t out_key_len = 0;
-    uint8_t *out_key_ptr = NULL;
-    if (RSA_private_key_to_bytes(&out_key_ptr, &out_key_len, key) != 1) {
-        RSA_free(key);
-        return NULL;
-    }
-    cursor = aws_byte_cursor_from_array(out_key_ptr, out_key_len);
-    if (AWS_OP_SUCCESS != aws_byte_buf_init_copy_from_cursor(&keypair->private_key, allocator, cursor)) {
-        OPENSSL_free(out_key_ptr);
-        RSA_free(key);
-        return NULL;
-    }
-    OPENSSL_free(out_key_ptr);
-
-    /* Public Key */
-    if (RSA_public_key_to_bytes(&out_key_ptr, &out_key_len, key) != 1) {
-        RSA_free(key);
-        return NULL;
-    }
-    cursor = aws_byte_cursor_from_array(out_key_ptr, out_key_len);
-    if (AWS_OP_SUCCESS != aws_byte_buf_init_copy_from_cursor(&keypair->public_key, allocator, cursor)) {
-        OPENSSL_free(out_key_ptr);
-        RSA_free(key);
-        return NULL;
-    }
-
-    OPENSSL_free(out_key_ptr);
-
-    RSA_free(key);
+    keypair->key_impl = pkey;
 
     return keypair;
 }
@@ -103,11 +79,10 @@ struct aws_rsa_keypair *aws_attestation_rsa_keypair_new(
  * @param[in]   aws_rsa_keypair     The RSA keypair previously allocated via @aws_attestation_rsa_keypair_new.
  */
 void aws_attestation_rsa_keypair_destroy(struct aws_rsa_keypair *keypair) {
-
-    AWS_PRECONDITION(aws_byte_buf_is_valid(&keypair->public_key));
-    aws_byte_buf_clean_up_secure(&keypair->public_key);
-    AWS_PRECONDITION(aws_byte_buf_is_valid(&keypair->private_key));
-    aws_byte_buf_clean_up_secure(&keypair->private_key);
+    if (keypair == NULL) {
+        return;
+    }
+    EVP_PKEY_free(keypair->key_impl);
     aws_mem_release(keypair->allocator, keypair);
 }
 
@@ -124,7 +99,7 @@ int aws_attestation_request(
     struct aws_allocator *allocator,
     struct aws_rsa_keypair *keypair,
     struct aws_byte_buf *attestation_document) {
-    AWS_PRECONDITION(aws_byte_buf_is_valid(&keypair->public_key));
+    AWS_PRECONDITION(keypair != NULL && keypair->key_impl != NULL);
 
     if (allocator == NULL) {
         allocator = aws_nitro_enclaves_get_allocator();
@@ -135,15 +110,23 @@ int aws_attestation_request(
         return AWS_OP_ERR;
     }
 
+    CBB out;
+    if(CBB_init(&out, 0) != 1 || EVP_marshal_public_key(&out, keypair->key_impl) != 1) {
+        CBB_cleanup(&out);
+        return AWS_OP_ERR;
+    }
+
     /* Get the attestation document. */
     uint8_t att_doc[NSM_MAX_ATTESTATION_DOC_SIZE];
     uint32_t att_doc_len = NSM_MAX_ATTESTATION_DOC_SIZE;
     int rc = nsm_get_attestation_doc(
-        nsm_fd, NULL, 0, NULL, 0, keypair->public_key.buffer, keypair->public_key.len, att_doc, &att_doc_len);
+        nsm_fd, NULL, 0, NULL, 0, CBB_data(&out), CBB_len(&out), att_doc, &att_doc_len);
     if (rc) {
+        CBB_cleanup(&out);
         nsm_lib_exit(nsm_fd);
         return AWS_OP_ERR;
     }
+    CBB_cleanup(&out);
 
     struct aws_byte_cursor cursor = aws_byte_cursor_from_array(att_doc, att_doc_len);
     if (AWS_OP_SUCCESS != aws_byte_buf_init_copy_from_cursor(attestation_document, allocator, cursor)) {
@@ -172,32 +155,14 @@ int aws_attestation_rsa_decrypt(
     struct aws_rsa_keypair *keypair,
     struct aws_byte_buf *ciphertext,
     struct aws_byte_buf *plaintext) {
-    AWS_PRECONDITION(aws_byte_buf_is_valid(&keypair->private_key));
+    AWS_PRECONDITION(keypair != NULL && keypair->key_impl != NULL);
     AWS_PRECONDITION(aws_byte_buf_is_valid(ciphertext));
 
     if (allocator == NULL) {
         allocator = aws_nitro_enclaves_get_allocator();
     }
 
-    /* Construct local RSA private key from the bytestream */
-    RSA *key = RSA_private_key_from_bytes(keypair->private_key.buffer, keypair->private_key.len);
-    if (key == NULL) {
-        return AWS_OP_ERR;
-    }
-
-    /* Construct an EVP PKEY container */
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    if (pkey == NULL) {
-        RSA_free(key);
-        return AWS_OP_ERR;
-    }
-
-    /* Take ownership over the RSA private key. */
-    if (EVP_PKEY_set1_RSA(pkey, key) != 1) {
-        EVP_PKEY_free(pkey);
-        RSA_free(key);
-        return AWS_OP_ERR;
-    }
+    EVP_PKEY *pkey = keypair->key_impl;
 
     /* Create the decryption context */
     EVP_PKEY_CTX *pkey_ctx = EVP_PKEY_CTX_new(pkey, NULL);
