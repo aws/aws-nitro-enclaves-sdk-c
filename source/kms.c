@@ -250,7 +250,7 @@ static struct aws_string *s_aws_string_from_json(struct aws_allocator *allocator
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
     AWS_PRECONDITION(obj);
 
-    const char *str = json_object_get_string(obj);
+    const char *str = json_object_to_json_string_ext(obj, JSON_C_TO_STRING_SPACED | JSON_C_TO_STRING_NOSLASHESCAPE);
     if (str == NULL) {
         return NULL;
     }
