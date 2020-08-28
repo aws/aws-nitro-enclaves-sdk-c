@@ -2123,6 +2123,11 @@ struct aws_nitro_enclaves_kms_client *aws_nitro_enclaves_kms_client_new(
         .credentials_provider = configuration->credentials_provider,
     };
 
+    if (configuration->endpoint != NULL) {
+        rest_configuration.endpoint = configuration->endpoint;
+        rest_configuration.domain = configuration->domain;
+    }
+
     client->rest_client = aws_nitro_enclaves_rest_client_new(&rest_configuration);
     if (client->rest_client == NULL) {
         aws_mem_release(allocator, client);

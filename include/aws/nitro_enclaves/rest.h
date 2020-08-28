@@ -28,7 +28,7 @@ struct aws_nitro_enclaves_rest_client_configuration {
     const struct aws_string *region;
 
     /* Optional endpoint to use instead of the DNS endpoint. */
-    struct aws_socket_endpoint *endpoint;
+    const struct aws_socket_endpoint *endpoint;
     /* Optional. Specifies the domain of the given endpoint, if the endpoint is set. */
     enum aws_socket_domain domain;
 
