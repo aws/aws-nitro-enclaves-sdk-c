@@ -2204,9 +2204,11 @@ int aws_kms_decrypt_blocking(
 
     struct aws_string *response = NULL;
     struct aws_string *request = NULL;
+    struct aws_kms_decrypt_response *response_structure = NULL;
+    struct aws_kms_decrypt_request *request_structure = NULL;
     int rc = 0;
 
-    struct aws_kms_decrypt_request *request_structure = aws_kms_decrypt_request_new(client->allocator);
+    request_structure = aws_kms_decrypt_request_new(client->allocator);
     if (request_structure == NULL) {
         return AWS_OP_ERR;
     }
@@ -2235,7 +2237,7 @@ int aws_kms_decrypt_blocking(
         goto err_clean;
     }
 
-    struct aws_kms_decrypt_response *response_structure =
+    response_structure =
         aws_kms_decrypt_response_from_json(client->allocator, response);
     if (response_structure == NULL) {
         fprintf(stderr, "Could not read response from KMS: %d\n", rc);
@@ -2276,9 +2278,11 @@ int aws_kms_generate_data_key_blocking(
 
     struct aws_string *response = NULL;
     struct aws_string *request = NULL;
+    struct aws_kms_generate_data_key_response *response_structure = NULL;
+    struct aws_kms_generate_data_key_request *request_structure = NULL;
     int rc = 0;
 
-    struct aws_kms_generate_data_key_request *request_structure =
+    request_structure =
         aws_kms_generate_data_key_request_new(client->allocator);
     if (request_structure == NULL) {
         return AWS_OP_ERR;
@@ -2309,7 +2313,7 @@ int aws_kms_generate_data_key_blocking(
         goto err_clean;
     }
 
-    struct aws_kms_generate_data_key_response *response_structure =
+    response_structure =
         aws_kms_generate_data_key_response_from_json(client->allocator, response);
     if (response_structure == NULL) {
         fprintf(stderr, "Could not read response from KMS: %d\n", rc);
@@ -2347,9 +2351,11 @@ int aws_kms_generate_random_blocking(
 
     struct aws_string *response = NULL;
     struct aws_string *request = NULL;
+    struct aws_kms_generate_random_response *response_structure = NULL;
+    struct aws_kms_generate_random_request *request_structure = NULL;
     int rc = 0;
 
-    struct aws_kms_generate_random_request *request_structure = aws_kms_generate_random_request_new(client->allocator);
+    request_structure = aws_kms_generate_random_request_new(client->allocator);
     if (request_structure == NULL) {
         return AWS_OP_ERR;
     }
@@ -2378,7 +2384,7 @@ int aws_kms_generate_random_blocking(
         goto err_clean;
     }
 
-    struct aws_kms_generate_random_response *response_structure =
+    response_structure =
         aws_kms_generate_random_response_from_json(client->allocator, response);
     if (response_structure == NULL) {
         fprintf(stderr, "Could not read response from KMS: %d\n", rc);
