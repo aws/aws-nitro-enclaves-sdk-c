@@ -1,4 +1,4 @@
-FROM amazonlinux
+FROM amazonlinux as builder
 
 RUN yum install -y cmake3 gcc git tar make
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
@@ -33,8 +33,8 @@ RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TY
 RUN cmake3 --build aws-c-common/build --target install
 
 # TODO - Merge fix upstream
-RUN git clone -b master https://github.com/petreeftime/aws-c-io.git
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -S aws-c-io -B aws-c-io/build
+RUN git clone -b testing https://github.com/petreeftime/aws-c-io.git
+RUN cmake3 -DUSE_VSOCK=1 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -S aws-c-io -B aws-c-io/build
 RUN cmake3 --build aws-c-io/build --target install
 
 RUN git clone -b v0.2.10 http://github.com/awslabs/aws-c-compression.git
