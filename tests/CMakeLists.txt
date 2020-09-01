@@ -31,6 +31,7 @@ add_test_case(test_kms_generate_random_response_to_json)
 add_test_case(test_kms_generate_random_response_from_json)
 add_test_case(test_basic_rest_client)
 add_test_case(test_rest_call_blocking)
+add_test_case(test_cms_parsing_correctness)
 
 set(TEST_BINARY_NAME ${PROJECT_NAME}-tests)
 generate_test_driver(${TEST_BINARY_NAME})
