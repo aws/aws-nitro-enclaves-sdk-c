@@ -61,13 +61,14 @@ void aws_nitro_enclaves_library_clean_up(void) {
 int aws_nitro_enclaves_library_seed_entropy(uint64_t num_bytes) {
 
     int nsm_fd = nsm_lib_init();
-    if (nsm_fd < 0)
-        return -1;
+    if (nsm_fd < 0) {
+        return AWS_OP_ERR;
+    }
 
     int dev_fd = open("/dev/random", O_WRONLY);
     if (dev_fd < 0) {
         nsm_lib_exit(nsm_fd);
-        return -1;
+        return AWS_OP_ERR;
     }
 
     uint64_t count = 0;
@@ -100,11 +101,10 @@ int aws_nitro_enclaves_library_seed_entropy(uint64_t num_bytes) {
     close(dev_fd);
     nsm_lib_exit(nsm_fd);
 
-    return 0;
-
+    return AWS_OP_SUCCESS;
 err:
     close(dev_fd);
     nsm_lib_exit(nsm_fd);
 
-    return -1;
+    return AWS_OP_ERR;
 }
