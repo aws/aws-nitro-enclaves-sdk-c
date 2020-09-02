@@ -70,11 +70,11 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
 
     char host_name_str[256];
     snprintf(
-        host_name_str,
-        sizeof(host_name_str),
-        "%s.%s.amazonaws.com",
-        aws_string_c_str(configuration->service),
-        aws_string_c_str(configuration->region));
+       host_name_str,
+       sizeof(host_name_str),
+       "%s.%s.amazonaws.com",
+       aws_string_c_str(configuration->service),
+       aws_string_c_str(configuration->region));
     struct aws_byte_cursor host_name = aws_byte_cursor_from_c_str(host_name_str);
 
     struct aws_nitro_enclaves_rest_client *rest_client =
