@@ -114,4 +114,7 @@ if (NOT CMAKE_CROSSCOMPILING)
     endif()
 endif()
 
-
+if (NOT CMAKE_CROSSCOMPILING)
+    add_subdirectory(bin/kmstool-enclave)
+    add_subdirectory(bin/kmstool-instance)
+endif()
