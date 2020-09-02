@@ -5,6 +5,7 @@
 
 #include <aws/common/encoding.h>
 #include <aws/io/stream.h>
+#include <aws/nitro_enclaves/internal/cms.h>
 #include <aws/nitro_enclaves/kms.h>
 #include <aws/nitro_enclaves/nitro_enclaves.h>
 #include <json-c/json.h>
@@ -2188,6 +2189,46 @@ static int s_aws_nitro_enclaves_kms_client_call_blocking(
     return status;
 }
 
+static int s_decrypt_ciphertext_for_recipient(
+    struct aws_allocator *allocator,
+    struct aws_byte_buf *ciphertext_for_recipient,
+    struct aws_rsa_keypair *keypair,
+    struct aws_byte_buf *plaintext) {
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_byte_buf_is_valid(ciphertext_for_recipient));
+    AWS_PRECONDITION(keypair != NULL);
+
+    struct aws_byte_buf encrypted_symm_key, decrypted_symm_key, iv, ciphertext_out;
+    int rc = aws_cms_parse_enveloped_data(ciphertext_for_recipient, &encrypted_symm_key, &iv, &ciphertext_out);
+
+    if (rc != AWS_OP_SUCCESS) {
+        fprintf(stderr, "Can't parse ciphertext\n");
+        return AWS_OP_ERR;
+    }
+
+    rc = aws_attestation_rsa_decrypt(allocator, keypair, &encrypted_symm_key, &decrypted_symm_key);
+    if (rc != AWS_OP_SUCCESS) {
+        aws_byte_buf_clean_up(&encrypted_symm_key);
+        aws_byte_buf_clean_up(&iv);
+        aws_byte_buf_clean_up(&ciphertext_out);
+        return rc;
+    }
+
+    rc = aws_cms_cipher_decrypt(&ciphertext_out, &decrypted_symm_key, &iv, plaintext);
+
+    if (rc != AWS_OP_SUCCESS) {
+        fprintf(stderr, "Can't parse ciphertext\n");
+        return rc;
+    }
+
+    aws_byte_buf_clean_up(&encrypted_symm_key);
+    aws_byte_buf_clean_up(&decrypted_symm_key);
+    aws_byte_buf_clean_up(&iv);
+    aws_byte_buf_clean_up(&ciphertext_out);
+
+    return rc;
+}
+
 static struct aws_byte_cursor kms_target_decrypt = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.Decrypt");
 static struct aws_byte_cursor kms_target_generate_data_key =
     AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.GenerateDataKey");
@@ -2237,25 +2278,21 @@ int aws_kms_decrypt_blocking(
         goto err_clean;
     }
 
-    response_structure =
-        aws_kms_decrypt_response_from_json(client->allocator, response);
+    response_structure = aws_kms_decrypt_response_from_json(client->allocator, response);
     if (response_structure == NULL) {
         fprintf(stderr, "Could not read response from KMS: %d\n", rc);
         goto err_clean;
     }
 
-    rc = aws_attestation_rsa_decrypt(
-        client->allocator, client->keypair, &response_structure->ciphertext_for_recipient, plaintext);
-    if (rc != AWS_OP_SUCCESS) {
-        goto err_clean;
-    }
+    rc = s_decrypt_ciphertext_for_recipient(
+        client->allocator, &response_structure->ciphertext_for_recipient, client->keypair, plaintext);
 
     aws_kms_decrypt_request_destroy(request_structure);
     aws_kms_decrypt_response_destroy(response_structure);
     aws_string_destroy(request);
     aws_string_destroy(response);
 
-    return AWS_OP_SUCCESS;
+    return rc;
 err_clean:
     aws_kms_decrypt_request_destroy(request_structure);
     aws_kms_decrypt_response_destroy(response_structure);
@@ -2282,8 +2319,7 @@ int aws_kms_generate_data_key_blocking(
     struct aws_kms_generate_data_key_request *request_structure = NULL;
     int rc = 0;
 
-    request_structure =
-        aws_kms_generate_data_key_request_new(client->allocator);
+    request_structure = aws_kms_generate_data_key_request_new(client->allocator);
     if (request_structure == NULL) {
         return AWS_OP_ERR;
     }
@@ -2313,18 +2349,14 @@ int aws_kms_generate_data_key_blocking(
         goto err_clean;
     }
 
-    response_structure =
-        aws_kms_generate_data_key_response_from_json(client->allocator, response);
+    response_structure = aws_kms_generate_data_key_response_from_json(client->allocator, response);
     if (response_structure == NULL) {
         fprintf(stderr, "Could not read response from KMS: %d\n", rc);
         goto err_clean;
     }
 
-    rc = aws_attestation_rsa_decrypt(
-        client->allocator, client->keypair, &response_structure->ciphertext_for_recipient, plaintext);
-    if (rc != AWS_OP_SUCCESS) {
-        goto err_clean;
-    }
+    rc = s_decrypt_ciphertext_for_recipient(
+        client->allocator, &response_structure->ciphertext_for_recipient, client->keypair, plaintext);
 
     aws_byte_buf_init_copy(ciphertext_blob, client->allocator, &response_structure->ciphertext_blob);
     aws_kms_generate_data_key_request_destroy(request_structure);
@@ -2332,7 +2364,7 @@ int aws_kms_generate_data_key_blocking(
     aws_string_destroy(request);
     aws_string_destroy(response);
 
-    return AWS_OP_SUCCESS;
+    return rc;
 err_clean:
     aws_kms_generate_data_key_request_destroy(request_structure);
     aws_kms_generate_data_key_response_destroy(response_structure);
@@ -2384,25 +2416,21 @@ int aws_kms_generate_random_blocking(
         goto err_clean;
     }
 
-    response_structure =
-        aws_kms_generate_random_response_from_json(client->allocator, response);
+    response_structure = aws_kms_generate_random_response_from_json(client->allocator, response);
     if (response_structure == NULL) {
         fprintf(stderr, "Could not read response from KMS: %d\n", rc);
         goto err_clean;
     }
 
-    rc = aws_attestation_rsa_decrypt(
-        client->allocator, client->keypair, &response_structure->ciphertext_for_recipient, plaintext);
-    if (rc != AWS_OP_SUCCESS) {
-        goto err_clean;
-    }
+    rc = s_decrypt_ciphertext_for_recipient(
+        client->allocator, &response_structure->ciphertext_for_recipient, client->keypair, plaintext);
 
     aws_kms_generate_random_request_destroy(request_structure);
     aws_kms_generate_random_response_destroy(response_structure);
     aws_string_destroy(request);
     aws_string_destroy(response);
 
-    return AWS_OP_SUCCESS;
+    return rc;
 err_clean:
     aws_kms_generate_random_request_destroy(request_structure);
     aws_kms_generate_random_response_destroy(response_structure);
