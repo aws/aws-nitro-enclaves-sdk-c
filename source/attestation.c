@@ -167,7 +167,6 @@ int aws_attestation_rsa_decrypt(
     /* Create the decryption context */
     EVP_PKEY_CTX *pkey_ctx = EVP_PKEY_CTX_new(pkey, NULL);
     if (pkey_ctx == NULL) {
-        EVP_PKEY_free(pkey);
         return AWS_OP_ERR;
     }
 
@@ -177,7 +176,6 @@ int aws_attestation_rsa_decrypt(
         EVP_PKEY_CTX_set_rsa_oaep_md(pkey_ctx, EVP_sha256()) != 1) {
 
         EVP_PKEY_CTX_free(pkey_ctx);
-        EVP_PKEY_free(pkey);
         return AWS_OP_ERR;
     }
 
@@ -187,12 +185,10 @@ int aws_attestation_rsa_decrypt(
 
     if (EVP_PKEY_decrypt(pkey_ctx, plain_data, &plain_data_len, ciphertext->buffer, ciphertext->len) != 1) {
         EVP_PKEY_CTX_free(pkey_ctx);
-        EVP_PKEY_free(pkey);
         return AWS_OP_ERR;
     }
 
     EVP_PKEY_CTX_free(pkey_ctx);
-    EVP_PKEY_free(pkey);
 
     /* Construct the plain data byte buf */
     struct aws_byte_cursor cursor = aws_byte_cursor_from_array(plain_data, plain_data_len);
