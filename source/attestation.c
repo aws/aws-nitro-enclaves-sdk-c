@@ -111,7 +111,7 @@ int aws_attestation_request(
     }
 
     CBB out;
-    if(CBB_init(&out, 0) != 1 || EVP_marshal_public_key(&out, keypair->key_impl) != 1) {
+    if (CBB_init(&out, 0) != 1 || EVP_marshal_public_key(&out, keypair->key_impl) != 1) {
         CBB_cleanup(&out);
         return AWS_OP_ERR;
     }
@@ -119,8 +119,7 @@ int aws_attestation_request(
     /* Get the attestation document. */
     uint8_t att_doc[NSM_MAX_ATTESTATION_DOC_SIZE];
     uint32_t att_doc_len = NSM_MAX_ATTESTATION_DOC_SIZE;
-    int rc = nsm_get_attestation_doc(
-        nsm_fd, NULL, 0, NULL, 0, CBB_data(&out), CBB_len(&out), att_doc, &att_doc_len);
+    int rc = nsm_get_attestation_doc(nsm_fd, NULL, 0, NULL, 0, CBB_data(&out), CBB_len(&out), att_doc, &att_doc_len);
     if (rc) {
         CBB_cleanup(&out);
         nsm_lib_exit(nsm_fd);
