@@ -1757,7 +1757,7 @@ struct aws_recipient *aws_recipient_new(struct aws_allocator *allocator) {
 
 void aws_recipient_destroy(struct aws_recipient *recipient) {
     if (recipient == NULL) {
-	    return;
+        return;
     }
     AWS_PRECONDITION(recipient);
     AWS_PRECONDITION(aws_allocator_is_valid(recipient->allocator));
@@ -1795,7 +1795,7 @@ struct aws_kms_decrypt_request *aws_kms_decrypt_request_new(struct aws_allocator
 
 void aws_kms_decrypt_request_destroy(struct aws_kms_decrypt_request *req) {
     if (req == NULL) {
-	    return;
+        return;
     }
     AWS_PRECONDITION(req);
     AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
@@ -1852,7 +1852,7 @@ struct aws_kms_decrypt_response *aws_kms_decrypt_response_new(struct aws_allocat
 
 void aws_kms_decrypt_response_destroy(struct aws_kms_decrypt_response *res) {
     if (res == NULL) {
-	    return;
+        return;
     }
     AWS_PRECONDITION(res);
     AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
@@ -1895,7 +1895,7 @@ struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_new(
 
 void aws_kms_generate_data_key_request_destroy(struct aws_kms_generate_data_key_request *req) {
     if (req == NULL) {
-	    return;
+        return;
     }
     AWS_PRECONDITION(req);
     AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
@@ -1947,7 +1947,7 @@ struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_ne
 
 void aws_kms_generate_data_key_response_destroy(struct aws_kms_generate_data_key_response *res) {
     if (res == NULL) {
-	    return;
+        return;
     }
     AWS_PRECONDITION(res);
     AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
@@ -1992,7 +1992,7 @@ struct aws_kms_generate_random_request *aws_kms_generate_random_request_new(stru
 
 void aws_kms_generate_random_request_destroy(struct aws_kms_generate_random_request *req) {
     if (req == NULL) {
-	    return;
+        return;
     }
     AWS_PRECONDITION(req);
     AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
@@ -2029,7 +2029,7 @@ struct aws_kms_generate_random_response *aws_kms_generate_random_response_new(st
 
 void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_response *res) {
     if (res == NULL) {
-	    return;
+        return;
     }
     AWS_PRECONDITION(res);
     AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
@@ -2076,11 +2076,12 @@ struct aws_nitro_enclaves_kms_client_configuration *aws_nitro_enclaves_kms_clien
     config->endpoint = endpoint;
     config->domain = domain;
 
-    struct aws_credentials *creds = aws_credentials_new(allocator,
-            aws_byte_cursor_from_string(access_key_id),
-            aws_byte_cursor_from_string(secret_access_key),
-            aws_byte_cursor_from_string(session_token),
-            48 * 3600); /* Expiration in seconds */
+    struct aws_credentials *creds = aws_credentials_new(
+        allocator,
+        aws_byte_cursor_from_string(access_key_id),
+        aws_byte_cursor_from_string(secret_access_key),
+        aws_byte_cursor_from_string(session_token),
+        48 * 3600); /* Expiration in seconds */
 
     config->credentials = creds;
     config->credentials_provider = NULL;
