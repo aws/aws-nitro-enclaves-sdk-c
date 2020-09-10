@@ -59,6 +59,11 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
         configuration->allocator != NULL ? configuration->allocator : aws_nitro_enclaves_get_allocator();
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
 
+    struct aws_event_loop_group *el_group = NULL;
+    struct aws_client_bootstrap *bootstrap = NULL;
+    struct aws_host_resolver *host_resolver = NULL;
+    struct aws_tls_connection_options tls_connection_options;
+
     char host_name_str[256];
     snprintf(
         host_name_str,
@@ -116,31 +121,34 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     /* tls_ctx_options are copied, so the strucure can be cleaned up at this point */
     aws_tls_ctx_options_clean_up(&tls_ctx_options);
 
-    aws_tls_connection_options_init_from_ctx(&rest_client->tls_connection_options, rest_client->tls_ctx);
+    aws_tls_connection_options_init_from_ctx(&tls_connection_options, rest_client->tls_ctx);
     if (aws_tls_connection_options_set_server_name(
-            &rest_client->tls_connection_options, rest_client->allocator, &host_name)) {
+            &tls_connection_options, rest_client->allocator, &host_name)) {
         // TODO: aws_raise
         goto err_clean;
     }
 
     /* TODO: Should the el_group be set by the caller instead? */
-    if (aws_event_loop_group_default_init(&rest_client->el_group, rest_client->allocator, 0) != AWS_OP_SUCCESS) {
+    el_group = aws_event_loop_group_new_default(rest_client->allocator, 0, NULL);
+    if (el_group == NULL) {
         /* TODO: aws_raise */
         goto err_clean;
     }
+
     /* TODO: Resolver should not be needed when using endpoints */
-    if (aws_host_resolver_init_default(&rest_client->resolver, rest_client->allocator, 8, &rest_client->el_group) !=
-        AWS_OP_SUCCESS) {
+    host_resolver = aws_host_resolver_new_default(rest_client->allocator, 8, el_group, NULL);
+    if (host_resolver == NULL) {
         /* TODO: aws_raise */
         goto err_clean;
     }
 
     struct aws_client_bootstrap_options bootstrap_options = {
-        .event_loop_group = &rest_client->el_group,
-        .host_resolver = &rest_client->resolver,
+        .event_loop_group = el_group,
+        .host_resolver = host_resolver,
     };
-    rest_client->bootstrap = aws_client_bootstrap_new(rest_client->allocator, &bootstrap_options);
-    if (rest_client->bootstrap == NULL) {
+
+    bootstrap = aws_client_bootstrap_new(rest_client->allocator, &bootstrap_options);
+    if (bootstrap == NULL) {
         /* TODO: aws_raise */
         goto err_clean;
     }
@@ -159,9 +167,9 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
         .allocator = rest_client->allocator,
         .port = 443,
         .host_name = host_name,
-        .bootstrap = rest_client->bootstrap,
+        .bootstrap = bootstrap,
         .initial_window_size = SIZE_MAX,
-        .tls_options = &rest_client->tls_connection_options,
+        .tls_options = &tls_connection_options,
         .user_data = rest_client,
         .on_setup = s_on_client_connection_setup,
         .on_shutdown = s_on_client_connection_shutdown,
@@ -187,18 +195,23 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
         goto err_clean;
     }
 
+    /* No longer required in this context */
+    aws_tls_connection_options_clean_up(&tls_connection_options);
+    aws_host_resolver_release(host_resolver);
+    aws_event_loop_group_release(el_group);
+    aws_client_bootstrap_release(bootstrap);
     return rest_client;
 err_clean:
     if (rest_client->connection != NULL) {
         aws_http_connection_release(rest_client->connection);
     }
-    aws_client_bootstrap_release(rest_client->bootstrap);
 
-    aws_tls_connection_options_clean_up(&rest_client->tls_connection_options);
-    aws_tls_ctx_destroy(rest_client->tls_ctx);
+    aws_tls_connection_options_clean_up(&tls_connection_options);
+    aws_tls_ctx_release(rest_client->tls_ctx);
 
-    aws_host_resolver_clean_up(&rest_client->resolver);
-    aws_event_loop_group_clean_up(&rest_client->el_group);
+    aws_host_resolver_release(host_resolver);
+    aws_event_loop_group_release(el_group);
+    aws_client_bootstrap_release(bootstrap);
 
     aws_mutex_clean_up(&rest_client->mutex);
     aws_condition_variable_clean_up(&rest_client->c_var);
@@ -212,11 +225,7 @@ err_clean:
 void aws_nitro_enclaves_rest_client_destroy(struct aws_nitro_enclaves_rest_client *rest_client) {
     AWS_PRECONDITION(rest_client);
     aws_http_connection_release(rest_client->connection);
-    aws_client_bootstrap_release(rest_client->bootstrap);
-    aws_host_resolver_clean_up(&rest_client->resolver);
-    aws_event_loop_group_clean_up(&rest_client->el_group);
-    aws_tls_connection_options_clean_up(&rest_client->tls_connection_options);
-    aws_tls_ctx_destroy(rest_client->tls_ctx);
+    aws_tls_ctx_release(rest_client->tls_ctx);
     aws_mutex_clean_up(&rest_client->mutex);
     aws_condition_variable_clean_up(&rest_client->c_var);
     aws_string_destroy(rest_client->service);
@@ -426,7 +435,6 @@ struct aws_nitro_enclaves_rest_response *aws_nitro_enclaves_rest_client_request_
         .service = aws_byte_cursor_from_string(rest_client->service),
         .credentials = rest_client->credentials,
         .credentials_provider = rest_client->credentials_provider,
-        .signed_body_value = AWS_SBVT_PAYLOAD,
         .signed_body_header = AWS_SBHT_X_AMZ_CONTENT_SHA256,
     };
 

@@ -1,69 +1,65 @@
 FROM amazonlinux as builder
 
+RUN yum upgrade -y
+RUN amazon-linux-extras enable epel
+RUN yum clean -y metadata && yum install -y epel-release
 RUN yum install -y cmake3 gcc git tar make
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 
-WORKDIR /tmp/crt-builder
-
 RUN yum install -y gcc-c++
 RUN yum install -y go
-
-RUN git clone -b v0.10.13 https://github.com/awslabs/s2n.git
-WORKDIR /tmp/crt-builder/s2n
+RUN yum install -y ninja-build
+RUN yum install -y quilt
 
 # We keep the build artifacts in the -build directory
 WORKDIR /tmp/crt-builder
 
-ARG GITHUB_USER
-ARG GITHUB_TOKEN
-RUN git clone -b master https://$GITHUB_USER:$GITHUB_TOKEN@github.com/awslabs/aws-lc.git aws-lc \
-    && cd aws-lc \
-    && cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr . \
-    && make -j $(nproc) crypto \
-    && cp third_party/boringssl/crypto/libcrypto.a /usr/lib64/libcrypto.a \
-    && cp -r third_party/boringssl/include/openssl /usr/include \
-    && ldconfig /usr/lib64 \
-    && rm -rf /build/aws-lc
+RUN git clone https://github.com/awslabs/aws-lc.git aws-lc
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-lc -B aws-lc/build .
+RUN cmake3 --build aws-lc/build --target install
 
+RUN git clone https://github.com/awslabs/s2n.git
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S s2n -B s2n/build
 RUN cmake3 --build s2n/build --target install
 
-RUN git clone -b v0.4.52 https://github.com/awslabs/aws-c-common.git
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -S aws-c-common -B aws-c-common/build
+RUN git clone -b v0.4.56 https://github.com/awslabs/aws-c-common.git
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-common -B aws-c-common/build
 RUN cmake3 --build aws-c-common/build --target install
 
 # TODO - Merge fix upstream
-RUN git clone -b testing https://github.com/petreeftime/aws-c-io.git
-RUN cmake3 -DUSE_VSOCK=1 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -S aws-c-io -B aws-c-io/build
+RUN git clone -b ocsp-stapling https://github.com/awslabs/aws-c-io.git
+RUN cmake3 -DUSE_VSOCK=1 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-io -B aws-c-io/build
 RUN cmake3 --build aws-c-io/build --target install
 
 RUN git clone -b v0.2.10 http://github.com/awslabs/aws-c-compression.git
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S aws-c-compression -B aws-c-compression/build
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c-compression -B aws-c-compression/build
 RUN cmake3 --build aws-c-compression/build --target install
 
-RUN git clone -b v0.5.12 https://github.com/awslabs/aws-c-http.git
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -S aws-c-http -B aws-c-http/build
+RUN git clone -b v0.5.17 https://github.com/awslabs/aws-c-http.git
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-http -B aws-c-http/build
 RUN cmake3 --build aws-c-http/build --target install
 
-RUN git clone -b v0.2.7 https://github.com/awslabs/aws-c-cal.git
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S aws-c-cal -B aws-c-cal/build
+RUN git clone -b v0.3.0 https://github.com/awslabs/aws-c-cal.git
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c-cal -B aws-c-cal/build
 RUN cmake3 --build aws-c-cal/build --target install
 
-RUN git clone -b v0.3.19 https://github.com/awslabs/aws-c-auth.git
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S aws-c-auth -B aws-c-auth/build
+RUN git clone -b v0.4.1 https://github.com/awslabs/aws-c-auth.git
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c-auth -B aws-c-auth/build
 RUN cmake3 --build aws-c-auth/build --target install
 
 RUN git clone -b json-c-0.14-20200419 https://github.com/json-c/json-c.git
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_SHARED_LIBS=OFF -S json-c -B json-c/build
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_SHARED_LIBS=OFF -GNinja -S json-c -B json-c/build
 RUN cmake3 --build json-c/build --target install
 
+ARG GITHUB_USER
+ARG GITHUB_TOKEN
 RUN git clone https://$GITHUB_USER:$GITHUB_TOKEN@github.com/aws/aws-nitro-enclaves-nsm-api.git
 RUN source $HOME/.cargo/env && cd aws-nitro-enclaves-nsm-api && cargo build --release
 RUN mv aws-nitro-enclaves-nsm-api/target/release/libnsm.so /usr/lib64
 RUN mv aws-nitro-enclaves-nsm-api/target/release/nsm.h /usr/include
 
 COPY . aws-nitro-enclaves-sdk-c
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug \
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja \
 	-S aws-nitro-enclaves-sdk-c -B aws-nitro-enclaves-sdk-c/build
 RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --target install
 RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --target test

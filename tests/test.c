@@ -15,6 +15,7 @@ AWS_STATIC_STRING_FROM_LITERAL(s_access_key_id_test_value, "My Access Key");
 AWS_STATIC_STRING_FROM_LITERAL(s_secret_access_key_test_value, "SekritKey");
 AWS_STATIC_STRING_FROM_LITERAL(s_session_token_test_value, "Some Session Token");
 
+AWS_TEST_CASE(test_basic_rest_client, s_test_basic_rest_client)
 static int s_test_basic_rest_client(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
     aws_nitro_enclaves_library_init(allocator);
@@ -32,11 +33,12 @@ static int s_test_basic_rest_client(struct aws_allocator *allocator, void *ctx) 
     ASSERT_NOT_NULL(rest_client);
     aws_nitro_enclaves_rest_client_destroy(rest_client);
     aws_credentials_release(credentials);
+    ASSERT_SUCCESS(aws_global_thread_creator_shutdown_wait_for(10));
     aws_nitro_enclaves_library_clean_up();
     return 0;
 }
-AWS_TEST_CASE(test_basic_rest_client, s_test_basic_rest_client)
 
+AWS_TEST_CASE(test_rest_call_blocking, s_test_rest_call_blocking)
 static int s_test_rest_call_blocking(struct aws_allocator *allocator, void *ctx) {
     (void)ctx;
     aws_nitro_enclaves_library_init(allocator);
@@ -69,7 +71,7 @@ static int s_test_rest_call_blocking(struct aws_allocator *allocator, void *ctx)
 
     aws_nitro_enclaves_rest_client_destroy(rest_client);
     aws_credentials_release(credentials);
+    ASSERT_SUCCESS(aws_global_thread_creator_shutdown_wait_for(10));
     aws_nitro_enclaves_library_clean_up();
     return 0;
 }
-AWS_TEST_CASE(test_rest_call_blocking, s_test_rest_call_blocking)
