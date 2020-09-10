@@ -54,10 +54,6 @@ struct aws_nitro_enclaves_rest_client {
 
     /* Internal variables required for creating new connections. */
     struct aws_tls_ctx *tls_ctx;
-    struct aws_client_bootstrap *bootstrap;
-    struct aws_event_loop_group el_group;
-    struct aws_host_resolver resolver;
-    struct aws_tls_connection_options tls_connection_options;
 
     /* Variables required for sync-ing client on creation. */
     struct aws_mutex mutex;
