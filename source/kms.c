@@ -2201,9 +2201,8 @@ static int s_decrypt_ciphertext_for_recipient(
 
     struct aws_byte_buf encrypted_symm_key, decrypted_symm_key, iv, ciphertext_out;
     int rc = aws_cms_parse_enveloped_data(ciphertext_for_recipient, &encrypted_symm_key, &iv, &ciphertext_out);
-
     if (rc != AWS_OP_SUCCESS) {
-        fprintf(stderr, "Can't parse ciphertext\n");
+        fprintf(stderr, "Cannot parse CMS enveloped data.\n");
         return AWS_OP_ERR;
     }
 
@@ -2216,9 +2215,8 @@ static int s_decrypt_ciphertext_for_recipient(
     }
 
     rc = aws_cms_cipher_decrypt(&ciphertext_out, &decrypted_symm_key, &iv, plaintext);
-
     if (rc != AWS_OP_SUCCESS) {
-        fprintf(stderr, "Can't parse ciphertext\n");
+        fprintf(stderr, "Cannot decrypt CMS encrypted content\n");
         return rc;
     }
 

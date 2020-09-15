@@ -171,21 +171,43 @@ int aws_cms_parse_enveloped_data(
         goto err;
     }
 
-    /* Fetch the encrypted content. */
-    CBS wrapped_encrypted_content, encrypted_content;
-    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size) ||
-        !CBS_get_any_ber_asn1_element(&cms, &wrapped_encrypted_content, &tag, &tag_size) ||
-        !CBS_get_asn1(&wrapped_encrypted_content, &encrypted_content, CBS_ASN1_OCTETSTRING)) {
+    /* Fetch the encrypted content. This can be optional, but in our usecase it is
+     * received as a scattered OCTETSTRING. Concatenate all of them.
+     */
+    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size)) { /* ASN1_ENUM */
         goto err;
     }
 
-    const uint8_t *cipher_content = CBS_data(&encrypted_content);
-    size_t cipher_content_len = CBS_len(&encrypted_content);
+    CBB encrypted_content;
+    /* Grow as much as needed. Do not limit KMS encrypted content size from here. */
+    if (!CBB_init(&encrypted_content, 0)) {
+        goto err;
+    }
+
+    /* Consume all the entries in the scattered list */
+    CBS wrapped_encrypted_content;
+    while (CBS_get_any_ber_asn1_element(&cms, &wrapped_encrypted_content, &tag, &tag_size) == 1 &&
+           tag == CBS_ASN1_OCTETSTRING) {
+        CBS encrypted_content_part;
+        if (!CBS_get_asn1(&wrapped_encrypted_content, &encrypted_content_part, CBS_ASN1_OCTETSTRING) ||
+            !CBB_add_bytes(&encrypted_content, CBS_data(&encrypted_content_part), CBS_len(&encrypted_content_part))) {
+
+            CBB_cleanup(&encrypted_content);
+            goto err;
+        }
+    }
+
+    /* Guaranteed to have at least one OCTETSTRING, so we should always have a valid CBB here */
+    const uint8_t *cipher_content = CBB_data(&encrypted_content);
+    size_t cipher_content_len = CBB_len(&encrypted_content);
 
     cursor = aws_byte_cursor_from_array(cipher_content, cipher_content_len);
     if (AWS_OP_SUCCESS != aws_byte_buf_init_copy_from_cursor(ciphertext, aws_nitro_enclaves_get_allocator(), cursor)) {
+        CBB_cleanup(&encrypted_content);
         goto err;
     }
+
+    CBB_cleanup(&encrypted_content);
 
     return AWS_OP_SUCCESS;
 
