@@ -2082,6 +2082,10 @@ struct aws_nitro_enclaves_kms_client_configuration *aws_nitro_enclaves_kms_clien
         aws_byte_cursor_from_string(secret_access_key),
         aws_byte_cursor_from_string(session_token),
         48 * 3600); /* Expiration in seconds */
+    if (creds == NULL) {
+        aws_mem_release(allocator, config);
+        return NULL;
+    }
 
     config->credentials = creds;
     config->credentials_provider = NULL;
