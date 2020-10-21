@@ -14,7 +14,7 @@
 #include <unistd.h>
 
 #define SERVICE_PORT 3000
-#define PROXY_PORT 2000
+#define PROXY_PORT 8000
 #define BUF_SIZE 8192
 AWS_STATIC_STRING_FROM_LITERAL(default_region, "us-east-1");
 
