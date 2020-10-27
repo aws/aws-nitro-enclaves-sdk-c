@@ -39,7 +39,8 @@ might contain a description of the error.
 To run Nitro Enclaves and follow this guide, you will need an enclave-enabled
 EC2 instance. It's recommended to use an up-to-date Amazon Linux 2 AMI for this
 purpose, as the repositories already provide the required packages.
-Follow the documentation on how to start an instance here: !TODO!.
+Follow the documentation on how to start an instance
+[here](https://docs.aws.amazon.com/enclaves/latest/user/create-enclave.html#launch-parent).
 
 The next steps will be run inside that instance.
 The guide will also assume you have an IAM role attached to the instance.
@@ -190,8 +191,8 @@ echo $CIPHERTEXT
 Here we allow the instance to only encrypt and the enclave to only decrypt,
 and the root user of the account to do everything. Please read through [KMS
 Security Best Practices](https://docs.aws.amazon.com/kms/latest/developerguide/kms-security.html)
-and !TODO: Security Best Practices for Nitro Enclaves with KMS! for securing
-and managing production applications.
+and [Security Best Practices for Nitro Enclaves with KMS](https://docs.aws.amazon.com/enclaves/latest/user/security.html)
+for securing and managing production applications.
 
 ## Running in debug mode
 
