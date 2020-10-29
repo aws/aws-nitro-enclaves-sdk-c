@@ -206,7 +206,8 @@ nitro-cli console --enclave-id $ENCLAVE_ID
 
 Start vsock-proxy on port 8000. This allows the enclave egress to
 kms.us-east-1.amazonaws.com. To change regions, you will need to update the URL
-here, and also change the region for the client. See !TODO! for details.
+here, and also change the region for the client. You can find more details
+[here](https://github.com/aws/aws-nitro-enclaves-cli/blob/main/vsock_proxy/README.md).
 
 ```sh
 vsock-proxy 8000 kms.us-east-1.amazonaws.com 443
