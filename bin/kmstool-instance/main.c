@@ -24,6 +24,7 @@
 struct app_ctx {
     struct aws_allocator *allocator;
     const struct aws_string *message;
+    const struct aws_string *region;
     uint32_t port;
     uint32_t cid;
     int peer_fd;
@@ -46,6 +47,8 @@ static void s_usage(int exit_code) {
     fprintf(stderr, "\n Options: \n\n");
     fprintf(stderr, "    --port PORT: Enclave service PORT. Default: 3000\n");
     fprintf(stderr, "    --cid CID: Enclave CID\n");
+    fprintf(stderr, "    --region REGION: AWS region to use for KMS; if enclave "
+            "already has a region set via its arguments, this will cause an error\n");
     fprintf(stderr, "    ENCRYPTED_MESSAGE: Base64 encoded message\n");
     fprintf(stderr, "    --help: Display this message and exit\n");
     exit(exit_code);
@@ -54,6 +57,7 @@ static void s_usage(int exit_code) {
 static struct aws_cli_option s_long_options[] = {
     {"port", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'p'},
     {"cid", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'c'},
+    {"region", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'r'},
     {"help", AWS_CLI_OPTIONS_NO_ARGUMENT, NULL, 'h'},
     {NULL, 0, NULL, 0},
 };
@@ -64,7 +68,7 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
 
     while (true) {
         int option_index = 0;
-        int c = aws_cli_getopt_long(argc, argv, "p:c:h", s_long_options, &option_index);
+        int c = aws_cli_getopt_long(argc, argv, "p:c:r:h", s_long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -77,6 +81,9 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
                 break;
             case 'c':
                 ctx->cid = atoi(aws_cli_optarg);
+                break;
+            case 'r':
+                ctx->region = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                 break;
             case 'h':
                 s_usage(0);
@@ -218,8 +225,8 @@ int s_write_object(int peer_fd, struct json_object *obj) {
 }
 
 int s_send_credentials(struct app_ctx *app_ctx) {
-    struct json_object *set_credentials = json_object_new_object();
-    json_object_object_add(set_credentials, "Operation", json_object_new_string("SetCredentials"));
+    struct json_object *set_client = json_object_new_object();
+    json_object_object_add(set_client, "Operation", json_object_new_string("SetClient"));
 
     struct aws_byte_cursor access_key_id = aws_credentials_get_access_key_id(app_ctx->credentials);
     struct aws_byte_cursor secret_access_key = aws_credentials_get_secret_access_key(app_ctx->credentials);
@@ -232,20 +239,26 @@ int s_send_credentials(struct app_ctx *app_ctx) {
     }
 
     struct aws_byte_buf access_key_id_buf, secret_access_key_buf, session_token_buf;
+
+    /* Prepare AwsAccessKeyId. */
     aws_byte_buf_init(&access_key_id_buf, app_ctx->allocator, access_key_id.len + 1);
     aws_byte_buf_append(&access_key_id_buf, &access_key_id);
     aws_byte_buf_append_null_terminator(&access_key_id_buf);
 
+    /* Prepare AwsSecretAccessKey. */
     aws_byte_buf_init(&secret_access_key_buf, app_ctx->allocator, secret_access_key.len + 1);
     aws_byte_buf_append(&secret_access_key_buf, &secret_access_key);
     aws_byte_buf_append_null_terminator(&secret_access_key_buf);
 
+    /* Set AwsAccessKeyId. */
     json_object_object_add(
-        set_credentials, "AwsAccessKeyId", json_object_new_string((const char *)access_key_id_buf.buffer));
+        set_client, "AwsAccessKeyId", json_object_new_string((const char *)access_key_id_buf.buffer));
 
+    /* Set AwsSecretAccessKey */
     json_object_object_add(
-        set_credentials, "AwsSecretAccessKey", json_object_new_string((const char *)secret_access_key_buf.buffer));
+        set_client, "AwsSecretAccessKey", json_object_new_string((const char *)secret_access_key_buf.buffer));
 
+    /* If AwsSessionToken is present, prepare and send it. */
     if (session_token.len > 0) {
         aws_byte_buf_init(&session_token_buf, app_ctx->allocator, session_token.len + 1);
         aws_byte_buf_append(&session_token_buf, &session_token);
@@ -253,13 +266,19 @@ int s_send_credentials(struct app_ctx *app_ctx) {
         printf(PRInSTR "\n", AWS_BYTE_BUF_PRI(session_token_buf));
 
         json_object_object_add(
-            set_credentials, "AwsSessionToken", json_object_new_string((const char *)session_token_buf.buffer));
+            set_client, "AwsSessionToken", json_object_new_string((const char *)session_token_buf.buffer));
+    }
+
+    /* If targeting a particular region, prepare and set it. */
+    if (aws_string_is_valid(app_ctx->region)) {
+        json_object_object_add(set_client, "AwsRegion",
+                json_object_new_string(aws_string_c_str(app_ctx->region)));
     }
 
     aws_byte_buf_clean_up(&access_key_id_buf);
     aws_byte_buf_clean_up(&secret_access_key_buf);
     aws_byte_buf_clean_up(&session_token_buf);
-    return s_write_object(app_ctx->peer_fd, set_credentials);
+    return s_write_object(app_ctx->peer_fd, set_client);
 }
 
 void s_handle_status(struct app_ctx *app_ctx) {

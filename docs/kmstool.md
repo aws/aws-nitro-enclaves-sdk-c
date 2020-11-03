@@ -21,11 +21,15 @@ There are two message types:
 
 1. command: This is the message sent by **kmstool-instance** to the
 enclave, and contains an `Operation` field that can be
-`SetCredentials` or `Decrypt`.
-    1. `SetCredentials` operation requires `AwsAccessKeyId` and
+`SetClient` or `Decrypt`.
+    1. `SetClient` operation requires `AwsAccessKeyId` and
 `AwsSecretAccessKey` fields to be set to the corresponding
 IAM Credentials, as well as `AwsSessionToken` if available.
-Example: `{"Operation": "SetCredentials", "AwsAccessKeyId": "AKIAIOSFODNN7EXAMPLE", "AwsSecretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"}`
+Additionaly, it can specify `AwsRegion` to allow client to change region, if
+enclave does not already have a specific region set. If neither side sets a
+specific region, "us-east-1" is used.
+Example: `{"Operation": "SetClient", "AwsAccessKeyId": "AKIAIOSFODNN7EXAMPLE",
+"AwsSecretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", "AwsRegion": "us-east-1"}`.
     2. `Decrypt` operation requires a `Ciphertext` fields to be set.
 Ciphertext is a base64-encoded bytestream that is the result of a KMS Encrypt operation.
 Example: `{"Operation": "Decrypt", "Ciphertext": "AQICAHiFvOgLomqhXP8y..NkRa4CGQ=="}`
