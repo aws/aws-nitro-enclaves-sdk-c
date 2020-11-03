@@ -183,7 +183,7 @@ echo $KMS_KEY_ARN
 Then encrypt some data: 
 ```sh
 MESSAGE="Hello, KMS\!"
-CIPHERTEXT=$(aws kms encrypt --key-id "$KMS_KEY_ID" --plaintext "$MESSAGE" --query CiphertextBlob --output text)
+CIPHERTEXT=$(aws kms encrypt --key-id "$KMS_KEY_ARN" --plaintext "$MESSAGE" --query CiphertextBlob --output text)
 echo $CIPHERTEXT
 ```
 
