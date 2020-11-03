@@ -70,7 +70,7 @@ static struct aws_cli_option s_long_options[] = {
 static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     ctx->port = SERVICE_PORT;
     ctx->proxy_port = PROXY_PORT;
-    ctx->region = default_region;
+    ctx->region = NULL;
 
     while (true) {
         int option_index = 0;
@@ -83,8 +83,7 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
             case 0:
                 break;
             case 'r': {
-                struct aws_byte_cursor cursor = aws_byte_cursor_from_c_str(aws_cli_optarg);
-                ctx->region = aws_string_new_from_cursor(ctx->allocator, &cursor);
+                ctx->region = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                 break;
             }
             case 'p':
@@ -133,6 +132,41 @@ struct aws_credentials *s_read_credentials(struct aws_allocator *allocator, stru
     return credentials;
 }
 
+/**
+ * This function returns the AWS region the client will use, with the following
+ * rules:
+ * 1. If a region is already set at the start of this program it will return it, unless
+ * the client also wants to set a region, in which case it will return NULL, since
+ * the client and the enclave collide in requirements.
+ * 2. If a region is not set at the start of this program, and the client sets one,
+ * then the client one is returned, if it's correctly set by the client.
+ * 3. If no region is set at either the start of this program, nor by the client,
+ * then default_region is returned.
+ */
+struct aws_string *s_read_region(struct app_ctx *ctx, struct json_object *object) {
+    struct json_object *aws_region = json_object_object_get(object, "AwsRegion");
+    /* Neither is set, so use default_region */
+    if (aws_region == NULL && ctx->region == NULL) {
+       return aws_string_clone_or_reuse(ctx->allocator, default_region);
+    }
+
+    /* Both are set, don't allow it. */
+    if (aws_region != NULL && ctx->region != NULL) {
+        return NULL;
+    }
+
+    /* Enclave is set. */
+    if (aws_region == NULL && ctx->region != NULL) {
+        return aws_string_clone_or_reuse(ctx->allocator, ctx->region);
+    }
+
+    /* AwsRegion is set, verify it. */
+    if (!json_object_is_type(aws_region, json_type_string))
+        return NULL;
+
+    return aws_string_new_from_c_str(ctx->allocator, json_object_get_string(aws_region));
+}
+
 ssize_t s_write_all(int peer_fd, const char *msg, size_t msg_len) {
     size_t total_sent = 0;
     while (total_sent < msg_len) {
@@ -172,13 +206,13 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
     char *err_msg = NULL;
 
     struct aws_credentials *credentials = NULL;
+    struct aws_string *region = NULL;
     struct aws_nitro_enclaves_kms_client *client = NULL;
 
     /* Parent is always on CID 3 */
     struct aws_socket_endpoint endpoint = {.address = "3", .port = app_ctx->proxy_port};
     struct aws_nitro_enclaves_kms_client_configuration configuration = {
         .allocator = app_ctx->allocator,
-        .region = app_ctx->region,
         .endpoint = &endpoint,
         .domain = AWS_SOCKET_VSOCK,
     };
@@ -227,11 +261,10 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
         fail_on(operation == NULL, loop_next_err, "JSON structure incomplete");
         fail_on(!json_object_is_type(operation, json_type_string), loop_next_err, "Operation is wrong type");
 
-        if (strcmp(json_object_get_string(operation), "SetCredentials") == 0) {
-            /* SetCredentials operation sets the AWS credentials and creates a KMS
-             * client.with them. This needs to be called before Decrypt. */
+        if (strcmp(json_object_get_string(operation), "SetClient") == 0) {
+            /* SetClient operation sets the AWS credentials and optionally a region and
+             * creates a matching KMS client. This needs to be called before Decrypt. */
             struct aws_credentials *new_credentials = s_read_credentials(app_ctx->allocator, object);
-
             fail_on(new_credentials == NULL, loop_next_err, "Could not read credentials");
 
             /* If credentials or client already exists, replace them. */
@@ -240,8 +273,16 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
                 aws_credentials_release(credentials);
             }
 
+            if (aws_string_is_valid(region)) {
+                aws_string_destroy(region);
+                region = NULL;
+            }
+            region = s_read_region(app_ctx, object);
+            fail_on(region == NULL, loop_next_err, "Could not set region correctly, check configuration.");
+
             credentials = new_credentials;
             configuration.credentials = new_credentials;
+            configuration.region = region;
             client = aws_nitro_enclaves_kms_client_new(&configuration);
 
             fail_on(client == NULL, loop_next_err, "Could not create new client");
