@@ -9,6 +9,9 @@ This application has two parts:
 calls the KMS using attestation, decrypting a message received from the
 instance side. Since this is a sample, it only allows one connection at
 a time, in order to simplify the workflow.
+
+   There is a rewrite version of **kmstool-enclave** that run as a standalone application, which can directly interact with different application running in enclave. See more detail in `bin/kmstool-enclave-cli`
+
 2. **kmstool-instance** runs on the instance and connects to
 **kmstool-enclave**, passing credentials to the enclave and then
 requesting that the enclave decrypt a base64-encoded message.
