@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #define PROXY_PORT 8000
+#define DEFAULT_REGION "us-east-1"
 
 enum status {
     STATUS_OK,
@@ -69,6 +70,10 @@ static struct aws_cli_option s_long_options[] = {
 static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     ctx->proxy_port = PROXY_PORT;
     ctx->region = NULL;
+    ctx->aws_access_key_id = NULL;
+    ctx->aws_secret_access_key = NULL;
+    ctx->aws_session_token = NULL;
+    ctx->ciphertext_b64 = NULL;
 
     while (true) {
         int option_index = 0;
@@ -108,6 +113,35 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
                 break;
         }
     }
+
+    // Check if AWS access key ID is set
+    if(ctx->aws_access_key_id == NULL){
+        fprintf(stderr, "--aws-access-key-id must be set\n");
+        exit(1);
+    }
+
+    // Check if AWS secret access key is set
+    if(ctx->aws_secret_access_key == NULL){
+        fprintf(stderr, "--aws-secret-access-key must be set\n");
+        exit(1);
+    }
+
+    // Check if AWS session token is set
+    if(ctx->aws_session_token == NULL){
+        fprintf(stderr, "--aws-session-token must be set\n");
+        exit(1);
+    }
+
+    // Check if ciphertext is set
+    if(ctx->ciphertext_b64 == NULL){
+        fprintf(stderr, "--ciphertext must be set\n");
+        exit(1);
+    }
+
+    // Set default AWS region if not specified
+    if(ctx->region == NULL){
+        ctx->region = aws_string_new_from_c_str(ctx->allocator, DEFAULT_REGION);
+    }
 }
 
 static void decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_decrypted_b64) {
@@ -125,8 +159,7 @@ static void decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_dec
         .region = app_ctx->region
     };
 
-    /* SetCredentials operation sets the AWS credentials and creates a KMS
-        * client.with them. This needs to be called before Decrypt. */
+    /* Sets the AWS credentials and creates a KMS client with them. */
     struct aws_credentials *new_credentials = aws_credentials_new(
         app_ctx->allocator,
         aws_byte_cursor_from_c_str((const char*) app_ctx->aws_access_key_id->bytes),
@@ -144,11 +177,7 @@ static void decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_dec
     configuration.credentials = new_credentials;
     client = aws_nitro_enclaves_kms_client_new(&configuration);
     
-    /* Decrypt uses KMS to decrypt the data passed to it in the Ciphertext
-    * field and sends it back to the called*
-    * TODO: This should instead send a hash of the data instead.
-    */
-
+    /* Decrypt uses KMS to decrypt the ciphertext */
     /* Get decode base64 string into bytes. */
     size_t ciphertext_len;
     struct aws_byte_buf ciphertext;
@@ -167,7 +196,7 @@ static void decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_dec
     aws_byte_buf_clean_up(&ciphertext);
     fail_on(rc != AWS_OP_SUCCESS);
 
-    /* Encode ciphertext into base64 for sending back result. */
+    /* Encode ciphertext into base64 for printing out the result. */
     size_t ciphertext_decrypted_b64_len;
     struct aws_byte_cursor ciphertext_decrypted_cursor = aws_byte_cursor_from_buf(&ciphertext_decrypted);
     aws_base64_compute_encoded_len(ciphertext_decrypted.len, &ciphertext_decrypted_b64_len);
@@ -208,6 +237,7 @@ int main(int argc, char **argv) {
 
     decrypt(&app_ctx, &ciphertext_decrypted_b64);
 
+    /* Print the base64-encoded plaintext to stdout */
     fprintf(stdout, "%s", (const char *) ciphertext_decrypted_b64.buffer);
 
     aws_byte_buf_clean_up(&ciphertext_decrypted_b64);

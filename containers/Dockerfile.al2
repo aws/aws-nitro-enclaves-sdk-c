@@ -26,7 +26,7 @@ RUN git clone -b v0.4.56 https://github.com/awslabs/aws-c-common.git
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-common -B aws-c-common/build
 RUN cmake3 --build aws-c-common/build --target install
 
-RUN git clone -b master https://github.com/awslabs/aws-c-io.git # No tag yet
+RUN git clone -b main https://github.com/awslabs/aws-c-io.git # No tag yet
 RUN cmake3 -DUSE_VSOCK=1 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-io -B aws-c-io/build
 RUN cmake3 --build aws-c-io/build --target install
 
