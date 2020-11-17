@@ -13,8 +13,9 @@
 #include <errno.h>
 #include <unistd.h>
 
-#define PROXY_PORT 8000
+#define DEFAULT_PROXY_PORT 8000
 #define DEFAULT_REGION "us-east-1"
+#define DEFAULT_PARENT_CID "3"
 
 enum status {
     STATUS_OK,
@@ -44,7 +45,7 @@ struct app_ctx {
 };
 
 static void s_usage(int exit_code) {
-    fprintf(stderr, "usage: enclave_server [options]\n");
+    fprintf(stderr, "usage: kmstool_enclave_cli [options]\n");
     fprintf(stderr, "\n Options: \n\n");
     fprintf(stderr, "    --region REGION: AWS region to use for KMS\n");
     fprintf(stderr, "    --proxy-port PORT: Connect to KMS proxy on PORT. Default: 8000\n");
@@ -68,7 +69,7 @@ static struct aws_cli_option s_long_options[] = {
 };
 
 static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
-    ctx->proxy_port = PROXY_PORT;
+    ctx->proxy_port = DEFAULT_PROXY_PORT;
     ctx->region = NULL;
     ctx->aws_access_key_id = NULL;
     ctx->aws_secret_access_key = NULL;
@@ -151,7 +152,7 @@ static void decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_dec
     struct aws_nitro_enclaves_kms_client *client = NULL;
 
     /* Parent is always on CID 3 */
-    struct aws_socket_endpoint endpoint = {.address = "3", .port = app_ctx->proxy_port};
+    struct aws_socket_endpoint endpoint = {.address = DEFAULT_PARENT_CID, .port = app_ctx->proxy_port};
     struct aws_nitro_enclaves_kms_client_configuration configuration = {
         .allocator = app_ctx->allocator,
         .endpoint = &endpoint,
