@@ -26,7 +26,7 @@ RUN git clone -b v0.4.56 https://github.com/awslabs/aws-c-common.git
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-common -B aws-c-common/build
 RUN cmake3 --build aws-c-common/build --target install
 
-RUN git clone -b master https://github.com/awslabs/aws-c-io.git # No tag yet
+RUN git clone -b main https://github.com/awslabs/aws-c-io.git # No tag yet
 RUN cmake3 -DUSE_VSOCK=1 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-io -B aws-c-io/build
 RUN cmake3 --build aws-c-io/build --target install
 
@@ -81,3 +81,11 @@ RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma py
 COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
 COPY --from=builder /usr/bin/kmstool_instance /kmstool_instance
 CMD ["/kmstool_instance"]
+
+# kmstool-enclave-cli
+FROM amazonlinux as kmstool-enclave-cli
+
+# TODO: building packages statically instead of cleaning up unwanted packages from amazonlinux
+RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
+COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
+COPY --from=builder /usr/bin/kmstool_enclave_cli /kmstool_enclave_cli
