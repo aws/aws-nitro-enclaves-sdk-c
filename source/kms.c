@@ -880,6 +880,180 @@ clean_up:
     return NULL;
 }
 
+struct aws_string *aws_kms_encrypt_request_to_json(const struct aws_kms_encrypt_request *req) {
+    AWS_PRECONDITION(req);
+    AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
+    AWS_PRECONDITION(aws_byte_buf_is_valid(&req->plaintext));
+
+    struct json_object *obj = json_object_new_object();
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    /* Required parameter. */
+    if (req->plaintext.buffer == NULL) {
+        goto clean_up;
+    }
+
+    if (s_aws_byte_buf_to_base64_json(req->allocator, obj, KMS_PLAINTEXT, &req->plaintext) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    /* Optional parameters. */
+    if (req->encryption_algorithm != AWS_EA_UNINITIALIZED) {
+        const struct aws_string *encryption_algorithm =
+            s_aws_encryption_algorithm_to_aws_string(req->encryption_algorithm);
+        if (encryption_algorithm == NULL) {
+            goto clean_up;
+        }
+
+        if (s_string_to_json(obj, KMS_ENCRYPTION_ALGORITHM, aws_string_c_str(encryption_algorithm)) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (aws_hash_table_is_valid(&req->encryption_context) &&
+        aws_hash_table_get_entry_count(&req->encryption_context) != 0) {
+        if (s_aws_hash_table_to_json(obj, KMS_ENCRYPTION_CONTEXT, &req->encryption_context) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (aws_array_list_is_valid(&req->grant_tokens) && aws_array_list_length(&req->grant_tokens) != 0) {
+        if (s_aws_array_list_to_json(obj, KMS_GRANT_TOKENS, &req->grant_tokens) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (req->key_id != NULL) {
+        if (s_string_to_json(obj, KMS_KEY_ID, aws_string_c_str(req->key_id)) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    struct aws_string *json = s_aws_string_from_json(req->allocator, obj);
+    if (json == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return json;
+
+clean_up:
+    json_object_put(obj);
+
+    return NULL;
+}
+
+struct aws_kms_encrypt_request *aws_kms_encrypt_request_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json) {
+
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_object *obj = s_json_object_from_string(json);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    struct aws_kms_encrypt_request *req = aws_kms_encrypt_request_new(allocator);
+    if (req == NULL) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+        int value_type = json_object_get_type(value);
+
+        if (value_type == json_type_string) {
+            if (AWS_SAFE_COMPARE(key, KMS_PLAINTEXT)) {
+                if (s_aws_byte_buf_from_base64_json(allocator, value, &req->plaintext) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            if (AWS_SAFE_COMPARE(key, KMS_KEY_ID)) {
+                req->key_id = s_aws_string_from_json(allocator, value);
+                if (req->key_id == NULL) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            if (AWS_SAFE_COMPARE(key, KMS_ENCRYPTION_ALGORITHM)) {
+                struct aws_string *str = s_aws_string_from_json(allocator, value);
+                if (str == NULL) {
+                    goto clean_up;
+                }
+
+                if (!s_aws_encryption_algorithm_from_aws_string(str, &req->encryption_algorithm)) {
+                    aws_string_destroy(str);
+                    goto clean_up;
+                }
+
+                aws_string_destroy(str);
+                continue;
+            }
+
+            /* Unexpected key for string type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_array) {
+            if (AWS_SAFE_COMPARE(key, KMS_GRANT_TOKENS)) {
+                if (s_aws_array_list_from_json(allocator, value, &req->grant_tokens) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for array type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_object) {
+            if (AWS_SAFE_COMPARE(key, KMS_ENCRYPTION_CONTEXT)) {
+                if (s_aws_hash_table_from_json(allocator, value, &req->encryption_context) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for object type. */
+            goto clean_up;
+        }
+
+        /* Unexpected value type. */
+        goto clean_up;
+    }
+
+    /* Validate required parameters. */
+    if (req->plaintext.buffer == NULL || !aws_byte_buf_is_valid(&req->plaintext)) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return req;
+
+clean_up:
+    json_object_put(obj);
+    aws_kms_encrypt_request_destroy(req);
+
+    return NULL;
+}
+
 struct aws_string *aws_recipient_to_json(const struct aws_recipient *recipient) {
     AWS_PRECONDITION(recipient);
     AWS_PRECONDITION(aws_allocator_is_valid(recipient->allocator));
@@ -1145,6 +1319,136 @@ struct aws_kms_decrypt_response *aws_kms_decrypt_response_from_json(
 clean_up:
     json_object_put(obj);
     aws_kms_decrypt_response_destroy(response);
+
+    return NULL;
+}
+
+struct aws_string *aws_kms_encrypt_response_to_json(const struct aws_kms_encrypt_response *res) {
+    AWS_PRECONDITION(res);
+    AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
+    AWS_PRECONDITION(aws_string_is_valid(res->key_id));
+
+    struct json_object *obj = json_object_new_object();
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    /* Required parameter. */
+    if (s_string_to_json(obj, KMS_KEY_ID, aws_string_c_str(res->key_id)) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    /* Optional parameters. */
+    if (res->ciphertext_blob.buffer != NULL) {
+        if (s_aws_byte_buf_to_base64_json(res->allocator, obj, KMS_CIPHERTEXT_BLOB, &res->ciphertext_blob) !=
+            AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (res->encryption_algorithm != AWS_EA_UNINITIALIZED) {
+        const struct aws_string *encryption_algorithm =
+            s_aws_encryption_algorithm_to_aws_string(res->encryption_algorithm);
+        if (encryption_algorithm == NULL) {
+            goto clean_up;
+        }
+
+        if (s_string_to_json(obj, KMS_ENCRYPTION_ALGORITHM, aws_string_c_str(encryption_algorithm)) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    struct aws_string *json = s_aws_string_from_json(res->allocator, obj);
+    if (json == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+    return json;
+
+clean_up:
+    json_object_put(obj);
+    return NULL;
+}
+
+struct aws_kms_encrypt_response *aws_kms_encrypt_response_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json) {
+
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_object *obj = s_json_object_from_string(json);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    struct aws_kms_encrypt_response *response = aws_kms_encrypt_response_new(allocator);
+    if (response == NULL) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+        int value_type = json_object_get_type(value);
+
+        if (value_type != json_type_string) {
+            goto clean_up;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_KEY_ID)) {
+            response->key_id = s_aws_string_from_json(allocator, value);
+            if (response->key_id == NULL) {
+                goto clean_up;
+            }
+            continue;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_CIPHERTEXT_BLOB)) {
+            if (s_aws_byte_buf_from_base64_json(allocator, value, &response->ciphertext_blob) != AWS_OP_SUCCESS) {
+                goto clean_up;
+            }
+            continue;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_ENCRYPTION_ALGORITHM)) {
+            struct aws_string *str = s_aws_string_from_json(allocator, value);
+            if (str == NULL) {
+                goto clean_up;
+            }
+
+            if (!s_aws_encryption_algorithm_from_aws_string(str, &response->encryption_algorithm)) {
+                aws_string_destroy(str);
+                goto clean_up;
+            }
+
+            aws_string_destroy(str);
+            continue;
+        }
+
+        goto clean_up;
+    }
+
+    /* Validate required parameters. */
+    if (!aws_string_is_valid(response->key_id)) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return response;
+
+clean_up:
+    json_object_put(obj);
+    aws_kms_encrypt_response_destroy(response);
 
     return NULL;
 }
@@ -1872,6 +2176,97 @@ void aws_kms_decrypt_response_destroy(struct aws_kms_decrypt_response *res) {
     aws_mem_release(res->allocator, res);
 }
 
+struct aws_kms_encrypt_request *aws_kms_encrypt_request_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
+    struct aws_kms_encrypt_request *request = aws_mem_calloc(allocator, 1, sizeof(struct aws_kms_encrypt_request));
+    if (request == NULL) {
+        return NULL;
+    }
+
+    request->encryption_algorithm = AWS_EA_UNINITIALIZED;
+
+    /* Ensure allocator constness for customer usage. Utilize the @ref aws_string pattern. */
+    *(struct aws_allocator **)(&request->allocator) = allocator;
+
+    return request;
+}
+
+void aws_kms_encrypt_request_destroy(struct aws_kms_encrypt_request *req) {
+    if (req == NULL) {
+        return;
+    }
+    AWS_PRECONDITION(req);
+    AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
+
+    if (aws_byte_buf_is_valid(&req->plaintext)) {
+        aws_byte_buf_clean_up_secure(&req->plaintext);
+    }
+
+    if (aws_string_is_valid(req->key_id)) {
+        aws_string_destroy(req->key_id);
+    }
+
+    if (aws_hash_table_is_valid(&req->encryption_context)) {
+        aws_hash_table_clean_up(&req->encryption_context);
+    }
+
+    if (aws_array_list_is_valid(&req->grant_tokens)) {
+        for (size_t i = 0; i < aws_array_list_length(&req->grant_tokens); i++) {
+            struct aws_string *elem = NULL;
+            AWS_FATAL_ASSERT(aws_array_list_get_at(&req->grant_tokens, &elem, i) == AWS_OP_SUCCESS);
+
+            aws_string_destroy(elem);
+        }
+
+        aws_array_list_clean_up(&req->grant_tokens);
+    }
+
+    aws_mem_release(req->allocator, req);
+}
+
+struct aws_kms_encrypt_response *aws_kms_encrypt_response_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
+    struct aws_kms_encrypt_response *response = aws_mem_calloc(allocator, 1, sizeof(struct aws_kms_encrypt_response));
+    if (response == NULL) {
+        return NULL;
+    }
+
+    response->encryption_algorithm = AWS_EA_UNINITIALIZED;
+
+    /* Ensure allocator constness for customer usage. Utilize the @ref aws_string pattern. */
+    *(struct aws_allocator **)(&response->allocator) = allocator;
+
+    return response;
+}
+
+void aws_kms_encrypt_response_destroy(struct aws_kms_encrypt_response *res) {
+    if (res == NULL) {
+        return;
+    }
+    AWS_PRECONDITION(res);
+    AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
+
+    if (aws_string_is_valid(res->key_id)) {
+        aws_string_destroy(res->key_id);
+    }
+
+    if (aws_byte_buf_is_valid(&res->ciphertext_blob)) {
+        aws_byte_buf_clean_up_secure(&res->ciphertext_blob);
+    }
+
+    aws_mem_release(res->allocator, res);
+}
+
 struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_new(struct aws_allocator *allocator) {
     if (allocator == NULL) {
         allocator = aws_nitro_enclaves_get_allocator();
@@ -2233,6 +2628,7 @@ static int s_decrypt_ciphertext_for_recipient(
 }
 
 static struct aws_byte_cursor kms_target_decrypt = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.Decrypt");
+static struct aws_byte_cursor kms_target_encrypt = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.Encrypt");
 static struct aws_byte_cursor kms_target_generate_data_key =
     AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.GenerateDataKey");
 static struct aws_byte_cursor kms_target_generate_random =
@@ -2299,6 +2695,60 @@ int aws_kms_decrypt_blocking(
 err_clean:
     aws_kms_decrypt_request_destroy(request_structure);
     aws_kms_decrypt_response_destroy(response_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+    return AWS_OP_ERR;
+}
+
+int aws_kms_encrypt_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_byte_buf *plaintext,
+    struct aws_byte_buf *ciphertext /* TODO: err_reason */) {
+    AWS_PRECONDITION(client != NULL);
+    AWS_PRECONDITION(ciphertext != NULL);
+    AWS_PRECONDITION(plaintext != NULL);
+
+    struct aws_string *response = NULL;
+    struct aws_string *request = NULL;
+    struct aws_kms_encrypt_response *response_structure = NULL;
+    struct aws_kms_encrypt_request *request_structure = NULL;
+    int rc = 0;
+
+    request_structure = aws_kms_encrypt_request_new(client->allocator);
+    if (request_structure == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    aws_byte_buf_init_copy(&request_structure->plaintext, client->allocator, plaintext);
+
+    request = aws_kms_encrypt_request_to_json(request_structure);
+    if (request == NULL) {
+        goto err_clean;
+    }
+
+    rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_encrypt, request, &response);
+    if (rc != 200) {
+        fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
+        goto err_clean;
+    }
+
+    response_structure = aws_kms_encrypt_response_from_json(client->allocator, response);
+    if (response_structure == NULL) {
+        fprintf(stderr, "Could not read response from KMS: %d\n", rc);
+        goto err_clean;
+    }
+
+    aws_byte_buf_init_copy(ciphertext, client->allocator, &response_structure->ciphertext_blob);
+
+    aws_kms_encrypt_request_destroy(request_structure);
+    aws_kms_encrypt_response_destroy(response_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+
+    return rc;
+err_clean:
+    aws_kms_encrypt_request_destroy(request_structure);
+    aws_kms_encrypt_response_destroy(response_structure);
     aws_string_destroy(request);
     aws_string_destroy(response);
     return AWS_OP_ERR;
