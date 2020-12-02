@@ -23,7 +23,7 @@ RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S s2n -B s2n/bu
 RUN cmake3 --build s2n/build --target install
 
 RUN git clone -b v0.4.59 https://github.com/awslabs/aws-c-common.git
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-common -B aws-c-common/build
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c-common -B aws-c-common/build
 RUN cmake3 --build aws-c-common/build --target install
 
 RUN git clone -b v0.3.3 https://github.com/awslabs/aws-c-cal.git
@@ -31,7 +31,7 @@ RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c
 RUN cmake3 --build aws-c-cal/build --target install
 
 RUN git clone -b v0.7.0 https://github.com/awslabs/aws-c-io.git
-RUN cmake3 -DUSE_VSOCK=1 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-io -B aws-c-io/build
+RUN cmake3 -DUSE_VSOCK=1 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c-io -B aws-c-io/build
 RUN cmake3 --build aws-c-io/build --target install
 
 RUN git clone -b v0.2.10 http://github.com/awslabs/aws-c-compression.git
@@ -39,7 +39,7 @@ RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c
 RUN cmake3 --build aws-c-compression/build --target install
 
 RUN git clone -b v0.5.17 https://github.com/awslabs/aws-c-http.git
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja -S aws-c-http -B aws-c-http/build
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c-http -B aws-c-http/build
 RUN cmake3 --build aws-c-http/build --target install
 
 RUN git clone -b v0.4.6 https://github.com/awslabs/aws-c-auth.git
@@ -57,7 +57,7 @@ RUN mv aws-nitro-enclaves-nsm-api/target/release/nsm.h /usr/include
 
 
 COPY . aws-nitro-enclaves-sdk-c
-RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE=Debug -GNinja \
+RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja \
 	-S aws-nitro-enclaves-sdk-c -B aws-nitro-enclaves-sdk-c/build
 RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --target install
 
