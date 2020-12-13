@@ -48,6 +48,25 @@ enum aws_key_spec {
     AWS_KS_AES_128,
 };
 
+enum aws_message_type {
+    AWS_MT_UNINITIALIZED = -1,
+    AWS_MT_RAW,
+    AWS_MT_DIGEST,
+};
+
+enum aws_signing_algorithm {
+    AWS_SA_UNINITIALIZED = -1,
+    AWS_SA_RSASSA_PSS_SHA_256,
+    AWS_SA_RSASSA_PSS_SHA_384,
+    AWS_SA_RSASSA_PSS_SHA_512,
+    AWS_SA_RSASSA_PKCS1_V1_5_SHA_256,
+    AWS_SA_RSASSA_PKCS1_V1_5_SHA_384,
+    AWS_SA_RSASSA_PKCS1_V1_5_SHA_512,
+    AWS_SA_ECDSA_SHA_256,
+    AWS_SA_ECDSA_SHA_384,
+    AWS_SA_ECDSA_SHA_512,
+};
+
 struct aws_recipient {
     struct aws_byte_buf public_key;
 
@@ -326,6 +345,108 @@ struct aws_kms_generate_random_response {
      * Required: No.
      */
     struct aws_byte_buf ciphertext_for_recipient;
+
+    /**
+     * Allocator used for memory management of associated resources.
+     *
+     * Note that this is not part of the response.
+     */
+    struct aws_allocator *const allocator;
+};
+
+struct aws_kms_sign_request {
+    /**
+     * Specifies the message or message digest to sign. Messages can be 0-4096 bytes.
+     * To sign a larger message, provide the message digest.
+     *
+     * If you provide a message, AWS KMS generates a hash digest of the message
+     * and then signs it.
+     *
+     * Required: Yes.
+     */
+    struct aws_byte_buf message;
+
+    /**
+     * Tells AWS KMS whether the value of the Message parameter is a message or
+     * message digest. The default value, RAW, indicates a message. To indicate
+     * a message digest, enter DIGEST.
+     *
+     * Required: No.
+     */
+    enum aws_message_type message_type;
+
+    /**
+     * A list of grant tokens.
+     *
+     * For more information, see
+     * <a href="https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#grant_token">Grant Tokens</a>
+     * in the AWS Key Management Service Developer Guide.
+     *
+     * Required: No.
+     */
+    struct aws_array_list grant_tokens;
+
+    /**
+     * Identifies an asymmetric CMK. AWS KMS uses the private key in the asymmetric
+     * CMK to sign the message. The KeyUsage type of the CMK must be SIGN_VERIFY.
+     * To find the KeyUsage of a CMK, use the DescribeKey operation.
+     *
+     * Required: Yes.
+     */
+    struct aws_string *key_id;
+
+    /**
+     * Specifies the signing algorithm to use when signing the message.
+     *
+     * Choose an algorithm that is compatible with the type and size of the specified
+     * asymmetric CMK.
+     *
+     * Required: Yes.
+     */
+    enum aws_signing_algorithm signing_algorithm;
+
+    /**
+     * Allocator used for memory management of associated resources.
+     *
+     * Note that this is not part of the request.
+     */
+    struct aws_allocator *const allocator;
+};
+
+struct aws_kms_sign_response {
+    /**
+     * ARN of the asymmetric CMK that was used to sign the message. This value is returned if no errors are
+     * encountered during the operation.
+     *
+     * Required: Yes.
+     */
+    struct aws_string *key_id;
+
+    /**
+     * The cryptographic signature that was generated for the message.
+     *
+     * When used with the supported RSA signing algorithms, the encoding of
+     * this value is defined by PKCS #1 in RFC 8017 (https://tools.ietf.org/html/rfc8017).
+     *
+     * When used with the ECDSA_SHA_256, ECDSA_SHA_384, or ECDSA_SHA_512 signing
+     * algorithms, this value is a DER-encoded object as defined by ANS X9.62–2005
+     * and RFC 3279 Section 2.2.3 (https://tools.ietf.org/html/rfc3279#section-2.2.3).
+     * This is the most commonly used signature format and is appropriate for
+     * most uses.
+     *
+     * When you use the HTTP API or the AWS CLI, the value is Base64-encoded. Otherwise,
+     * it is not Base64-encoded.
+     *
+     * Required: Yes.
+     */
+    struct aws_byte_buf signature;
+
+    /**
+     * The signing algorithm that was used to sign the message.
+     *
+     * Required: No.
+     */
+    enum aws_signing_algorithm signing_algorithm;
 
     /**
      * Allocator used for memory management of associated resources.
@@ -657,6 +778,90 @@ AWS_NITRO_ENCLAVES_API
 void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_response *res);
 
 /**
+ * Creates an aws_kms_sign_request structure.
+ *
+ * @param[in]  allocator  The allocator used for initialization. NULL for default.
+ *
+ * @return                A new aws_kms_sign_request structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_sign_request *aws_kms_sign_request_new(struct aws_allocator *allocator);
+
+/**
+ * Deallocate all internal data for a KMS Sign Request.
+ *
+ * @param[in]  req  The KMS Sign Request.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_kms_sign_request_destroy(struct aws_kms_sign_request *req);
+
+/**
+ * Creates an aws_kms_sign_response structure.
+ *
+ * @param[in]  allocator  The allocator used for initialization.
+ *
+ * @return                A new aws_kms_sign_response structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_sign_response *aws_kms_sign_response_new(struct aws_allocator *allocator);
+
+/**
+ * Deallocate all internal data for a KMS Sign Response.
+ *
+ * @param[in]  res  The KMS Sign Response.
+ */
+AWS_NITRO_ENCLAVES_API
+void aws_kms_sign_response_destroy(struct aws_kms_sign_response *res);
+
+/**
+ * Serializes a KMS Sign Request @ref aws_kms_sign_request to json.
+ *
+ * @note The request must contain the required @ref aws_kms_sign_request::ciphertext_blob parameter.
+ *
+ * @param[in]   req        The KMS Sign Request that is to be serialized.
+ *
+ * @return                 The serialized KMS Sign Request.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_string *aws_kms_sign_request_to_json(const struct aws_kms_sign_request *req);
+
+/**
+ * Deserializes a KMS Sign Request @ref aws_kms_sign_request from json.
+ *
+ * @param[in]   allocator  The allocator used for managing resource creation. NULL for default.
+ * @param[in]   json       The serialized json KMS Sign Request.
+ *
+ * @return                 A new aws_kms_sign_request structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_sign_request *aws_kms_sign_request_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json);
+
+/**
+ * Serializes a KMS Sign Response @ref aws_kms_sign_response to json.
+ *
+ * @param[in]   res        The KMS Sign Response that is to be serialized.
+ *
+ * @return                 The serialized KMS Sign Response.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_string *aws_kms_sign_response_to_json(const struct aws_kms_sign_response *res);
+
+/**
+ * Deserializes a KMS Sign Response @ref aws_kms_sign_response from json.
+ *
+ * @param[in]   allocator  The allocator used for managing resource creation. NULL for default.
+ * @param[in]   json       The serialized json KMS Sign Response.
+ *
+ * @return                 A new aws_kms_sign_response structure.
+ */
+AWS_NITRO_ENCLAVES_API
+struct aws_kms_sign_response *aws_kms_sign_response_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json);
+
+/**
  * Create a default KMS client configuration.
  * Uses the library default allocator.
  * uses explicit credentials instead of a credential provider.
@@ -727,6 +932,15 @@ int aws_kms_generate_random_blocking(
     struct aws_nitro_enclaves_kms_client *client,
     uint32_t number_of_bytes,
     struct aws_byte_buf *plaintext /* TODO: err_reason */);
+
+AWS_NITRO_ENCLAVES_API
+int aws_kms_sign_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_string *key_id,
+    enum aws_signing_algorithm signing_algorithm,
+    const struct aws_byte_buf *message,
+    enum aws_message_type message_type,
+    struct aws_byte_buf *signature /* TODO: err_reason */);
 
 AWS_EXTERN_C_END
 

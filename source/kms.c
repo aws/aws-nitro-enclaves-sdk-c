@@ -27,6 +27,10 @@
 #define KMS_NUMBER_OF_BYTES "NumberOfBytes"
 #define KMS_KEY_SPEC "KeySpec"
 #define KMS_CUSTOM_KEY_STORE_ID "CustomKeyStoreId"
+#define KMS_MESSAGE "Message"
+#define KMS_MESSAGE_TYPE "MessageType"
+#define KMS_SIGNING_ALGORITHM "SigningAlgorithm"
+#define KMS_SIGNATURE "Signature"
 
 /**
  * Helper macro for safe comparing a C string with a C string literal.
@@ -53,6 +57,25 @@ AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_oaep_sha_256, "RSAES_OAEP_SHA_256
  */
 AWS_STATIC_STRING_FROM_LITERAL(s_aws_ks_aes_256, "AES_256");
 AWS_STATIC_STRING_FROM_LITERAL(s_aws_ks_aes_128, "AES_128");
+
+/**
+ * Aws string values for the AWS Signing Algorithm used by KMS.
+ */
+AWS_STATIC_STRING_FROM_LITERAL(s_sa_rsassa_pss_sha_256, "RSASSA_PSS_SHA_256");
+AWS_STATIC_STRING_FROM_LITERAL(s_sa_rsassa_pss_sha_384, "RSASSA_PSS_SHA_384");
+AWS_STATIC_STRING_FROM_LITERAL(s_sa_rsassa_pss_sha_512, "RSASSA_PSS_SHA_512");
+AWS_STATIC_STRING_FROM_LITERAL(s_sa_rsassa_pkcs1_v1_5_sha_256, "RSASSA_PKCS1_V1_5_SHA_256");
+AWS_STATIC_STRING_FROM_LITERAL(s_sa_rsassa_pkcs1_v1_5_sha_384, "RSASSA_PKCS1_V1_5_SHA_384");
+AWS_STATIC_STRING_FROM_LITERAL(s_sa_rsassa_pkcs1_v1_5_sha_512, "RSASSA_PKCS1_V1_5_SHA_512");
+AWS_STATIC_STRING_FROM_LITERAL(s_sa_ecdsa_sha_256, "ECDSA_SHA_256");
+AWS_STATIC_STRING_FROM_LITERAL(s_sa_ecdsa_sha_384, "ECDSA_SHA_384");
+AWS_STATIC_STRING_FROM_LITERAL(s_sa_ecdsa_sha_512, "ECDSA_SHA_512");
+
+/**
+ * Aws string values for the AWS Message Type used by KMS.
+ */
+AWS_STATIC_STRING_FROM_LITERAL(s_mt_raw, "RAW");
+AWS_STATIC_STRING_FROM_LITERAL(s_mt_digest, "DIGEST");
 
 /**
  * Initializes a @ref aws_encryption_algorithm from string.
@@ -2045,6 +2068,553 @@ void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_res
     aws_mem_release(res->allocator, res);
 }
 
+/**
+ * Initializes a @ref aws_signing_algorithm from string.
+ *
+ * @param[in]   str                   The string used to initialize the signing algorithm.
+ * @param[out]  signing_algorithm     The initialized signing algorithm.
+ *
+ * @return                            True if the string is valid, false otherwise.
+ */
+static bool s_aws_signing_algorithm_from_aws_string(
+    const struct aws_string *str,
+    enum aws_signing_algorithm *signing_algorithm) {
+
+    AWS_PRECONDITION(aws_string_c_str(str));
+    AWS_PRECONDITION(signing_algorithm);
+
+    if (aws_string_compare(str, s_sa_rsassa_pss_sha_256) == 0) {
+        *signing_algorithm = AWS_SA_RSASSA_PSS_SHA_256;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_sa_rsassa_pss_sha_384) == 0) {
+        *signing_algorithm = AWS_SA_RSASSA_PSS_SHA_384;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_sa_rsassa_pss_sha_512) == 0) {
+        *signing_algorithm = AWS_SA_RSASSA_PSS_SHA_512;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_sa_rsassa_pkcs1_v1_5_sha_256) == 0) {
+        *signing_algorithm = AWS_SA_RSASSA_PKCS1_V1_5_SHA_256;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_sa_rsassa_pkcs1_v1_5_sha_384) == 0) {
+        *signing_algorithm = AWS_SA_RSASSA_PKCS1_V1_5_SHA_384;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_sa_rsassa_pkcs1_v1_5_sha_512) == 0) {
+        *signing_algorithm = AWS_SA_RSASSA_PKCS1_V1_5_SHA_512;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_sa_ecdsa_sha_256) == 0) {
+        *signing_algorithm = AWS_SA_ECDSA_SHA_256;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_sa_ecdsa_sha_384) == 0) {
+        *signing_algorithm = AWS_SA_ECDSA_SHA_384;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_sa_ecdsa_sha_512) == 0) {
+        *signing_algorithm = AWS_SA_ECDSA_SHA_512;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Obtains the string representation of a @ref aws_signing_algorithm.
+ *
+ * @param[int]  signing_algorithm     The signing algorithm that is converted to string.
+ *
+ * @return                            A string representing the encryption algorithm.
+ */
+static const struct aws_string *s_aws_signing_algorithm_to_aws_string(
+    enum aws_signing_algorithm signing_algorithm) {
+
+    switch (signing_algorithm) {
+        case AWS_SA_RSASSA_PSS_SHA_256:
+            return s_sa_rsassa_pss_sha_256;
+        case AWS_SA_RSASSA_PSS_SHA_384:
+            return s_sa_rsassa_pss_sha_384;
+        case AWS_SA_RSASSA_PSS_SHA_512:
+            return s_sa_rsassa_pss_sha_512;
+        case AWS_SA_RSASSA_PKCS1_V1_5_SHA_256:
+            return s_sa_rsassa_pkcs1_v1_5_sha_256;
+        case AWS_SA_RSASSA_PKCS1_V1_5_SHA_384:
+            return s_sa_rsassa_pkcs1_v1_5_sha_384;
+        case AWS_SA_RSASSA_PKCS1_V1_5_SHA_512:
+            return s_sa_rsassa_pkcs1_v1_5_sha_512;
+        case AWS_SA_ECDSA_SHA_256:
+            return s_sa_ecdsa_sha_256;
+        case AWS_SA_ECDSA_SHA_384:
+            return s_sa_ecdsa_sha_384;
+        case AWS_SA_ECDSA_SHA_512:
+            return s_sa_ecdsa_sha_512;
+
+        case AWS_SA_UNINITIALIZED:
+        default:
+            return NULL;
+    }
+}
+
+/**
+ * Initializes a @ref aws_message_type from string.
+ *
+ * @param[in]   str  The string used to initialize the message type.
+ * @param[out]  mt   The initialized message type.
+ *
+ * @return           True if the string is valid, false otherwise.
+ */
+static bool s_aws_message_type_from_aws_string(const struct aws_string *str, enum aws_message_type *mt) {
+    AWS_PRECONDITION(aws_string_c_str(str));
+    AWS_PRECONDITION(mt);
+
+    if (aws_string_compare(str, s_mt_raw) == 0) {
+        *mt = AWS_MT_RAW;
+        return true;
+    }
+
+    if (aws_string_compare(str, s_mt_digest) == 0) {
+        *mt = AWS_MT_DIGEST;
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Obtains the string representation of a @ref aws_message_type.
+ *
+ * @param[int]  message_type          The message type that is converted to string.
+ *
+ * @return                            A string representing the message type.
+ */
+static const struct aws_string *s_aws_message_type_to_aws_string(
+    enum aws_message_type message_type) {
+
+    switch (message_type) {
+        case AWS_MT_RAW:
+            return s_mt_raw;
+        case AWS_MT_DIGEST:
+            return s_mt_digest;
+
+        case AWS_MT_UNINITIALIZED:
+        default:
+            return NULL;
+    }
+}
+
+struct aws_kms_sign_request *aws_kms_sign_request_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+	
+    struct aws_kms_sign_request *request = aws_mem_calloc(allocator, 1, sizeof(struct aws_kms_sign_request));
+    if (request == NULL) {
+        return NULL;
+    }
+
+    request->signing_algorithm = AWS_SA_UNINITIALIZED;
+    request->message_type = AWS_MT_UNINITIALIZED;
+
+    /* Ensure allocator constness for customer usage. Utilize the @ref aws_string pattern. */
+    *(struct aws_allocator **)(&request->allocator) = allocator;
+	
+    return request;
+}
+
+void aws_kms_sign_request_destroy(struct aws_kms_sign_request *req) {
+    if (req == NULL) {
+        return;
+    }
+    AWS_PRECONDITION(req);
+    AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
+
+    if (aws_byte_buf_is_valid(&req->message)) {
+        aws_byte_buf_clean_up_secure(&req->message);
+    }
+
+    if (aws_string_is_valid(req->key_id)) {
+        aws_string_destroy(req->key_id);
+    }
+
+    if (aws_array_list_is_valid(&req->grant_tokens)) {
+        for (size_t i = 0; i < aws_array_list_length(&req->grant_tokens); i++) {
+            struct aws_string *elem = NULL;
+            AWS_FATAL_ASSERT(aws_array_list_get_at(&req->grant_tokens, &elem, i) == AWS_OP_SUCCESS);
+
+            aws_string_destroy(elem);
+        }
+
+        aws_array_list_clean_up(&req->grant_tokens);
+    }
+
+    aws_mem_release(req->allocator, req);
+}
+
+struct aws_kms_sign_response *aws_kms_sign_response_new(struct aws_allocator *allocator) {
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+
+    struct aws_kms_sign_response *response = aws_mem_calloc(allocator, 1, sizeof(struct aws_kms_sign_response));
+    if (response == NULL) {
+        return NULL;
+    }
+
+    response->signing_algorithm = AWS_SA_UNINITIALIZED;
+
+    /* Ensure allocator constness for customer usage. Utilize the @ref aws_string pattern. */
+    *(struct aws_allocator **)(&response->allocator) = allocator;
+
+    return response;
+}
+
+void aws_kms_sign_response_destroy(struct aws_kms_sign_response *res) {
+    if (res == NULL) {
+        return;
+    }
+    AWS_PRECONDITION(res);
+    AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
+
+    if (aws_string_is_valid(res->key_id)) {
+        aws_string_destroy(res->key_id);
+    }
+
+    if (aws_byte_buf_is_valid(&res->signature)) {
+        aws_byte_buf_clean_up_secure(&res->signature);
+    }
+
+    aws_mem_release(res->allocator, res);
+}
+
+struct aws_string *aws_kms_sign_request_to_json(const struct aws_kms_sign_request *req) {
+    AWS_PRECONDITION(req);
+    AWS_PRECONDITION(aws_allocator_is_valid(req->allocator));
+    AWS_PRECONDITION(aws_byte_buf_is_valid(&req->message));
+
+    struct json_object *obj = json_object_new_object();
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    /* Required parameters. */
+    if (req->message.buffer == NULL) {
+        goto clean_up;
+    }
+    if (s_aws_byte_buf_to_base64_json(req->allocator, obj, KMS_MESSAGE, &req->message) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    const struct aws_string *signing_algorithm = s_aws_signing_algorithm_to_aws_string(req->signing_algorithm);
+    if (signing_algorithm == NULL) {
+        goto clean_up;
+    }
+    if (s_string_to_json(obj, KMS_SIGNING_ALGORITHM, aws_string_c_str(signing_algorithm)) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    if (req->key_id == NULL) {
+        goto clean_up;
+    }
+    if (s_string_to_json(obj, KMS_KEY_ID, aws_string_c_str(req->key_id)) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    /* Optional parameters. */
+    if (req->message_type != AWS_MT_UNINITIALIZED) {
+        const struct aws_string *message_type = s_aws_message_type_to_aws_string(req->message_type);
+        if (message_type == NULL) {
+            goto clean_up;
+        }
+        if (s_string_to_json(obj, KMS_MESSAGE_TYPE, aws_string_c_str(message_type)) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    if (aws_array_list_is_valid(&req->grant_tokens) && aws_array_list_length(&req->grant_tokens) != 0) {
+        if (s_aws_array_list_to_json(obj, KMS_GRANT_TOKENS, &req->grant_tokens) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    struct aws_string *json = s_aws_string_from_json(req->allocator, obj);
+    if (json == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return json;
+
+clean_up:
+    json_object_put(obj);
+
+    return NULL;
+}
+
+struct aws_kms_sign_request *aws_kms_sign_request_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json) {
+
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_object *obj = s_json_object_from_string(json);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    struct aws_kms_sign_request *req = aws_kms_sign_request_new(allocator);
+    if (req == NULL) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+        int value_type = json_object_get_type(value);
+
+        if (value_type == json_type_string) {
+            if (AWS_SAFE_COMPARE(key, KMS_MESSAGE)) {
+                if (s_aws_byte_buf_from_base64_json(allocator, value, &req->message) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            if (AWS_SAFE_COMPARE(key, KMS_KEY_ID)) {
+                req->key_id = s_aws_string_from_json(allocator, value);
+                if (req->key_id == NULL) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            if (AWS_SAFE_COMPARE(key, KMS_SIGNING_ALGORITHM)) {
+                struct aws_string *str = s_aws_string_from_json(allocator, value);
+                if (str == NULL) {
+                    goto clean_up;
+                }
+
+                if (!s_aws_signing_algorithm_from_aws_string(str, &req->signing_algorithm)) {
+                    aws_string_destroy(str);
+                    goto clean_up;
+                }
+
+                aws_string_destroy(str);
+                continue;
+            }
+
+            if (AWS_SAFE_COMPARE(key, KMS_MESSAGE_TYPE)) {
+                struct aws_string *str = s_aws_string_from_json(allocator, value);
+                if (str == NULL) {
+                    goto clean_up;
+                }
+
+                if (!s_aws_message_type_from_aws_string(str, &req->message_type)) {
+                    aws_string_destroy(str);
+                    goto clean_up;
+                }
+
+                aws_string_destroy(str);
+                continue;
+            }
+
+            /* Unexpected key for string type. */
+            goto clean_up;
+        }
+
+        if (value_type == json_type_array) {
+            if (AWS_SAFE_COMPARE(key, KMS_GRANT_TOKENS)) {
+                if (s_aws_array_list_from_json(allocator, value, &req->grant_tokens) != AWS_OP_SUCCESS) {
+                    goto clean_up;
+                }
+                continue;
+            }
+
+            /* Unexpected key for array type. */
+            goto clean_up;
+        }
+
+        /* Unexpected value type. */
+        goto clean_up;
+    }
+
+    /* Validate required parameters. */
+    if (req->message.buffer == NULL || !aws_byte_buf_is_valid(&req->message)) {
+        goto clean_up;
+    }
+    if (req->signing_algorithm == AWS_SA_UNINITIALIZED) {
+        goto clean_up;
+    }
+    if (req->key_id == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return req;
+
+clean_up:
+    json_object_put(obj);
+    aws_kms_sign_request_destroy(req);
+
+    return NULL;
+}
+
+struct aws_string *aws_kms_sign_response_to_json(const struct aws_kms_sign_response *res) {
+    AWS_PRECONDITION(res);
+    AWS_PRECONDITION(aws_allocator_is_valid(res->allocator));
+    AWS_PRECONDITION(aws_string_is_valid(res->key_id));
+
+    struct json_object *obj = json_object_new_object();
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    /* Required parameters. */
+    if (res->key_id == NULL){
+        goto clean_up;
+    }
+    if (s_string_to_json(obj, KMS_KEY_ID, aws_string_c_str(res->key_id)) != AWS_OP_SUCCESS) {
+        goto clean_up;
+    }
+
+    if (res->signature.buffer != NULL) {
+        if (s_aws_byte_buf_to_base64_json(res->allocator, obj, KMS_SIGNATURE, &res->signature) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    /* Optional parameter. */
+    if (res->signing_algorithm != AWS_SA_UNINITIALIZED)
+    {
+        const struct aws_string *signing_algorithm = s_aws_signing_algorithm_to_aws_string(res->signing_algorithm);
+        if (signing_algorithm == NULL) {
+            goto clean_up;
+        }
+        if (s_string_to_json(obj, KMS_SIGNING_ALGORITHM, aws_string_c_str(signing_algorithm)) != AWS_OP_SUCCESS) {
+            goto clean_up;
+        }
+    }
+
+    struct aws_string *json = s_aws_string_from_json(res->allocator, obj);
+    if (json == NULL) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+    return json;
+
+clean_up:
+    json_object_put(obj);
+    return NULL;
+}
+
+struct aws_kms_sign_response *aws_kms_sign_response_from_json(
+    struct aws_allocator *allocator,
+    const struct aws_string *json) {
+
+    if (allocator == NULL) {
+        allocator = aws_nitro_enclaves_get_allocator();
+    }
+
+    AWS_PRECONDITION(aws_allocator_is_valid(allocator));
+    AWS_PRECONDITION(aws_string_is_valid(json));
+
+    struct json_object *obj = s_json_object_from_string(json);
+    if (obj == NULL) {
+        return NULL;
+    }
+
+    struct aws_kms_sign_response *response = aws_kms_sign_response_new(allocator);
+    if (response == NULL) {
+        json_object_put(obj);
+        return NULL;
+    }
+
+    struct json_object_iterator it_end = json_object_iter_end(obj);
+    for (struct json_object_iterator it = json_object_iter_begin(obj); !json_object_iter_equal(&it, &it_end);
+         json_object_iter_next(&it)) {
+        const char *key = json_object_iter_peek_name(&it);
+        struct json_object *value = json_object_iter_peek_value(&it);
+        int value_type = json_object_get_type(value);
+
+        if (value_type != json_type_string) {
+            goto clean_up;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_KEY_ID)) {
+            response->key_id = s_aws_string_from_json(allocator, value);
+            if (response->key_id == NULL) {
+                goto clean_up;
+            }
+            continue;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_SIGNATURE)) {
+            if (s_aws_byte_buf_from_base64_json(allocator, value, &response->signature) != AWS_OP_SUCCESS) {
+                goto clean_up;
+            }
+            continue;
+        }
+
+        if (AWS_SAFE_COMPARE(key, KMS_SIGNING_ALGORITHM)) {
+            struct aws_string *str = s_aws_string_from_json(allocator, value);
+            if (str == NULL) {
+                goto clean_up;
+            }
+
+            if (!s_aws_signing_algorithm_from_aws_string(str, &response->signing_algorithm)) {
+                aws_string_destroy(str);
+                goto clean_up;
+            }
+
+            aws_string_destroy(str);
+            continue;
+        }
+
+        goto clean_up;
+    }
+
+    /* Validate required parameters. */
+    if (!aws_string_is_valid(response->key_id)) {
+        goto clean_up;
+    }
+
+    json_object_put(obj);
+
+    return response;
+
+clean_up:
+    json_object_put(obj);
+    aws_kms_sign_response_destroy(response);
+
+    return NULL;
+}
+
 AWS_STATIC_STRING_FROM_LITERAL(s_kms_string, "kms");
 
 struct aws_nitro_enclaves_kms_client_configuration *aws_nitro_enclaves_kms_client_config_default(
@@ -2237,6 +2807,7 @@ static struct aws_byte_cursor kms_target_generate_data_key =
     AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.GenerateDataKey");
 static struct aws_byte_cursor kms_target_generate_random =
     AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.GenerateRandom");
+static struct aws_byte_cursor kms_target_sign = AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.Sign");
 
 int aws_kms_decrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
@@ -2437,6 +3008,73 @@ int aws_kms_generate_random_blocking(
 err_clean:
     aws_kms_generate_random_request_destroy(request_structure);
     aws_kms_generate_random_response_destroy(response_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+    return AWS_OP_ERR;
+}
+
+int aws_kms_sign_blocking(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_string *key_id,
+    enum aws_signing_algorithm signing_algorithm,
+    const struct aws_byte_buf *message,
+    enum aws_message_type message_type,
+    struct aws_byte_buf *signature /* TODO: err_reason */) {
+    AWS_PRECONDITION(client != NULL);
+    AWS_PRECONDITION(key_id != NULL);
+    AWS_PRECONDITION(signing_algorithm != AWS_SA_UNINITIALIZED);
+    AWS_PRECONDITION(message != NULL);
+    AWS_PRECONDITION(signature != NULL);
+
+    struct aws_string *response = NULL;
+    struct aws_string *request = NULL;
+    struct aws_kms_sign_response *response_structure = NULL;
+    struct aws_kms_sign_request *request_structure = NULL;
+    int rc = 0;
+
+    request_structure = aws_kms_sign_request_new(client->allocator);
+    if (request_structure == NULL) {
+        return AWS_OP_ERR;
+    }
+
+    aws_byte_buf_init_copy(&request_structure->message, client->allocator, message);
+    request_structure->key_id = aws_string_clone_or_reuse(client->allocator, key_id);
+    request_structure->signing_algorithm = signing_algorithm;
+    request_structure->message_type = message_type;
+
+    request = aws_kms_sign_request_to_json(request_structure);
+    if (request == NULL) {
+        goto err_clean;
+    }
+
+    rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_sign, request, &response);
+    if (rc != 200) {
+        fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
+        goto err_clean;
+    }
+	
+    response_structure = aws_kms_sign_response_from_json(client->allocator, response);
+    if (response_structure == NULL) {
+        fprintf(stderr, "Could not read response from KMS: %d\n", rc);
+        goto err_clean;
+    }
+	
+	/*
+    rc = s_decrypt_ciphertext_for_recipient(
+        client->allocator, &response_structure->ciphertext_for_recipient, client->keypair, signature);
+	*/
+	rc = AWS_OP_SUCCESS;
+	
+	aws_byte_buf_init_copy(signature, client->allocator, &response_structure->signature);
+    aws_kms_sign_request_destroy(request_structure);
+    aws_kms_sign_response_destroy(response_structure);
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+
+    return rc;
+err_clean:
+    aws_kms_sign_request_destroy(request_structure);
+    aws_kms_sign_response_destroy(response_structure);
     aws_string_destroy(request);
     aws_string_destroy(response);
     return AWS_OP_ERR;
