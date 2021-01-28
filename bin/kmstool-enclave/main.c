@@ -183,6 +183,7 @@ ssize_t s_write_all(int peer_fd, const char *msg, size_t msg_len) {
 }
 
 int s_send_status(int peer_fd, int status, const char *msg) {
+    int rc = 0;
     struct json_object *status_object = json_object_new_object();
     if (status_object == NULL) {
         return -1;
@@ -195,7 +196,9 @@ int s_send_status(int peer_fd, int status, const char *msg) {
     }
 
     const char *status_str = json_object_to_json_string(status_object);
-    return s_write_all(peer_fd, status_str, strlen(status_str) + 1);
+    rc = s_write_all(peer_fd, status_str, strlen(status_str) + 1);
+    json_object_put(status_object);
+    return rc;
 }
 
 static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
