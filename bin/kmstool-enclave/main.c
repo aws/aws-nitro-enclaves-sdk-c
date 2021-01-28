@@ -332,15 +332,21 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
             struct aws_byte_cursor ciphertext_decrypted_cursor = aws_byte_cursor_from_buf(&ciphertext_decrypted);
             aws_base64_compute_encoded_len(ciphertext_decrypted.len, &ciphertext_decrypted_b64_len);
             rc = aws_byte_buf_init(&ciphertext_decrypted_b64, app_ctx->allocator, ciphertext_decrypted_b64_len + 1);
-            fail_on(rc != AWS_OP_SUCCESS, loop_next_err, "Memory allocation error");
+            fail_on(rc != AWS_OP_SUCCESS, decrypt_clean_err, "Memory allocation error");
             rc = aws_base64_encode(&ciphertext_decrypted_cursor, &ciphertext_decrypted_b64);
-            fail_on(rc != AWS_OP_SUCCESS, loop_next_err, "Base64 encoding error");
+            fail_on(rc != AWS_OP_SUCCESS, decrypt_clean_err, "Base64 encoding error");
             aws_byte_buf_append_null_terminator(&ciphertext_decrypted_b64);
 
             /* Send back result. */
             rc = s_send_status(peer_fd, STATUS_OK, (const char *)ciphertext_decrypted_b64.buffer);
-            aws_byte_buf_clean_up(&ciphertext_decrypted_b64); 
+            aws_byte_buf_clean_up(&ciphertext_decrypted);
+            aws_byte_buf_clean_up(&ciphertext_decrypted_b64);
             break_on(rc <= 0);
+        decrypt_clean_err:
+	    /* This is a fallthrough that cleans up local objects ahead of loop_next_err */
+            aws_byte_buf_clean_up(&ciphertext_decrypted);
+            aws_byte_buf_clean_up(&ciphertext_decrypted_b64);
+            goto loop_next_err;
         } else {
             rc = s_send_status(peer_fd, STATUS_ERR, "Operation not recognized");
             break_on(rc <= 0);
