@@ -322,6 +322,7 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
             fail_on(rc != AWS_OP_SUCCESS, loop_next_err, "Could not decrypt ciphertext");
 
             json_object_put(object);
+            object = NULL;
             /* Encode ciphertext into base64 for sending back result. */
             size_t ciphertext_decrypted_b64_len;
             struct aws_byte_buf ciphertext_decrypted_b64;
