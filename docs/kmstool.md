@@ -302,3 +302,15 @@ to connect to the console of the enclave.
 ## kmstool-enclave-cli
 There is a rewrite version of **kmstool-enclave** that run as a standalone application, which can directly interact with different application running in an enclave.
 See more detail in `bin/kmstool-enclave-cli`
+
+## Troubleshooting
+
+### Connectivity issues
+If you get back `Object = { "Status": "Error", "Message": "Could not create new client" }`
+from kmstool-instance there are a few reasons why this might happen:
+1. vsock-proxy is not running. Check [Running in debug mode](#running-in-debug-mode)
+section for information on how to set it up.
+2. Region mismatch between vsock-proxy and kmstool. This failure also shows
+`AWS_IO_TLS_ERROR_NEGOTIATION_FAILURE` in the enclave console. Check
+[Running in debug mode](#running-in-debug-mode) section for information
+on how to set up the connections.
