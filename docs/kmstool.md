@@ -105,7 +105,7 @@ Save the value of PCR0, as this will be relevant in the KMS policy that will be 
 
 ## Set up KMS
 
-To test, you will need to create a KMS key with a specific policy that allows
+To test, you will need to create a KMS CMK with a specific policy that allows
 the enclave to do KMS Decrypt, but does not allow others to do so. Your EC2
 Instance Role will need to have permission to create an AWS KMS key (but
 consider using another role for this purpose, as a best practice). Do not give
@@ -210,20 +210,22 @@ nitro-cli console --enclave-id $ENCLAVE_ID
 ```
 
 Start vsock-proxy on port 8000. This allows the enclave egress to
-kms.us-east-1.amazonaws.com. To change regions, you will need to update the URL
-here, and also change the region for the client. You can find more details
+kms.us-east-1.amazonaws.com. To change regions, you will need to update the `CMK_REGION` variable,
+and also change the region for the client similarly. You can find more details
 [here](https://github.com/aws/aws-nitro-enclaves-cli/blob/main/vsock_proxy/README.md).
 
 ```sh
-vsock-proxy 8000 kms.us-east-1.amazonaws.com 443
+CMK_REGION=us-east-1 # The region where you created your AWS KMS CMK
+vsock-proxy 8000 kms.$CMK_REGION.amazonaws.com 443
 ```
 
 In a separate terminal, connected to the instance:
 ```sh
+CMK_REGION=us-east-1 # Must match above
 ENCLAVE_CID=$(nitro-cli describe-enclaves | jq -r .[0].EnclaveCID)
 # Run docker with network host to allow it to fetch IAM credentials with IMDSv2
 docker run --network host -it kmstool-instance \
-    /kmstool_instance --cid "$ENCLAVE_CID" "$CIPHERTEXT"
+    /kmstool_instance --cid "$ENCLAVE_CID" --region "$CMK_REGION" "$CIPHERTEXT"
 ```
 
 At the end, you should be able to get back the message set above, in this case,
