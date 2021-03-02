@@ -36,8 +36,6 @@ enum aws_encryption_algorithm {
 enum aws_key_encryption_algorithm {
     AWS_KEA_UNINITIALIZED = -1,
 
-    AWS_KEA_RSAES_PKCS1_V1_5,
-    AWS_KEA_RSAES_OAEP_SHA_1,
     AWS_KEA_RSAES_OAEP_SHA_256,
 };
 

@@ -44,8 +44,6 @@ AWS_STATIC_STRING_FROM_LITERAL(s_ea_rsaes_oaep_sha_256, "RSAES_OAEP_SHA_256");
 /**
  * Aws string values for the AWS Key Encryption Algorithm used by KMS.
  */
-AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_pkcs1_v1_5, "RSAES_PKCS1_V1_5");
-AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_oaep_sha_1, "RSAES_OAEP_SHA_1");
 AWS_STATIC_STRING_FROM_LITERAL(s_aws_kea_rsaes_oaep_sha_256, "RSAES_OAEP_SHA_256");
 
 /**
@@ -126,16 +124,6 @@ static bool s_aws_key_encryption_algorithm_from_aws_string(
     AWS_PRECONDITION(aws_string_c_str(str));
     AWS_PRECONDITION(kea);
 
-    if (aws_string_compare(str, s_aws_kea_rsaes_pkcs1_v1_5) == 0) {
-        *kea = AWS_KEA_RSAES_PKCS1_V1_5;
-        return true;
-    }
-
-    if (aws_string_compare(str, s_aws_kea_rsaes_oaep_sha_1) == 0) {
-        *kea = AWS_KEA_RSAES_OAEP_SHA_1;
-        return true;
-    }
-
     if (aws_string_compare(str, s_aws_kea_rsaes_oaep_sha_256) == 0) {
         *kea = AWS_KEA_RSAES_OAEP_SHA_256;
         return true;
@@ -153,10 +141,6 @@ static bool s_aws_key_encryption_algorithm_from_aws_string(
  */
 static const struct aws_string *s_aws_key_encryption_algorithm_to_aws_string(enum aws_key_encryption_algorithm kea) {
     switch (kea) {
-        case AWS_KEA_RSAES_PKCS1_V1_5:
-            return s_aws_kea_rsaes_pkcs1_v1_5;
-        case AWS_KEA_RSAES_OAEP_SHA_1:
-            return s_aws_kea_rsaes_oaep_sha_1;
         case AWS_KEA_RSAES_OAEP_SHA_256:
             return s_aws_kea_rsaes_oaep_sha_256;
 
