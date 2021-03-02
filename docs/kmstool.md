@@ -58,9 +58,10 @@ an init process. For this step you need to install
 On Amazon Linux 2, you can run:
 ```sh
 sudo amazon-linux-extras install docker
-sudo service docker start
-sudo service docker enable
+sudo systemctl start docker
+sudo systemctl enable docker
 sudo usermod -a -G docker ec2-user
+sudo amazon-linux-extras enable nitro-enclaves
 sudo yum install -y aws-nitro-enclaves-cli aws-nitro-enclaves-cli-devel
 ```
 
