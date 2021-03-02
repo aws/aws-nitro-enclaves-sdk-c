@@ -22,8 +22,6 @@
 #define ENCRYPTION_CONTEXT_KEY "EncryptionContextKey"
 #define ENCRYPTION_CONTEXT_VALUE "EncryptionContextValue"
 #define SUFIX "Sufix"
-#define KEA_RSAES_PKCS1_V1_5 "RSAES_PKCS1_V1_5"
-#define KEA_RSAES_OAEP_SHA_1 "RSAES_OAEP_SHA_1"
 #define KEA_RSAES_OAEP_SHA_256 "RSAES_OAEP_SHA_256"
 #define KS_AES_256 "AES_256"
 
@@ -1230,22 +1228,22 @@ static int s_test_recipient_kea_to_json(struct aws_allocator *allocator, void *c
     struct aws_recipient *recipient = aws_recipient_new(allocator);
     ASSERT_NOT_NULL(recipient);
 
-    recipient->key_encryption_algorithm = AWS_KEA_RSAES_PKCS1_V1_5;
+    recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_256;
     struct aws_string *json = aws_recipient_to_json(recipient);
     ASSERT_NOT_NULL(json);
 
     struct aws_string *expected =
-        aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_PKCS1_V1_5 "\" }");
+        aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_256 "\" }");
     ASSERT_NOT_NULL(expected);
     ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
     aws_string_destroy(expected);
     aws_string_destroy(json);
 
-    recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_1;
+    recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_256;
     json = aws_recipient_to_json(recipient);
     ASSERT_NOT_NULL(json);
 
-    expected = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_1 "\" }");
+    expected = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_256 "\" }");
     ASSERT_NOT_NULL(expected);
     ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
     aws_string_destroy(expected);
@@ -1283,7 +1281,7 @@ static int s_test_recipient_to_json(struct aws_allocator *allocator, void *ctx) 
     ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
         &recipient->attestation_document, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
 
-    recipient->key_encryption_algorithm = AWS_KEA_RSAES_PKCS1_V1_5;
+    recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_256;
 
     struct aws_string *json = aws_recipient_to_json(recipient);
     ASSERT_NOT_NULL(json);
@@ -1291,7 +1289,7 @@ static int s_test_recipient_to_json(struct aws_allocator *allocator, void *ctx) 
     struct aws_string *expected = aws_string_new_from_c_str(
         allocator,
         "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
-        "\"KeyEncryptionAlgorithm\": \"" KEA_RSAES_PKCS1_V1_5 "\", "
+        "\"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_256 "\", "
         "\"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
     ASSERT_NOT_NULL(expected);
     ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
@@ -1307,24 +1305,24 @@ static int s_test_recipient_kea_from_json(struct aws_allocator *allocator, void 
     (void)ctx;
 
     struct aws_string *json =
-        aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_PKCS1_V1_5 "\" }");
+        aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_256 "\" }");
     ASSERT_NOT_NULL(json);
 
     struct aws_recipient *recipient = aws_recipient_from_json(allocator, json);
     ASSERT_NOT_NULL(recipient);
     aws_string_destroy(json);
 
-    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_PKCS1_V1_5);
+    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_OAEP_SHA_256);
     aws_recipient_destroy(recipient);
 
-    json = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_1 "\" }");
+    json = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_256 "\" }");
     ASSERT_NOT_NULL(json);
 
     recipient = aws_recipient_from_json(allocator, json);
     ASSERT_NOT_NULL(recipient);
     aws_string_destroy(json);
 
-    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_OAEP_SHA_1);
+    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_OAEP_SHA_256);
     aws_recipient_destroy(recipient);
 
     json = aws_string_new_from_c_str(allocator, "{ \"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_256 "\" }");
@@ -1365,7 +1363,7 @@ static int s_test_recipient_from_json(struct aws_allocator *allocator, void *ctx
     json = aws_string_new_from_c_str(
         allocator,
         "{ \"PublicKey\": \"" CIPHERTEXT_BLOB_BASE64 "\", "
-        "\"KeyEncryptionAlgorithm\": \"" KEA_RSAES_PKCS1_V1_5 "\", "
+        "\"KeyEncryptionAlgorithm\": \"" KEA_RSAES_OAEP_SHA_256 "\", "
         "\"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
     ASSERT_NOT_NULL(json);
 
@@ -1373,7 +1371,7 @@ static int s_test_recipient_from_json(struct aws_allocator *allocator, void *ctx
     ASSERT_NOT_NULL(recipient);
     aws_string_destroy(json);
 
-    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_PKCS1_V1_5);
+    ASSERT_INT_EQUALS(recipient->key_encryption_algorithm, AWS_KEA_RSAES_OAEP_SHA_256);
     ASSERT_BIN_ARRAYS_EQUALS(
         CIPHERTEXT_BLOB_DATA,
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
