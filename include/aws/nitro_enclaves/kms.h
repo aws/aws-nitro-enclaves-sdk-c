@@ -47,8 +47,6 @@ enum aws_key_spec {
 };
 
 struct aws_recipient {
-    struct aws_byte_buf public_key;
-
     enum aws_key_encryption_algorithm key_encryption_algorithm;
 
     struct aws_byte_buf attestation_document;
