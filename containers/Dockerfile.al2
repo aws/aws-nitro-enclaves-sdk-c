@@ -56,10 +56,12 @@ RUN mv aws-nitro-enclaves-nsm-api/target/release/libnsm.so /usr/lib64
 RUN mv aws-nitro-enclaves-nsm-api/target/release/nsm.h /usr/include
 
 
+RUN yum install -y doxygen
 COPY . aws-nitro-enclaves-sdk-c
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja \
 	-S aws-nitro-enclaves-sdk-c -B aws-nitro-enclaves-sdk-c/build
 RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --target install
+RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --target docs
 
 # Test
 FROM builder as test

@@ -1,8 +1,19 @@
 #ifndef AWS_NITRO_ENCLAVES_KMS_H
 #define AWS_NITRO_ENCLAVES_KMS_H
-/**
+/*
  * Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
+ */
+
+/**
+ * @file
+ * AWS Nitro Enclaves can call into AWS KMS with an Attestation Document that allows AWS KMS to
+ * validate the state of an enclave at boot and restrict privileges based on the policy set on
+ * the KMS CMK. More information can be found in the
+ * [AWS Nitro Enclaves documentation](https://docs.aws.amazon.com/enclaves/latest/user/kms.html)
+ *
+ * aws_kms_decrypt_blocking(), aws_kms_generate_random_blocking() and aws_kms_generate_data_key_blocking()
+ * implement the AWS KMS APIs using the enclave-specific Recipient parameters.
  */
 
 #include <aws/nitro_enclaves/attestation.h>
@@ -883,6 +894,17 @@ struct aws_nitro_enclaves_kms_client *aws_nitro_enclaves_kms_client_new(
 AWS_NITRO_ENCLAVES_API
 void aws_nitro_enclaves_kms_client_destroy(struct aws_nitro_enclaves_kms_client *client);
 
+/**
+ * Call [AWS KMS Decrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Decrypt.html).
+ * This function blocks and waits for the reply.
+ * This function generates an Attestation Document and calls AWS KMS with enclave-specific parameters.
+ * Calling it from a non-enclave environment will fail.
+ *
+ * @param[in]   client      The AWS KMS client to use for calling the API.
+ * @param[in]   ciphertext  The ciphertext to decrypt.
+ * @param[out]  plaintext   The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
+ * @return                  Returns AWS_OP_SUCCESS if the call succeeds and plaintext is populated.
+ */
 AWS_NITRO_ENCLAVES_API
 int aws_kms_decrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
@@ -895,6 +917,19 @@ int aws_kms_encrypt_blocking(
     const struct aws_byte_buf *plaintext,
     struct aws_byte_buf *ciphertext /* TODO: err_reason */);
 
+/**
+ * Call [AWS KMS GenerateDataKey API](https://docs.aws.amazon.com/kms/latest/APIReference/API_GenerateDataKey.html).
+ * This function blocks and waits for the reply.
+ * This function generates an Attestation Document and calls AWS KMS with enclave-specific parameters.
+ * Calling it from a non-enclave environment will fail.
+ *
+ * @param[in]   client       The AWS KMS client to use for calling the API.
+ * @param[in]   key_id       The ARN or alias of AWS KMS CMK used to encrypt the data key.
+ * @param[in]   key_spec     The spec of key to generate: an AES128 or an AES256 key.
+ * @param[out]  plaintext    The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
+ * @param[out]  ciphertext_blob The ciphertext blob output of the call. Should be an empty, but non-null aws_byte_buf.
+ * @return                   Returns AWS_OP_SUCCESS if the call succeeds and plaintext and ciphertext_blob are populated.
+ */
 AWS_NITRO_ENCLAVES_API
 int aws_kms_generate_data_key_blocking(
     struct aws_nitro_enclaves_kms_client *client,
@@ -904,6 +939,17 @@ int aws_kms_generate_data_key_blocking(
     struct aws_byte_buf *ciphertext_blob
     /* TODO: err_reason */);
 
+/**
+ * Call [AWS KMS GenerateRandom API](https://docs.aws.amazon.com/kms/latest/APIReference/API_GenerateRandom.html).
+ * This function blocks and waits for the reply.
+ * This function generates an Attestation Document and calls AWS KMS with enclave-specific parameters.
+ * Calling it from a non-enclave environment will fail.
+ *
+ * @param[in]   client          The AWS KMS client to use for calling the API.
+ * @param[in]   number_of_bytes The number of random bytes to generate.
+ * @param[out]  plaintext       The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
+ * @return                      Returns AWS_OP_SUCCESS if the call succeeds and plaintext is populated.
+ */
 AWS_NITRO_ENCLAVES_API
 int aws_kms_generate_random_blocking(
     struct aws_nitro_enclaves_kms_client *client,
