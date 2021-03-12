@@ -1047,14 +1047,6 @@ struct aws_string *aws_recipient_to_json(const struct aws_recipient *recipient) 
         return NULL;
     }
 
-    /* Recipient contains no required parameters in the documentation. */
-    if (recipient->public_key.buffer != NULL) {
-        if (s_aws_byte_buf_to_base64_json(recipient->allocator, obj, KMS_PUBLIC_KEY, &recipient->public_key) !=
-            AWS_OP_SUCCESS) {
-            goto clean_up;
-        }
-    }
-
     if (recipient->key_encryption_algorithm != AWS_KEA_UNINITIALIZED) {
         const struct aws_string *kea =
             s_aws_key_encryption_algorithm_to_aws_string(recipient->key_encryption_algorithm);
@@ -1118,13 +1110,6 @@ struct aws_recipient *aws_recipient_from_json(struct aws_allocator *allocator, c
 
         if (value_type != json_type_string) {
             goto clean_up;
-        }
-
-        if (AWS_SAFE_COMPARE(key, KMS_PUBLIC_KEY)) {
-            if (s_aws_byte_buf_from_base64_json(allocator, value, &recipient->public_key) != AWS_OP_SUCCESS) {
-                goto clean_up;
-            }
-            continue;
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_KEY_ENCRYPTION_ALGORITHM)) {
@@ -2049,10 +2034,6 @@ void aws_recipient_destroy(struct aws_recipient *recipient) {
     }
     AWS_PRECONDITION(recipient);
     AWS_PRECONDITION(aws_allocator_is_valid(recipient->allocator));
-
-    if (aws_byte_buf_is_valid(&recipient->public_key)) {
-        aws_byte_buf_clean_up_secure(&recipient->public_key);
-    }
 
     if (aws_byte_buf_is_valid(&recipient->attestation_document)) {
         aws_byte_buf_clean_up_secure(&recipient->attestation_document);
