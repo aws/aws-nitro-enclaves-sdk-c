@@ -119,3 +119,12 @@ if (NOT CMAKE_CROSSCOMPILING)
     add_subdirectory(bin/kmstool-instance)
     add_subdirectory(bin/kmstool-enclave-cli)
 endif()
+
+find_package(Doxygen OPTIONAL_COMPONENTS dot mscgen dia)
+
+if (DOXYGEN_FOUND) 
+    set(DOXYGEN_GENERATE_HTML YES)
+    set(DOXYGEN_GENERATE_MAN YES)
+    set(DOXYGEN_OPTIMIZE_OUTPUT_FOR_C YES)
+    doxygen_add_docs(docs ALL ${AWS_NITRO_ENCLAVES_HEADERS})
+endif()
