@@ -60,7 +60,10 @@ Developer Guide*.
       "string" : "string" 
    },
    "GrantTokens": [ "string" ],
-   "KeyId": "string"
+   "Recipient": { 
+      "AttestationDocument": blob,
+      "KeyEncryptionAlgorithm": "string"
+   }
 }
 ```
 
@@ -172,7 +175,7 @@ When `Recipient` is included in the request, the response will contain `Cipherte
 If `Recipient` is specified in the request, then it must contain the `AttestationDocument` and
 `KeyEncryptionAlgorithm`.
 
-Type: [RecipientRequest](./RecipientRequest.md) object
+Type: [RecipientInfo](./RecipientRequest.md) object
 
 Required: No
 
@@ -180,6 +183,7 @@ Required: No
 ## Response Syntax
 ```json
 {
+   "CiphertextForRecipient": blob,
    "EncryptionAlgorithm": "string",
    "KeyId": "string",
    "Plaintext": blob
