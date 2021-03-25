@@ -80,7 +80,11 @@ Related operations:
    "GrantTokens": [ "string" ],
    "KeyId": "string",
    "KeySpec": "string",
-   "NumberOfBytes": number
+   "NumberOfBytes": number,
+   "Recipient": { 
+      "AttestationDocument": blob,
+      "KeyEncryptionAlgorithm": "string"
+   }
 }
 ```
 
@@ -195,6 +199,7 @@ Required: No
 ```json
 {
    "CiphertextBlob": blob,
+   "CiphertextForRecipient": blob,
    "KeyId": "string",
    "Plaintext": blob
 }
