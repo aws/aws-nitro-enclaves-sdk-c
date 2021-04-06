@@ -27,7 +27,7 @@ This project is licensed under the Apache-2.0 License.
 ### Using containers:
 The simplest way to use this SDK is by using one of the available containers as a base:
 ```
-docker build -f --target builder -t aws-nitro-enclaves-sdk-c containers/Dockerfile.al2 .
+docker build -f containers/Dockerfile.al2 --target builder -t aws-nitro-enclaves-sdk-c .
 ```
 
 
