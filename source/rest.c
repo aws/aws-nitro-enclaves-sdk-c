@@ -67,6 +67,7 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     struct aws_client_bootstrap *bootstrap = NULL;
     struct aws_host_resolver *host_resolver = NULL;
     struct aws_tls_connection_options tls_connection_options;
+    AWS_ZERO_STRUCT(tls_connection_options);
 
     char host_name_str[256];
     snprintf(
