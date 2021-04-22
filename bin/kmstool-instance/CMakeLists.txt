@@ -11,7 +11,9 @@ target_include_directories(${KMSTOOL_INSTANCE_PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>)
 
-target_link_libraries(${KMSTOOL_INSTANCE_PROJECT_NAME} aws-nitro-enclaves-sdk-c)
+target_link_libraries(${KMSTOOL_INSTANCE_PROJECT_NAME} ${PLATFORM_DEP_LIBS})
+target_link_libraries(${KMSTOOL_INSTANCE_PROJECT_NAME} PUBLIC ${PLATFORM_LIBS})
+target_link_libraries(${KMSTOOL_INSTANCE_PROJECT_NAME} PUBLIC ${DEP_AWS_LIBS})
 
 if (BUILD_SHARED_LIBS AND NOT WIN32)
     message(INFO " kmstool will be built with shared libs, but you may need to set LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib to run the application")
@@ -23,3 +25,9 @@ install(TARGETS ${KMSTOOL_INSTANCE_PROJECT_NAME}
         RUNTIME
         DESTINATION bin
         COMPONENT Runtime)
+
+if (WIN32)
+    install(FILES $<TARGET_PDB_FILE:${KMSTOOL_INSTANCE_PROJECT_NAME}> 
+        DESTINATION bin 
+        OPTIONAL)
+endif()

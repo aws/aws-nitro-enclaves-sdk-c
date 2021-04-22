@@ -24,14 +24,15 @@ This project is licensed under the Apache-2.0 License.
 
 ## Building
 
-### Using containers:
+### Linux - Using containers:
 The simplest way to use this SDK is by using one of the available containers as a base:
 ```
 docker build -f containers/Dockerfile.al2 --target builder -t aws-nitro-enclaves-sdk-c .
 ```
 
+### Windows
+Note that this SDK is currently not supported on Windows.  Only the client side sample application (kmstool_instance) is supported on Windows.
 
 ## Samples
  * [kmstool](docs/kmstool.md)
  * [kmstool-enclave-cli](docs/kmstool.md#kmstool-enclave-cli)
-
