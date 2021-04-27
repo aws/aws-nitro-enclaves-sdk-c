@@ -125,8 +125,9 @@ if (Test-Path -Type Container $SrcPath){
 if (Test-Path -Type Container $BuildOutputPath){
     $ScratchFolder = $(Resolve-Path -Path $BuildOutputPath).Path;
 } else {
-    Write-Output("Unable to access build output path")
-    Exit
+    Write-Output("Unable to access build output path - creating new folder")
+    New-Item -Type Container $BuildOutputPath
+    $ScratchFolder = $(Resolve-Path -Path $BuildOutputPath).Path;
 }
 
 $ModuleList = New-Object System.Collections.ArrayList
