@@ -23,8 +23,15 @@ find_path(LibJsonC_INCLUDE_DIR
         /usr/include/json-c/
         /usr/local/include/json-c/
         )
+if(${WIN32})
+    set(LibJsonC_SHARED_LIB_NAME json-c.lib)
+    set(LibJsonC_STATIC_LIB_NAME json-c-static.lib)
+else()
+    set(LibJsonC_SHARED_LIB_NAME libjson-c.so)
+    set(LibJsonC_STATIC_LIB_NAME libjson-c.a)
+endif()
 find_library(LibJsonC_SHARED_LIBRARY
-        NAMES libjson-c.so
+        NAMES ${LibJsonC_SHARED_LIB_NAME}
         HINTS
         ${CMAKE_PREFIX_PATH}/build/json-c
         ${CMAKE_PREFIX_PATH}/build
@@ -38,7 +45,7 @@ find_library(LibJsonC_SHARED_LIBRARY
         ${CMAKE_INSTALL_PREFIX}/lib
         )
 find_library(LibJsonC_STATIC_LIBRARY
-        NAMES libjson-c.a
+        NAMES ${LibJsonC_STATIC_LIB_NAME}
         HINTS
         ${CMAKE_PREFIX_PATH}/build/json-c
         ${CMAKE_PREFIX_PATH}/build
@@ -57,7 +64,6 @@ if (BUILD_SHARED_LIBS)
 else()
     set(LibJsonC_LIBRARY ${LibJsonC_STATIC_LIBRARY})
 endif()
-
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(LibJsonC DEFAULT_MSG

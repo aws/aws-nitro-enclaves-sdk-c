@@ -8,7 +8,7 @@ This application has two parts:
 1. **kmstool-enclave** is the application that runs in an enclave and
 calls the KMS using attestation, decrypting a message received from the
 instance side. Since this is a sample, it only allows one connection at
-a time, in order to simplify the workflow.
+a time, in order to simplify the workflow.  This is supported only on Linux.
 
 2. **kmstool-instance** runs on the instance and connects to
 **kmstool-enclave**, passing credentials to the enclave and then
@@ -40,7 +40,7 @@ can optionally include a `Message`. If `Status` is `Ok` and the command was
 `Decrypt`, `Message` contains the result. If `Status` is `Error`, `Message`
 might contain a description of the error.
 
-## Prequisites
+## Prerequisites - Linux
 To run Nitro Enclaves and follow this guide, you will need an enclave-enabled
 EC2 instance. It's recommended to use an up-to-date Amazon Linux 2 AMI for this
 purpose, as the repositories already provide the required packages.
@@ -69,6 +69,27 @@ On other Linux distros, you will have to compile aws-nitro-enclaves-cli from
 source. Follow the
 [guide](https://github.com/aws/aws-nitro-enclaves-cli/blob/master/README.md)
 in the repo.
+
+## Prerequisites - Windows
+The enclave image file used for this sample must be built following the Linux build steps.
+Building the image for the enclave is not supported on Windows.
+The enclave image build steps will be run on Linux. Once you have the EIF file, 
+copy it over to an enclave-enabled EC2 instance running Windows.
+
+Follow the documentation on how to start a Windows EC2 instance
+[here](https://docs.aws.amazon.com/enclaves/latest/user/create-enclave.html#launch-parent).
+
+To build the kmstool-instance sample on Windows, you will need to install 
+visual studio build tools, cmake and git.  These can be installed using [Chocolatey](https://chocolatey.org/install).
+Installation requires administrator privileges. Once you have Chocolatey installed, install the tools needed for build by running:
+```powershell
+choco install visualcpp-build-tools -y
+choco install cmake -y
+choco install git -y
+```
+To run enclaves on Windows, you will need to install
+[aws-nitro-enclaves-cli](https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave-cli-install-win.html).
+This will install the necessary drivers, vsock-proxy, vsock service provider, and nitro-cli.
 
 ## Building
 
@@ -102,7 +123,18 @@ Enclave Image successfully created.
 }
 ```
 
-Save the value of PCR0, as this will be relevant in the KMS policy that will be created in the next section.
+Save the value of PCR0, as this will be relevant in the KMS policy that will be created in the `Set up KMS` section.
+If you intend to run the enclave on Windows, copy the EIF file to the Windows instance.
+
+## Building kmstool-instance on Windows
+
+kmstool-instance can be built using the build.ps1 PowerShell script.
+To build run:
+```powershell
+.\build.ps1 -BuildEverything $true
+```
+This will clone the needed dependencies and compile everything, generating kmstool_instance.exe.
+You can find this under this path: `.\buildbase\KmsToolInstall\release\bin`
 
 ## Set up KMS
 
@@ -179,18 +211,25 @@ building the enclave and can also be set with the
 }
 ```
 
-
 Create a KMS key: 
 ```sh
 KMS_KEY_ARN=$(aws kms create-key --description "Nitro Enclaves Test Key" --policy file://test-enclave-policy.json --query KeyMetadata.Arn --output text)
 echo $KMS_KEY_ARN
 ```
 
-Then encrypt some data: 
+## Encrypt test message
+
+Encrypt some data: 
 ```sh
 MESSAGE="Hello, KMS\!"
 CIPHERTEXT=$(aws kms encrypt --key-id "$KMS_KEY_ARN" --plaintext "$MESSAGE" --query CiphertextBlob --output text)
 echo $CIPHERTEXT
+```
+
+On Windows, set the $KeyArn variable to the arn created in `Set up KMS` section and use AWS PowerShell tools to encrypt:
+```powershell
+$Message = "Hello, KMS!"
+$CipherText = [System.Convert]::ToBase64String($(Invoke-KMSEncrypt -Plaintext $Message -KeyId $KeyArn -Select CiphertextBlob).ToArray())
 ```
 
 ### Security considerations
@@ -202,12 +241,20 @@ for securing and managing production applications.
 
 ## Running in debug mode
 
+The instructions for running the sample are given for both Linux and Windows.
+Windows instructions are preceded with `PowerShell`
+
 Start the enclave:
 ```sh
 nitro-cli run-enclave --eif-path kmstool.eif --memory 512 --cpu-count 2 --debug-mode
 ENCLAVE_ID=$(nitro-cli describe-enclaves | jq -r .[0].EnclaveID)
 # Connect to the enclave's terminal
 nitro-cli console --enclave-id $ENCLAVE_ID
+```
+PowerShell:
+```powershell
+nitro-cli run-enclave --eif-path kmstool.eif --memory 512 --cpu-count 2 --debug-mode
+$EnclaveID=$(nitro-cli describe-enclaves | ConvertFrom-Json).EnclaveID
 ```
 
 Start vsock-proxy on port 8000. This allows the enclave egress to
@@ -219,14 +266,25 @@ and also change the region for the client similarly. You can find more details
 CMK_REGION=us-east-1 # The region where you created your AWS KMS CMK
 vsock-proxy 8000 kms.$CMK_REGION.amazonaws.com 443
 ```
+PowerShell:
+```powershell
+$CMK_REGION="us-east-1" # the region where you created your AWS KMS CMK
+vsock-proxy 8000 kms.$CMK_REGION.amazonaws.com 443
+```
 
-In a separate terminal, connected to the instance:
+In a separate terminal or PowerShell, connected to the instance:
 ```sh
 CMK_REGION=us-east-1 # Must match above
 ENCLAVE_CID=$(nitro-cli describe-enclaves | jq -r .[0].EnclaveCID)
 # Run docker with network host to allow it to fetch IAM credentials with IMDSv2
 docker run --network host -it kmstool-instance \
     /kmstool_instance --cid "$ENCLAVE_CID" --region "$CMK_REGION" "$CIPHERTEXT"
+```
+PowerShell:
+```powershell
+$CMK_REGION="us-east-1" # Must match above
+$EnclaveCID=$(nitro-cli describe-enclaves | ConvertFrom-Json).EnclaveCID
+kmstool_instance --cid $EnclaveCID --region $CMK_REGION
 ```
 
 At the end, you should be able to get back the message set above, in this case,

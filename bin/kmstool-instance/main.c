@@ -1,3 +1,6 @@
+#if defined(_WIN32)
+#    include <VirtioVsock.h>
+#endif
 #include <aws/common/command_line_parser.h>
 #include <aws/common/condition_variable.h>
 #include <aws/common/encoding.h>
@@ -12,11 +15,23 @@
 
 #include <json-c/json.h>
 
-#include <linux/vm_sockets.h>
-#include <sys/socket.h>
+#ifndef _WIN32
+#    include <linux/vm_sockets.h>
+#    include <sys/socket.h>
 
-#include <errno.h>
-#include <unistd.h>
+#    include <errno.h>
+#    include <unistd.h>
+typedef int socket_t;
+#else
+/* json-c includes some int types to support older compiler versions
+that did not include inttypes.h - avoid the warning */
+#    pragma warning(push)
+#    pragma warning(disable : 4005)
+#    include <inttypes.h>
+#    pragma warning(pop)
+typedef SSIZE_T ssize_t;
+typedef SOCKET socket_t;
+#endif
 
 #define SERVICE_PORT 3000
 #define BUF_SIZE 8192
@@ -27,7 +42,7 @@ struct app_ctx {
     const struct aws_string *region;
     uint32_t port;
     uint32_t cid;
-    int peer_fd;
+    socket_t peer_fd;
 
     char peer_buffer[BUF_SIZE];
     size_t peer_buffer_len;
@@ -47,8 +62,10 @@ static void s_usage(int exit_code) {
     fprintf(stderr, "\n Options: \n\n");
     fprintf(stderr, "    --port PORT: Enclave service PORT. Default: 3000\n");
     fprintf(stderr, "    --cid CID: Enclave CID\n");
-    fprintf(stderr, "    --region REGION: AWS region to use for KMS; if enclave "
-            "already has a region set via its arguments, this will cause an error\n");
+    fprintf(
+        stderr,
+        "    --region REGION: AWS region to use for KMS; if enclave "
+        "already has a region set via its arguments, this will cause an error\n");
     fprintf(stderr, "    ENCRYPTED_MESSAGE: Base64 encoded message\n");
     fprintf(stderr, "    --help: Display this message and exit\n");
     exit(exit_code);
@@ -129,24 +146,25 @@ bool s_creds_pred(void *ctx) {
 
 int s_get_credentials(struct app_ctx *app_ctx) {
     int rc = AWS_OP_SUCCESS;
+    struct aws_credentials_provider *provider_chain = NULL;
+    struct aws_host_resolver *resolver = NULL;
     struct aws_event_loop_group *el_group = aws_event_loop_group_new_default(app_ctx->allocator, 1, NULL);
     if (el_group == NULL) {
         rc = AWS_OP_ERR;
         goto cleanup;
     }
-    struct aws_host_resolver *resolver = aws_host_resolver_new_default(app_ctx->allocator, 4, el_group, NULL);
+    resolver = aws_host_resolver_new_default(app_ctx->allocator, 4, el_group, NULL);
     if (resolver == NULL) {
         rc = AWS_OP_ERR;
         goto cleanup;
     }
 
-    struct aws_client_bootstrap_options bootstrap_options = {
-        .host_resolver = resolver,
-        .on_shutdown_complete = NULL,
-        .host_resolution_config = NULL,
-        .user_data = NULL,
-        .event_loop_group = el_group,
-    };
+    struct aws_client_bootstrap_options bootstrap_options = {0};
+    bootstrap_options.host_resolver = resolver;
+    bootstrap_options.on_shutdown_complete = NULL;
+    bootstrap_options.host_resolution_config = NULL;
+    bootstrap_options.user_data = NULL;
+    bootstrap_options.event_loop_group = el_group;
 
     struct aws_client_bootstrap *bootstrap = aws_client_bootstrap_new(app_ctx->allocator, &bootstrap_options);
     if (bootstrap == NULL) {
@@ -154,16 +172,12 @@ int s_get_credentials(struct app_ctx *app_ctx) {
         goto cleanup;
     }
 
-    struct aws_credentials_provider_chain_default_options chain_options = {
-        .bootstrap = bootstrap,
-        .shutdown_options =
-            {
-                .shutdown_callback = s_on_shutdown_complete,
-                .shutdown_user_data = NULL,
-            },
-    };
-    struct aws_credentials_provider *provider_chain =
-        aws_credentials_provider_new_chain_default(app_ctx->allocator, &chain_options);
+    struct aws_credentials_provider_chain_default_options chain_options = {0};
+    chain_options.bootstrap = bootstrap;
+    chain_options.shutdown_options.shutdown_callback = s_on_shutdown_complete;
+    chain_options.shutdown_options.shutdown_user_data = NULL;
+
+    provider_chain = aws_credentials_provider_new_chain_default(app_ctx->allocator, &chain_options);
     if (provider_chain == NULL) {
         rc = AWS_OP_ERR;
         goto cleanup;
@@ -191,11 +205,61 @@ cleanup:
     return rc;
 }
 
-ssize_t s_write_all(int peer_fd, const char *msg, size_t msg_len) {
+void s_close_socket(socket_t peer_fd) {
+#if defined(_WIN32)
+    closesocket(peer_fd);
+#else
+    close(peer_fd);
+#endif
+}
+
+int s_socket_init(void) {
+#if defined(_WIN32)
+    WSADATA wsadata;
+    int err;
+
+    err = WSAStartup(MAKEWORD(2, 2), &wsadata);
+    if (err != 0) {
+        fprintf(stderr, "Failed to initialize Winsock: %" PRIu32 "\n", err);
+        /* Overwrite the error with -1.  WSA errors are not negative */
+        err = -1;
+    }
+    return err;
+#else
+    return 0;
+#endif
+}
+
+void s_socket_cleanup(void) {
+#if defined(_WIN32)
+    WSACleanup();
+#endif
+}
+
+/**
+ * Helper to ensure that we never send more than INT_MAX to socket send/recv calls.
+ * Windows sockets do not accept more than this per send/recv call
+ *
+ * @param[in]    len    Length of the buffer for current socket send/recv call.
+ */
+int s_get_max_socket_io_len(size_t len) {
+    if (len > INT_MAX) {
+        len = INT_MAX;
+    }
+    return (int)len;
+}
+
+ssize_t s_write_all(socket_t peer_fd, const char *msg, size_t msg_len) {
     size_t total_sent = 0;
     while (total_sent < msg_len) {
-        ssize_t sent = write(peer_fd, msg + total_sent, msg_len - total_sent);
+        int bytes_to_send = s_get_max_socket_io_len(msg_len - total_sent);
+        ssize_t sent = send(peer_fd, msg + total_sent, bytes_to_send, 0);
+#if defined(_WIN32)
+        int wsaerr = WSAGetLastError();
+        if (sent <= 0 && (wsaerr == WSAEINPROGRESS || wsaerr == WSAEINTR)) {
+#else
         if (sent <= 0 && (errno == EAGAIN || errno == EINTR)) {
+#endif
             continue;
         } else if (sent < 0) {
             return -1;
@@ -206,7 +270,7 @@ ssize_t s_write_all(int peer_fd, const char *msg, size_t msg_len) {
     return total_sent;
 }
 
-int s_write_object(int peer_fd, struct json_object *obj) {
+int s_write_object(socket_t peer_fd, struct json_object *obj) {
     if (obj == NULL) {
         return AWS_OP_ERR;
     }
@@ -215,7 +279,7 @@ int s_write_object(int peer_fd, struct json_object *obj) {
         return AWS_OP_ERR;
     }
     printf("Object = %s\n", json_str);
-    int rc = s_write_all(peer_fd, json_str, strlen(json_str) + 1);
+    ssize_t rc = s_write_all(peer_fd, json_str, strlen(json_str) + 1);
     json_object_put(obj);
     if (rc <= 0) {
         return AWS_OP_ERR;
@@ -271,8 +335,7 @@ int s_send_credentials(struct app_ctx *app_ctx) {
 
     /* If targeting a particular region, prepare and set it. */
     if (aws_string_is_valid(app_ctx->region)) {
-        json_object_object_add(set_client, "AwsRegion",
-                json_object_new_string(aws_string_c_str(app_ctx->region)));
+        json_object_object_add(set_client, "AwsRegion", json_object_new_string(aws_string_c_str(app_ctx->region)));
     }
 
     aws_byte_buf_clean_up(&access_key_id_buf);
@@ -292,13 +355,16 @@ void s_handle_status(struct app_ctx *app_ctx) {
                 exit(1);
             }
 
+            int bytes_to_read = s_get_max_socket_io_len(sizeof(app_ctx->peer_buffer) - app_ctx->peer_buffer_len);
             // Read data from socket if no complete message is available
-            ssize_t bytes = read(
-                app_ctx->peer_fd,
-                app_ctx->peer_buffer + app_ctx->peer_buffer_len,
-                sizeof(app_ctx->peer_buffer) - app_ctx->peer_buffer_len);
+            ssize_t bytes = recv(app_ctx->peer_fd, app_ctx->peer_buffer + app_ctx->peer_buffer_len, bytes_to_read, 0);
             if (bytes == -1) {
+#if defined(_WIN32)
+                int wsaerr = WSAGetLastError();
+                if (wsaerr == WSAEINPROGRESS || wsaerr == WSAEINTR) {
+#else
                 if (errno == EAGAIN || errno == EINTR) {
+#endif
                     /* Retry operation. */
                     continue;
                 }
@@ -383,47 +449,57 @@ int main(int argc, char **argv) {
     app_ctx.peer_buffer_len = 0;
 
     struct aws_logger err_logger;
-    struct aws_logger_standard_options options = {
-        .file = stderr,
-        .level = AWS_LL_DEBUG,
-        .filename = NULL,
-    };
+
+    struct aws_logger_standard_options options = {0};
+    options.file = stderr;
+    options.level = AWS_LL_DEBUG;
+    options.filename = NULL;
+
     aws_logger_init_standard(&err_logger, app_ctx.allocator, &options);
     aws_logger_set(&err_logger);
+
+    rc = s_socket_init();
+    if (rc < 0) {
+        fprintf(stderr, "Could not initialize sockets");
+        exit(1);
+    }
 
     app_ctx.peer_fd = socket(AF_VSOCK, SOCK_STREAM, 0);
     if (app_ctx.peer_fd < 0) {
         perror("Could not create vsock port");
+        s_socket_cleanup();
         exit(1);
     }
 
-    struct sockaddr_vm svm = {
-        .svm_family = AF_VSOCK,
-        .svm_cid = app_ctx.cid,
-        .svm_port = app_ctx.port,
-        .svm_reserved1 = 0, /* needs to be set to 0 */
-    };
+    struct sockaddr_vm svm = {0};
+    svm.svm_family = AF_VSOCK;
+    svm.svm_cid = app_ctx.cid;
+    svm.svm_port = app_ctx.port;
+    svm.svm_reserved1 = 0; /* needs to be set to 0 */
 
     rc = connect(app_ctx.peer_fd, (struct sockaddr *)&svm, sizeof(svm));
     if (rc < 0) {
-        fprintf(stderr, "Coult not connect to vsock %" PRIu32 ".%" PRIu32 ".\n", app_ctx.cid, app_ctx.port);
-        close(app_ctx.peer_fd);
+        fprintf(stderr, "Could not connect to vsock %" PRIu32 ".%" PRIu32 ".\n", app_ctx.cid, app_ctx.port);
+        s_close_socket(app_ctx.peer_fd);
+        s_socket_cleanup();
         exit(1);
     }
 
     rc = s_get_credentials(&app_ctx);
     if (rc != AWS_OP_SUCCESS) {
         fprintf(stderr, "Could not get credentials\n");
-        close(app_ctx.peer_fd);
+        s_close_socket(app_ctx.peer_fd);
         aws_credentials_release(app_ctx.credentials);
+        s_socket_cleanup();
         exit(1);
     }
 
     rc = s_send_credentials(&app_ctx);
     if (rc != AWS_OP_SUCCESS) {
         fprintf(stderr, "Could not send credentials\n");
-        close(app_ctx.peer_fd);
+        s_close_socket(app_ctx.peer_fd);
         aws_credentials_release(app_ctx.credentials);
+        s_socket_cleanup();
         exit(1);
     }
     s_handle_status(&app_ctx);
@@ -431,15 +507,18 @@ int main(int argc, char **argv) {
     rc = s_send_decrypt_command(&app_ctx);
     if (rc != AWS_OP_SUCCESS) {
         fprintf(stderr, "Could not send decrypt command\n");
-        close(app_ctx.peer_fd);
+        s_close_socket(app_ctx.peer_fd);
         aws_credentials_release(app_ctx.credentials);
+        s_socket_cleanup();
         exit(1);
     }
     s_handle_status(&app_ctx);
 
-    close(app_ctx.peer_fd);
+    s_close_socket(app_ctx.peer_fd);
     aws_mutex_clean_up(&app_ctx.mutex);
     aws_condition_variable_clean_up(&app_ctx.c_var);
     aws_credentials_release(app_ctx.credentials);
+
+    s_socket_cleanup();
     return 0;
 }
