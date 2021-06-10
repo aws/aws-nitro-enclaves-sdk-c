@@ -253,7 +253,7 @@ struct aws_kms_encrypt_response {
 
     /**
      * The encrypted plaintext.
-     * 
+     *
      * Length Constraints: Minimum length of 1. Maximum length of 6144.
      *
      * Required: No.
@@ -911,11 +911,23 @@ int aws_kms_decrypt_blocking(
     const struct aws_byte_buf *ciphertext,
     struct aws_byte_buf *plaintext /* TODO: err_reason */);
 
+/**
+ * Call [AWS KMS Encrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html).
+ * This function blocks and waits for the reply.
+ *
+ * @param[in]   client      The AWS KMS client to use for calling the API.
+ * @param[in]   key_id      The ARN or alias of AWS KMS CMK used to encrypt the plaintext.
+ * @param[in]   plaintext   The plaintext to encrypt.
+ * @param[out]  ciphertext_blob  The ciphertext blob output of the call. Should be an empty, but non-null aws_byte_buf.
+ * @return                  Returns AWS_OP_SUCCESS if the call succeeds and ciphertext_blob is populated.
+ */
 AWS_NITRO_ENCLAVES_API
 int aws_kms_encrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_string *key_id,
     const struct aws_byte_buf *plaintext,
-    struct aws_byte_buf *ciphertext /* TODO: err_reason */);
+    struct aws_byte_buf *ciphertext_blob
+    /* TODO: err_reason */);
 
 /**
  * Call [AWS KMS GenerateDataKey API](https://docs.aws.amazon.com/kms/latest/APIReference/API_GenerateDataKey.html).

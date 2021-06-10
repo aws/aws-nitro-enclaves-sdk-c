@@ -2667,10 +2667,13 @@ err_clean:
 
 int aws_kms_encrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_string *key_id,
     const struct aws_byte_buf *plaintext,
-    struct aws_byte_buf *ciphertext /* TODO: err_reason */) {
+    struct aws_byte_buf *ciphertext_blob
+    /* TODO: err_reason */) {
     AWS_PRECONDITION(client != NULL);
-    AWS_PRECONDITION(ciphertext != NULL);
+    AWS_PRECONDITION(key_id != NULL);
+    AWS_PRECONDITION(ciphertext_blob != NULL);
     AWS_PRECONDITION(plaintext != NULL);
 
     struct aws_string *response = NULL;
@@ -2685,6 +2688,7 @@ int aws_kms_encrypt_blocking(
     }
 
     aws_byte_buf_init_copy(&request_structure->plaintext, client->allocator, plaintext);
+    request_structure->key_id = aws_string_clone_or_reuse(client->allocator, key_id);
 
     request = aws_kms_encrypt_request_to_json(request_structure);
     if (request == NULL) {
@@ -2703,14 +2707,14 @@ int aws_kms_encrypt_blocking(
         goto err_clean;
     }
 
-    aws_byte_buf_init_copy(ciphertext, client->allocator, &response_structure->ciphertext_blob);
+    aws_byte_buf_init_copy(ciphertext_blob, client->allocator, &response_structure->ciphertext_blob);
 
     aws_kms_encrypt_request_destroy(request_structure);
     aws_kms_encrypt_response_destroy(response_structure);
     aws_string_destroy(request);
     aws_string_destroy(response);
 
-    return rc;
+    return AWS_OP_SUCCESS;
 err_clean:
     aws_kms_encrypt_request_destroy(request_structure);
     aws_kms_encrypt_response_destroy(response_structure);
