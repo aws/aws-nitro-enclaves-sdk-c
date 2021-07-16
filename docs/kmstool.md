@@ -48,7 +48,7 @@ purpose, as the repositories already provide the required packages.
 Follow the documentation on how to start an instance
 [here](https://docs.aws.amazon.com/enclaves/latest/user/create-enclave.html#launch-parent). The next steps will be run inside that instance.
 
-> Note: The guide will also assume you have an IAM role attached to an instance profile and associated to the instance. For more information on instance profiles [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html).
+> Note: The guide will also assume you have an IAM role attached to an instance profile and associated to the instance. You can find more information on instance profiles [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html).
 
 Nitro Enclaves can be built from a docker container, alongside a kernel and
 an init process. For this step you need to install
@@ -91,7 +91,7 @@ copy it over to an enclave-enabled EC2 instance running Windows.
 Follow the documentation on how to start a Windows EC2 instance
 [here](https://docs.aws.amazon.com/enclaves/latest/user/create-enclave.html#launch-parent). The next steps will be run inside that instance.
 
-> Note: The guide will also assume you have an IAM role attached to an instance profile and associated to the instance. For more information on instance profiles [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html).
+> Note: The guide will also assume you have an IAM role attached to an instance profile and associated to the instance. You can find more information on instance profiles [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html).
 
 To build the kmstool-instance sample on Windows, you will need to install 
 visual studio build tools, cmake and git.  These can be installed using [Chocolatey](https://chocolatey.org/install).
