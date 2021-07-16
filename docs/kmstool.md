@@ -44,16 +44,16 @@ might contain a description of the error.
 To run Nitro Enclaves and follow this guide, you will need an enclave-enabled
 EC2 instance. It's recommended to use an up-to-date Amazon Linux 2 AMI for this
 purpose, as the repositories already provide the required packages.
-Follow the documentation on how to start an instance
-[here](https://docs.aws.amazon.com/enclaves/latest/user/create-enclave.html#launch-parent).
 
-The next steps will be run inside that instance.
-The guide will also assume you have an IAM role attached to the instance.
+Follow the documentation on how to start an instance
+[here](https://docs.aws.amazon.com/enclaves/latest/user/create-enclave.html#launch-parent). The next steps will be run inside that instance.
+
+> Note: The guide will also assume you have an IAM role attached to an instance profile and associated to the instance. For more information on instance profiles [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html).
 
 Nitro Enclaves can be built from a docker container, alongside a kernel and
 an init process. For this step you need to install
 [docker](https://docs.docker.com/get-docker/) and
-[aws-nitro-enclaves-cli](https://github.com/aws/aws-nitro-enclaves-cli/).
+[aws-nitro-enclaves-cli](https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave-cli-install.html).
 
 On Amazon Linux 2, you can run:
 ```sh
@@ -70,6 +70,18 @@ source. Follow the
 [guide](https://github.com/aws/aws-nitro-enclaves-cli/blob/master/README.md)
 in the repo.
 
+> Note: For the user permissions changes to take effect, log out of the instance and then reconnect to it.
+
+Then, update the default memory allocation for enclaves to `1024 MiB`:
+```sh
+sudo systemctl stop nitro-enclaves-allocator.service
+ALLOCATOR_YAML=/etc/nitro_enclaves/allocator.yaml
+MEM_KEY=memory_mib
+DEFAULT_MEM=1024
+sudo sed -r "s/^(\s*${MEM_KEY}\s*:\s*).*/\1${DEFAULT_MEM}/" -i "${ALLOCATOR_YAML}"
+sudo systemctl start nitro-enclaves-allocator.service && sudo systemctl enable nitro-enclaves-allocator.service
+```
+
 ## Prerequisites - Windows
 The enclave image file used for this sample must be built following the Linux build steps.
 Building the image for the enclave is not supported on Windows.
@@ -77,7 +89,9 @@ The enclave image build steps will be run on Linux. Once you have the EIF file,
 copy it over to an enclave-enabled EC2 instance running Windows.
 
 Follow the documentation on how to start a Windows EC2 instance
-[here](https://docs.aws.amazon.com/enclaves/latest/user/create-enclave.html#launch-parent).
+[here](https://docs.aws.amazon.com/enclaves/latest/user/create-enclave.html#launch-parent). The next steps will be run inside that instance.
+
+> Note: The guide will also assume you have an IAM role attached to an instance profile and associated to the instance. For more information on instance profiles [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html).
 
 To build the kmstool-instance sample on Windows, you will need to install 
 visual studio build tools, cmake and git.  These can be installed using [Chocolatey](https://chocolatey.org/install).
@@ -244,7 +258,7 @@ for securing and managing production applications.
 The instructions for running the sample are given for both Linux and Windows.
 Windows instructions are preceded with `PowerShell`
 
-Start the enclave:
+In a second (new) terminal session, start the enclave in debug mode and connect:
 ```sh
 nitro-cli run-enclave --eif-path kmstool.eif --memory 512 --cpu-count 2 --debug-mode
 ENCLAVE_ID=$(nitro-cli describe-enclaves | jq -r .[0].EnclaveID)
@@ -257,7 +271,7 @@ nitro-cli run-enclave --eif-path kmstool.eif --memory 512 --cpu-count 2 --debug-
 $EnclaveID=$(nitro-cli describe-enclaves | ConvertFrom-Json).EnclaveID
 ```
 
-Start vsock-proxy on port 8000. This allows the enclave egress to
+In a third (new) terminal session, start vsock-proxy on port 8000. This allows the enclave egress to
 kms.us-east-1.amazonaws.com. To change regions, you will need to update the `CMK_REGION` variable,
 and also change the region for the client similarly. You can find more details
 [here](https://github.com/aws/aws-nitro-enclaves-cli/blob/main/vsock_proxy/README.md).
@@ -272,7 +286,7 @@ $CMK_REGION="us-east-1" # the region where you created your AWS KMS CMK
 vsock-proxy 8000 kms.$CMK_REGION.amazonaws.com 443
 ```
 
-In a separate terminal or PowerShell, connected to the instance:
+Back on the first terminal session where you [encrypted the test message](#encrypt-test-message), send the ciphertext to the enclave for decryption:
 ```sh
 CMK_REGION=us-east-1 # Must match above
 ENCLAVE_CID=$(nitro-cli describe-enclaves | jq -r .[0].EnclaveCID)
