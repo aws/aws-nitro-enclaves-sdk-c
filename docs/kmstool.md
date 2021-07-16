@@ -260,14 +260,14 @@ Windows instructions are preceded with `PowerShell`
 
 In a second (new) terminal session, start the enclave in debug mode and connect:
 ```sh
-nitro-cli run-enclave --eif-path kmstool.eif --memory 512 --cpu-count 2 --debug-mode
+nitro-cli run-enclave --eif-path kmstool.eif --memory 1024 --cpu-count 2 --debug-mode
 ENCLAVE_ID=$(nitro-cli describe-enclaves | jq -r .[0].EnclaveID)
 # Connect to the enclave's terminal
 nitro-cli console --enclave-id $ENCLAVE_ID
 ```
 PowerShell:
 ```powershell
-nitro-cli run-enclave --eif-path kmstool.eif --memory 512 --cpu-count 2 --debug-mode
+nitro-cli run-enclave --eif-path kmstool.eif --memory 1024 --cpu-count 2 --debug-mode
 $EnclaveID=$(nitro-cli describe-enclaves | ConvertFrom-Json).EnclaveID
 ```
 
@@ -369,8 +369,7 @@ be identical.
 KMS_KEY_ARN=$(aws kms create-key --description "Nitro Enclaves Production Key" --policy file://test-enclave-policy.json --query KeyMetadata.Arn --output text)
 ```
 
-From this point forward, all steps are the same, except that you will not be able
-to connect to the console of the enclave.
+From this point forward, all steps are the same, except that you omit the `--debug-mode` option on the `nitro-cli run-enclave` command and you will not be able to connect to the console of the enclave. Decrypt actions between the Nitro enclave and AWS KMS will make use of and enforce the PCR values specified in the key policy.
 
 ## kmstool-enclave-cli
 There is a rewrite version of **kmstool-enclave** that run as a standalone application, which can directly interact with different application running in an enclave.
