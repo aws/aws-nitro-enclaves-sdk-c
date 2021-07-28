@@ -378,11 +378,15 @@ See more detail in `bin/kmstool-enclave-cli`
 ## Troubleshooting
 
 ### Connectivity issues
-If you get back `Object = { "Status": "Error", "Message": "Could not create new client" }`
+* If you get back `Object = { "Status": "Error", "Message": "Could not create new client" }`
 from kmstool-instance there are a few reasons why this might happen:
-1. vsock-proxy is not running. Check [Running in debug mode](#running-in-debug-mode)
+  1. vsock-proxy is not running. Check [Running in debug mode](#running-in-debug-mode)
 section for information on how to set it up.
-2. Region mismatch between vsock-proxy and kmstool. This failure also shows
+  2. Region mismatch between vsock-proxy and kmstool. This failure also shows
 `AWS_IO_TLS_ERROR_NEGOTIATION_FAILURE` in the enclave console. Check
 [Running in debug mode](#running-in-debug-mode) section for information
 on how to set up the connections.
+
+* If you encounter `Could not get credentials` error when running `kmstool_instance`
+it means that you have not attached an IAM role to an instance profile or you have
+not associated the instance profile to your instance. You can find more information on instance profiles [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html).
