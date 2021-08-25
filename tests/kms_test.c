@@ -278,7 +278,8 @@ static int s_test_kms_decrypt_request_to_json(struct aws_allocator *allocator, v
     request->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
     ASSERT_NOT_NULL(request->key_id);
 
-    struct aws_string *json = aws_string_new_from_c_str(allocator, "{ \"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    struct aws_string *json =
+        aws_string_new_from_c_str(allocator, "{ \"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
     ASSERT_NOT_NULL(json);
     request->recipient = aws_recipient_from_json(allocator, json);
     ASSERT_NOT_NULL(request->recipient);
@@ -1556,7 +1557,8 @@ static int s_test_kms_generate_data_key_request_to_json(struct aws_allocator *al
     ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_first));
     ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_second));
 
-    struct aws_string *json = aws_string_new_from_c_str(allocator, "{ \"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    struct aws_string *json =
+        aws_string_new_from_c_str(allocator, "{ \"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
     ASSERT_NOT_NULL(json);
     request->recipient = aws_recipient_from_json(allocator, json);
     ASSERT_NOT_NULL(request->recipient);
@@ -1749,7 +1751,8 @@ static int s_test_kms_generate_random_request_to_json(struct aws_allocator *allo
     request->number_of_bytes = 1;
     request->custom_key_store_id = aws_string_new_from_c_str(allocator, KEY_ID);
     ASSERT_NOT_NULL(request->custom_key_store_id);
-    struct aws_string *json = aws_string_new_from_c_str(allocator, "{ \"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
+    struct aws_string *json =
+        aws_string_new_from_c_str(allocator, "{ \"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
     ASSERT_NOT_NULL(json);
     request->recipient = aws_recipient_from_json(allocator, json);
     ASSERT_NOT_NULL(request->recipient);

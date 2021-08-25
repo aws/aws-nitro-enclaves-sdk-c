@@ -116,31 +116,31 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     }
 
     // Check if AWS access key ID is set
-    if(ctx->aws_access_key_id == NULL){
+    if (ctx->aws_access_key_id == NULL) {
         fprintf(stderr, "--aws-access-key-id must be set\n");
         exit(1);
     }
 
     // Check if AWS secret access key is set
-    if(ctx->aws_secret_access_key == NULL){
+    if (ctx->aws_secret_access_key == NULL) {
         fprintf(stderr, "--aws-secret-access-key must be set\n");
         exit(1);
     }
 
     // Check if AWS session token is set
-    if(ctx->aws_session_token == NULL){
+    if (ctx->aws_session_token == NULL) {
         fprintf(stderr, "--aws-session-token must be set\n");
         exit(1);
     }
 
     // Check if ciphertext is set
-    if(ctx->ciphertext_b64 == NULL){
+    if (ctx->ciphertext_b64 == NULL) {
         fprintf(stderr, "--ciphertext must be set\n");
         exit(1);
     }
 
     // Set default AWS region if not specified
-    if(ctx->region == NULL){
+    if (ctx->region == NULL) {
         ctx->region = aws_string_new_from_c_str(ctx->allocator, DEFAULT_REGION);
     }
 }
@@ -154,18 +154,14 @@ static void decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_dec
     /* Parent is always on CID 3 */
     struct aws_socket_endpoint endpoint = {.address = DEFAULT_PARENT_CID, .port = app_ctx->proxy_port};
     struct aws_nitro_enclaves_kms_client_configuration configuration = {
-        .allocator = app_ctx->allocator,
-        .endpoint = &endpoint,
-        .domain = AWS_SOCKET_VSOCK,
-        .region = app_ctx->region
-    };
+        .allocator = app_ctx->allocator, .endpoint = &endpoint, .domain = AWS_SOCKET_VSOCK, .region = app_ctx->region};
 
     /* Sets the AWS credentials and creates a KMS client with them. */
     struct aws_credentials *new_credentials = aws_credentials_new(
         app_ctx->allocator,
-        aws_byte_cursor_from_c_str((const char*) app_ctx->aws_access_key_id->bytes),
-        aws_byte_cursor_from_c_str((const char*) app_ctx->aws_secret_access_key->bytes),
-        aws_byte_cursor_from_c_str((const char*) app_ctx->aws_session_token->bytes),
+        aws_byte_cursor_from_c_str((const char *)app_ctx->aws_access_key_id->bytes),
+        aws_byte_cursor_from_c_str((const char *)app_ctx->aws_secret_access_key->bytes),
+        aws_byte_cursor_from_c_str((const char *)app_ctx->aws_session_token->bytes),
         UINT64_MAX);
 
     /* If credentials or client already exists, replace them. */
@@ -177,12 +173,12 @@ static void decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_dec
     credentials = new_credentials;
     configuration.credentials = new_credentials;
     client = aws_nitro_enclaves_kms_client_new(&configuration);
-    
+
     /* Decrypt uses KMS to decrypt the ciphertext */
     /* Get decode base64 string into bytes. */
     size_t ciphertext_len;
     struct aws_byte_buf ciphertext;
-    struct aws_byte_cursor ciphertext_b64 = aws_byte_cursor_from_c_str((const char*) app_ctx->ciphertext_b64->bytes);
+    struct aws_byte_cursor ciphertext_b64 = aws_byte_cursor_from_c_str((const char *)app_ctx->ciphertext_b64->bytes);
 
     rc = aws_base64_compute_decoded_len(&ciphertext_b64, &ciphertext_len);
     fail_on(rc != AWS_OP_SUCCESS);
@@ -239,7 +235,7 @@ int main(int argc, char **argv) {
     decrypt(&app_ctx, &ciphertext_decrypted_b64);
 
     /* Print the base64-encoded plaintext to stdout */
-    fprintf(stdout, "%s", (const char *) ciphertext_decrypted_b64.buffer);
+    fprintf(stdout, "%s", (const char *)ciphertext_decrypted_b64.buffer);
 
     aws_byte_buf_clean_up(&ciphertext_decrypted_b64);
     aws_nitro_enclaves_library_clean_up();

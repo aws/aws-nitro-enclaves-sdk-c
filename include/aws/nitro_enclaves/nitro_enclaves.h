@@ -7,26 +7,26 @@
  */
 
 /**
-  * @mainpage
-  *
-  * # AWS Nitro Enclaves SDK for C
-  *
-  * This SDK allows you to use the functionality of AWS Nitro Enclaves and provides simple APIs for seeding
-  * system entropy or calling into AWS KMS using attestation.
-  *
-  * To instantiate the library, call aws_nitro_enclaves_library_init() first.
-  * To seed entropy, use aws_nitro_enclaves_library_seed_entropy().
-  *
-  * ## AWS KMS
-  * To use AWS KMS functionality, create an aws_kms_client using aws_nitro_enclaves_kms_client_new(),
-  * afterwards, call aws_kms_decrypt_blocking(), aws_kms_generate_random_blocking() and
-  * aws_kms_generate_data_key_blocking(), depending on needs.
-  * 
-  * Additional documentation and sample can be found in the main
-  * [Github repository](https://github.com/aws/aws-nitro-enclaves-sdk-c) or
-  * on AWS documentation website for
-  * [AWS Nitro Enclaves](https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave.html)
-  */
+ * @mainpage
+ *
+ * # AWS Nitro Enclaves SDK for C
+ *
+ * This SDK allows you to use the functionality of AWS Nitro Enclaves and provides simple APIs for seeding
+ * system entropy or calling into AWS KMS using attestation.
+ *
+ * To instantiate the library, call aws_nitro_enclaves_library_init() first.
+ * To seed entropy, use aws_nitro_enclaves_library_seed_entropy().
+ *
+ * ## AWS KMS
+ * To use AWS KMS functionality, create an aws_kms_client using aws_nitro_enclaves_kms_client_new(),
+ * afterwards, call aws_kms_decrypt_blocking(), aws_kms_generate_random_blocking() and
+ * aws_kms_generate_data_key_blocking(), depending on needs.
+ *
+ * Additional documentation and sample can be found in the main
+ * [Github repository](https://github.com/aws/aws-nitro-enclaves-sdk-c) or
+ * on AWS documentation website for
+ * [AWS Nitro Enclaves](https://docs.aws.amazon.com/enclaves/latest/user/nitro-enclave.html)
+ */
 
 #include <aws/nitro_enclaves/exports.h>
 
@@ -34,9 +34,9 @@
 #include <aws/common/macros.h>
 
 /**
-  * @file
-  * Initialize the library and main enclave functionality.
-  */
+ * @file
+ * Initialize the library and main enclave functionality.
+ */
 
 AWS_EXTERN_C_BEGIN
 
