@@ -147,7 +147,7 @@ struct aws_string *s_read_region(struct app_ctx *ctx, struct json_object *object
     struct json_object *aws_region = json_object_object_get(object, "AwsRegion");
     /* Neither is set, so use default_region */
     if (aws_region == NULL && ctx->region == NULL) {
-       return aws_string_clone_or_reuse(ctx->allocator, default_region);
+        return aws_string_clone_or_reuse(ctx->allocator, default_region);
     }
 
     /* Both are set, don't allow it. */
@@ -343,7 +343,7 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
             aws_byte_buf_clean_up(&ciphertext_decrypted_b64);
             break_on(rc <= 0);
         decrypt_clean_err:
-	    /* This is a fallthrough that cleans up local objects ahead of loop_next_err */
+            /* This is a fallthrough that cleans up local objects ahead of loop_next_err */
             aws_byte_buf_clean_up(&ciphertext_decrypted);
             aws_byte_buf_clean_up(&ciphertext_decrypted_b64);
             goto loop_next_err;

@@ -940,7 +940,8 @@ int aws_kms_encrypt_blocking(
  * @param[in]   key_spec     The spec of key to generate: an AES128 or an AES256 key.
  * @param[out]  plaintext    The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
  * @param[out]  ciphertext_blob The ciphertext blob output of the call. Should be an empty, but non-null aws_byte_buf.
- * @return                   Returns AWS_OP_SUCCESS if the call succeeds and plaintext and ciphertext_blob are populated.
+ * @return                   Returns AWS_OP_SUCCESS if the call succeeds and plaintext and ciphertext_blob are
+ *                           populated.
  */
 AWS_NITRO_ENCLAVES_API
 int aws_kms_generate_data_key_blocking(

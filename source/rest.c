@@ -71,11 +71,11 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
 
     char host_name_str[256];
     snprintf(
-       host_name_str,
-       sizeof(host_name_str),
-       "%s.%s.amazonaws.com",
-       aws_string_c_str(configuration->service),
-       aws_string_c_str(configuration->region));
+        host_name_str,
+        sizeof(host_name_str),
+        "%s.%s.amazonaws.com",
+        aws_string_c_str(configuration->service),
+        aws_string_c_str(configuration->region));
     struct aws_byte_cursor host_name = aws_byte_cursor_from_c_str(host_name_str);
 
     struct aws_nitro_enclaves_rest_client *rest_client =
@@ -127,8 +127,7 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     aws_tls_ctx_options_clean_up(&tls_ctx_options);
 
     aws_tls_connection_options_init_from_ctx(&tls_connection_options, rest_client->tls_ctx);
-    if (aws_tls_connection_options_set_server_name(
-            &tls_connection_options, rest_client->allocator, &host_name)) {
+    if (aws_tls_connection_options_set_server_name(&tls_connection_options, rest_client->allocator, &host_name)) {
         // TODO: aws_raise
         goto err_clean;
     }
@@ -332,12 +331,13 @@ static struct aws_http_message *s_make_request(
 
     struct aws_http_message *request = aws_http_message_new_request(rest_client->allocator);
 
-    struct aws_http_header host_header = {.name = aws_byte_cursor_from_c_str("host"),
-                                          .value = aws_byte_cursor_from_string(rest_client->host_name)};
+    struct aws_http_header host_header = {
+        .name = aws_byte_cursor_from_c_str("host"), .value = aws_byte_cursor_from_string(rest_client->host_name)};
     aws_http_message_add_header(request, host_header);
 
-    struct aws_http_header content_type = {.name = aws_byte_cursor_from_c_str("content-type"),
-                                           .value = aws_byte_cursor_from_c_str("application/x-amz-json-1.1")};
+    struct aws_http_header content_type = {
+        .name = aws_byte_cursor_from_c_str("content-type"),
+        .value = aws_byte_cursor_from_c_str("application/x-amz-json-1.1")};
     aws_http_message_add_header(request, content_type);
 
     struct aws_http_header target_header = {.name = aws_byte_cursor_from_c_str("x-amz-target"), .value = target};
@@ -353,8 +353,8 @@ static struct aws_http_message *s_make_request(
     aws_input_stream_get_length(request_data_stream, &content_length);
     sprintf(content_length_str, "%" PRIi64, content_length);
 
-    struct aws_http_header content_length_header = {.name = aws_byte_cursor_from_c_str("content-length"),
-                                                    .value = aws_byte_cursor_from_c_str(content_length_str)};
+    struct aws_http_header content_length_header = {
+        .name = aws_byte_cursor_from_c_str("content-length"), .value = aws_byte_cursor_from_c_str(content_length_str)};
     aws_http_message_add_header(request, content_length_header);
 
     aws_http_message_set_body_stream(request, request_data_stream);
