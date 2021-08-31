@@ -366,7 +366,7 @@ be identical.
 ```
 
 ```sh
-KMS_KEY_ARN=$(aws kms create-key --description "Nitro Enclaves Production Key" --policy file://test-enclave-policy.json --query KeyMetadata.Arn --output text)
+KMS_KEY_ARN=$(aws kms create-key --description "Nitro Enclaves Production Key" --policy file://enclave-policy.json --query KeyMetadata.Arn --output text)
 ```
 
 From this point forward, all steps are the same, except that you omit the `--debug-mode` option on the `nitro-cli run-enclave` command and you will not be able to connect to the console of the enclave. Decrypt actions between the Nitro enclave and AWS KMS will make use of and enforce the PCR values specified in the key policy.
