@@ -53,7 +53,7 @@ static void s_usage(int exit_code) {
     fprintf(stderr, "    --aws-secret-access-key SECRET_ACCESS_KEY: AWS secret access key\n");
     fprintf(stderr, "    --aws-session-token SESSION_TOKEN: Session token associated with the access key ID\n");
     fprintf(stderr, "    --ciphertext CIPHERTEXT: base64-encoded ciphertext that need to decrypt\n");
-    fprintf(stderr, "    --help: Display this message and exit");
+    fprintf(stderr, "    --help: Display this message and exit\n");
     exit(exit_code);
 }
 
