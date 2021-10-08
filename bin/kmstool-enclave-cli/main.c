@@ -22,9 +22,12 @@ enum status {
     STATUS_ERR,
 };
 
-#define fail_on(cond)                                                                                                  \
+#define fail_on(cond, msg)                                                                                             \
     if (cond) {                                                                                                        \
-        return;                                                                                                        \
+        if (msg != NULL) {                                                                                             \
+            fprintf(stderr, "%s\n", msg);                                                                              \
+        }                                                                                                              \
+        return AWS_OP_ERR;                                                                                             \
     }
 
 struct app_ctx {
@@ -145,7 +148,7 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     }
 }
 
-static void decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_decrypted_b64) {
+static int decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_decrypted_b64) {
     ssize_t rc = 0;
 
     struct aws_credentials *credentials = NULL;
@@ -181,36 +184,37 @@ static void decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_dec
     struct aws_byte_cursor ciphertext_b64 = aws_byte_cursor_from_c_str((const char *)app_ctx->ciphertext_b64->bytes);
 
     rc = aws_base64_compute_decoded_len(&ciphertext_b64, &ciphertext_len);
-    fail_on(rc != AWS_OP_SUCCESS);
+    fail_on(rc != AWS_OP_SUCCESS, "Ciphertext not a base64 string");
     rc = aws_byte_buf_init(&ciphertext, app_ctx->allocator, ciphertext_len);
-    fail_on(rc != AWS_OP_SUCCESS);
+    fail_on(rc != AWS_OP_SUCCESS, "Memory allocation error");
     rc = aws_base64_decode(&ciphertext_b64, &ciphertext);
-    fail_on(rc != AWS_OP_SUCCESS);
+    fail_on(rc != AWS_OP_SUCCESS, "Ciphertext not a base64 string");
 
     /* Decrypt the data with KMS. */
     struct aws_byte_buf ciphertext_decrypted;
     rc = aws_kms_decrypt_blocking(client, &ciphertext, &ciphertext_decrypted);
     aws_byte_buf_clean_up(&ciphertext);
-    fail_on(rc != AWS_OP_SUCCESS);
+    fail_on(rc != AWS_OP_SUCCESS, "Could not decrypt ciphertext");
 
     /* Encode ciphertext into base64 for printing out the result. */
     size_t ciphertext_decrypted_b64_len;
     struct aws_byte_cursor ciphertext_decrypted_cursor = aws_byte_cursor_from_buf(&ciphertext_decrypted);
     aws_base64_compute_encoded_len(ciphertext_decrypted.len, &ciphertext_decrypted_b64_len);
     rc = aws_byte_buf_init(ciphertext_decrypted_b64, app_ctx->allocator, ciphertext_decrypted_b64_len + 1);
-    fail_on(rc != AWS_OP_SUCCESS);
+    fail_on(rc != AWS_OP_SUCCESS, "Memory allocation error");
     rc = aws_base64_encode(&ciphertext_decrypted_cursor, ciphertext_decrypted_b64);
-    fail_on(rc != AWS_OP_SUCCESS);
+    fail_on(rc != AWS_OP_SUCCESS, "Base64 encoding error");
     aws_byte_buf_append_null_terminator(ciphertext_decrypted_b64);
 
     aws_nitro_enclaves_kms_client_destroy(client);
     aws_credentials_release(credentials);
-    return;
+    return AWS_OP_SUCCESS;
 }
 
 int main(int argc, char **argv) {
     struct app_ctx app_ctx;
     struct aws_byte_buf ciphertext_decrypted_b64;
+    int rc;
 
     /* Initialize the SDK */
     aws_nitro_enclaves_library_init(NULL);
@@ -232,7 +236,12 @@ int main(int argc, char **argv) {
     aws_logger_init_standard(&err_logger, app_ctx.allocator, &options);
     aws_logger_set(&err_logger);
 
-    decrypt(&app_ctx, &ciphertext_decrypted_b64);
+    rc = decrypt(&app_ctx, &ciphertext_decrypted_b64);
+
+    if (rc != AWS_OP_SUCCESS) {
+        fprintf(stderr, "Could not decrypt\n");
+        exit(1);
+    }
 
     /* Print the base64-encoded plaintext to stdout */
     fprintf(stdout, "%s", (const char *)ciphertext_decrypted_b64.buffer);
