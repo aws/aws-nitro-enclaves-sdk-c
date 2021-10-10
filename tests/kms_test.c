@@ -17,12 +17,18 @@
 #define PLAINTEXT_DATA_BASE64 "SGVsbG8="
 #define CIPHERTEXT_BLOB_DATA "Hello"
 #define CIPHERTEXT_BLOB_BASE64 "SGVsbG8="
+#define MESSAGE_DATA "Hello"
+#define MESSAGE_BASE64 "SGVsbG8="
+#define SIGNATURE_DATA "Hello"
+#define SIGNATURE_BASE64 "SGVsbG8="
 #define TOKEN_FIRST "TokenFirst"
 #define TOKEN_SECOND "TokenSecond"
 #define ENCRYPTION_CONTEXT_KEY "EncryptionContextKey"
 #define ENCRYPTION_CONTEXT_VALUE "EncryptionContextValue"
 #define SUFIX "Sufix"
 #define KEA_RSAES_OAEP_SHA_256 "RSAES_OAEP_SHA_256"
+#define SIGNING_ALGORITHM "RSASSA_PKCS1_V1_5_SHA_256"
+#define MESSAGE_TYPE "RAW"
 #define KS_AES_256 "AES_256"
 
 AWS_TEST_CASE(test_kms_decrypt_request_cipher_to_json, s_test_kms_decrypt_request_cipher_to_json)
@@ -1872,6 +1878,155 @@ static int s_test_kms_generate_random_response_from_json(struct aws_allocator *a
     aws_string_destroy(json);
     aws_string_destroy(json_second);
     aws_kms_generate_random_response_destroy(response);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_sign_request_to_json, s_test_kms_sign_request_to_json)
+static int s_test_kms_sign_request_to_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_kms_sign_request *request = aws_kms_sign_request_new(allocator);
+    ASSERT_NOT_NULL(request);
+		
+    ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
+        &request->message, allocator, aws_byte_cursor_from_c_str(MESSAGE_DATA)));
+
+	request->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(request->key_id);
+		
+	request->message_type = AWS_MT_RAW;
+    request->signing_algorithm = AWS_SA_RSASSA_PKCS1_V1_5_SHA_256;
+
+    ASSERT_SUCCESS(aws_array_list_init_dynamic(&request->grant_tokens, allocator, 2, sizeof(struct aws_string *)));
+    struct aws_string *token_first = aws_string_new_from_c_str(allocator, TOKEN_FIRST);
+    ASSERT_NOT_NULL(token_first);
+    struct aws_string *token_second = aws_string_new_from_c_str(allocator, TOKEN_SECOND);
+    ASSERT_NOT_NULL(token_second);
+    ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_first));
+    ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_second));
+
+    struct aws_string *json = aws_kms_sign_request_to_json(request);
+    ASSERT_NOT_NULL(json);
+			
+    struct aws_string *expected = aws_string_new_from_c_str(
+        allocator,
+        "{ \"Message\": \"" MESSAGE_BASE64 "\", "
+		"\"SigningAlgorithm\": \"" SIGNING_ALGORITHM "\", "
+		"\"KeyId\": \"" KEY_ID "\", "
+        "\"MessageType\": \"" MESSAGE_TYPE "\", "
+		"\"GrantTokens\": [ \"" TOKEN_FIRST "\", \"" TOKEN_SECOND "\" ] }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+    aws_kms_sign_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_sign_request_from_json, s_test_kms_sign_request_from_json)
+static int s_test_kms_sign_request_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    /* Add Key ID to the JSON. */
+    struct aws_string *json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"Message\": \"" MESSAGE_BASE64 "\", "
+		"\"SigningAlgorithm\": \"" SIGNING_ALGORITHM "\", "
+		"\"KeyId\": \"" KEY_ID "\", "
+        "\"MessageType\": \"" MESSAGE_TYPE "\", "
+		"\"GrantTokens\": [ \"" TOKEN_FIRST "\", \"" TOKEN_SECOND "\" ] }");
+    struct aws_kms_sign_request *request = aws_kms_sign_request_from_json(allocator, json);
+    ASSERT_NOT_NULL(request);
+
+    ASSERT_BIN_ARRAYS_EQUALS(
+        MESSAGE_DATA,
+        sizeof(MESSAGE_DATA) - 1,
+        (char *)request->message.buffer,
+        request->message.len);
+	ASSERT_INT_EQUALS(request->message_type, AWS_MT_RAW);
+    ASSERT_INT_EQUALS(request->signing_algorithm, AWS_SA_RSASSA_PKCS1_V1_5_SHA_256);
+    ASSERT_INT_EQUALS(2, aws_array_list_length(&request->grant_tokens));
+    struct aws_string *elem = NULL;
+    AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 0) == AWS_OP_SUCCESS);
+    ASSERT_STR_EQUALS(TOKEN_FIRST, aws_string_c_str(elem));
+    AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 1) == AWS_OP_SUCCESS);
+    ASSERT_STR_EQUALS(TOKEN_SECOND, aws_string_c_str(elem));
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->key_id));
+
+    /* Ensure we can serialize back to a JSON. */
+    struct aws_string *json_second = aws_kms_sign_request_to_json(request);
+    ASSERT_NOT_NULL(json_second);
+    ASSERT_STR_EQUALS(aws_string_c_str(json), aws_string_c_str(json_second));
+
+    aws_string_destroy(json);
+    aws_string_destroy(json_second);
+    aws_kms_sign_request_destroy(request);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_sign_response_to_json, s_test_kms_sign_response_to_json)
+static int s_test_kms_sign_response_to_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_kms_sign_response *response = aws_kms_sign_response_new(allocator);
+    ASSERT_NOT_NULL(response);
+
+    response->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(response->key_id);
+
+    ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
+        &response->signature, allocator, aws_byte_cursor_from_c_str(SIGNATURE_DATA)));
+
+    response->signing_algorithm = AWS_SA_RSASSA_PKCS1_V1_5_SHA_256;
+
+    struct aws_string *json = aws_kms_sign_response_to_json(response);
+    ASSERT_NOT_NULL(json);
+	
+    struct aws_string *expected = aws_string_new_from_c_str(
+        allocator,
+        "{ \"KeyId\": \"" KEY_ID "\", "
+        "\"Signature\": \"" SIGNATURE_BASE64 "\", "
+        "\"SigningAlgorithm\": \"" SIGNING_ALGORITHM "\" }");
+    ASSERT_NOT_NULL(expected);
+    ASSERT_STR_EQUALS(aws_string_c_str(expected), aws_string_c_str(json));
+    aws_string_destroy(expected);
+    aws_string_destroy(json);
+    aws_kms_sign_response_destroy(response);
+
+    return SUCCESS;
+}
+
+AWS_TEST_CASE(test_kms_sign_response_from_json, s_test_kms_sign_response_from_json)
+static int s_test_kms_sign_response_from_json(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    struct aws_string *json = aws_string_new_from_c_str(
+        allocator,
+        "{ \"KeyId\": \"" KEY_ID "\", "
+        "\"Signature\": \"" SIGNATURE_BASE64 "\", "
+        "\"SigningAlgorithm\": \"" SIGNING_ALGORITHM "\" }");
+    ASSERT_NOT_NULL(json);
+
+    struct aws_kms_sign_response *response = aws_kms_sign_response_from_json(allocator, json);
+    ASSERT_NOT_NULL(response);
+    ASSERT_BIN_ARRAYS_EQUALS(
+        SIGNATURE_DATA,
+        sizeof(SIGNATURE_DATA) - 1,
+        (char *)response->signature.buffer,
+        response->signature.len);
+    ASSERT_INT_EQUALS(response->signing_algorithm, AWS_SA_RSASSA_PKCS1_V1_5_SHA_256);
+
+    /* Ensure we can serialize back to a JSON. */
+    struct aws_string *json_second = aws_kms_sign_response_to_json(response);
+    ASSERT_NOT_NULL(json_second);
+    ASSERT_STR_EQUALS(aws_string_c_str(json), aws_string_c_str(json_second));
+
+    aws_string_destroy(json);
+    aws_string_destroy(json_second);
+    aws_kms_sign_response_destroy(response);
 
     return SUCCESS;
 }
