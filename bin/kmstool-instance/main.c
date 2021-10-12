@@ -153,7 +153,13 @@ int s_get_credentials(struct app_ctx *app_ctx) {
         rc = AWS_OP_ERR;
         goto cleanup;
     }
-    resolver = aws_host_resolver_new_default(app_ctx->allocator, 4, el_group, NULL);
+
+    struct aws_host_resolver_default_options resolver_options = {
+        .el_group = el_group,
+        .max_entries = 4,
+    };
+
+    resolver = aws_host_resolver_new_default(app_ctx->allocator, &resolver_options);
     if (resolver == NULL) {
         rc = AWS_OP_ERR;
         goto cleanup;

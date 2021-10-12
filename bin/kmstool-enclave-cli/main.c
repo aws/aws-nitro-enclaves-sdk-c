@@ -248,7 +248,6 @@ int main(int argc, char **argv) {
 
     aws_byte_buf_clean_up(&ciphertext_decrypted_b64);
     aws_nitro_enclaves_library_clean_up();
-    aws_global_thread_creator_shutdown_wait_for(10);
 
     return 0;
 }

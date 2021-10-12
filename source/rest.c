@@ -140,7 +140,11 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     }
 
     /* TODO: Resolver should not be needed when using endpoints */
-    host_resolver = aws_host_resolver_new_default(rest_client->allocator, 8, el_group, NULL);
+    struct aws_host_resolver_default_options resolver_options = {
+        .el_group = el_group,
+        .max_entries = 8,
+    };
+    host_resolver = aws_host_resolver_new_default(rest_client->allocator, &resolver_options);
     if (host_resolver == NULL) {
         /* TODO: aws_raise */
         goto err_clean;
