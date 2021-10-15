@@ -33,7 +33,6 @@ static int s_test_basic_rest_client(struct aws_allocator *allocator, void *ctx) 
     ASSERT_NOT_NULL(rest_client);
     aws_nitro_enclaves_rest_client_destroy(rest_client);
     aws_credentials_release(credentials);
-    ASSERT_SUCCESS(aws_global_thread_creator_shutdown_wait_for(10));
     aws_nitro_enclaves_library_clean_up();
     return 0;
 }
@@ -71,7 +70,6 @@ static int s_test_rest_call_blocking(struct aws_allocator *allocator, void *ctx)
 
     aws_nitro_enclaves_rest_client_destroy(rest_client);
     aws_credentials_release(credentials);
-    ASSERT_SUCCESS(aws_global_thread_creator_shutdown_wait_for(10));
     aws_nitro_enclaves_library_clean_up();
     return 0;
 }

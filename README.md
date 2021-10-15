@@ -11,14 +11,14 @@ This project is licensed under the Apache-2.0 License.
 ## Dependencies
 | name                       | version              | link                                              |
 |----------------------------|----------------------|---------------------------------------------------|
-| aws-lc                     | v0.1-beta            | https://github.com/awslabs/aws-lc/                |
-| S2N                        | v0.10.21             | https://github.com/awslabs/s2n                    |
-| aws-c-common               | v0.4.59              | https://github.com/awslabs/aws-c-common           |
-| aws-c-io                   | v0.7.0               | https://github.com/awslabs/aws-c-io               |
-| aws-c-compression          | v0.2.10              | https://github.com/awslabs/aws-c-compression       |
-| aws-c-http                 | v0.5.17              | https://github.com/awslabs/aws-c-http             |
-| aws-c-cal                  | v0.3.3               | https://github.com/awslabs/aws-c-cal              |
-| aws-c-auth                 | v0.4.6               | https://github.com/awslabs/aws-c-auth             |
+| aws-lc                     | v0.0.2               | https://github.com/awslabs/aws-lc/                |
+| S2N                        | v1.1.1               | https://github.com/aws/s2n-tls.git                |
+| aws-c-common               | v0.6.1               | https://github.com/awslabs/aws-c-common           |
+| aws-c-io                   | v0.10.9              | https://github.com/awslabs/aws-c-io               |
+| aws-c-compression          | v0.2.14              | https://github.com/awslabs/aws-c-compression      |
+| aws-c-http                 | v0.6.7               | https://github.com/awslabs/aws-c-http             |
+| aws-c-cal                  | v0.5.12              | https://github.com/awslabs/aws-c-cal              |
+| aws-c-auth                 | v0.6.4               | https://github.com/awslabs/aws-c-auth             |
 | aws-nitro-enclaves-nsm-api | v0.1.0               | https://github.com/aws/aws-nitro-enclaves-nsm-api |
 | json-c                     | json-c-0.15-20200726 | https://github.com/json-c/json-c                  |
 

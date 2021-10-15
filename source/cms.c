@@ -64,7 +64,7 @@ int aws_cms_parse_enveloped_data(
     size_t tag_size;
 
     CBS content_type;
-    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size) || /* ASN1_SEQ */
+    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL) || /* ASN1_SEQ */
         (tag != CBS_ASN1_SEQUENCE) || !CBS_get_asn1(&cms, &content_type, CBS_ASN1_OBJECT)) {
         goto err;
     }
@@ -75,8 +75,8 @@ int aws_cms_parse_enveloped_data(
 
     /* Validate the version */
     CBS version;
-    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size) ||                               /* ASN1_ENUM */
-        !CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size) || (tag != CBS_ASN1_SEQUENCE) || /* ASN1_SEQ */
+    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL) || /* ASN1_ENUM */
+        !CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL) || (tag != CBS_ASN1_SEQUENCE) || /* ASN1_SEQ */
         !CBS_get_asn1(&cms, &version, CBS_ASN1_INTEGER)) {
         goto err;
     }
@@ -89,7 +89,7 @@ int aws_cms_parse_enveloped_data(
      * See https://tools.ietf.org/html/rfc5652#section-6.1
      */
     CBS enveloped_data;
-    if (!CBS_get_any_ber_asn1_element(&cms, &enveloped_data, &tag, &tag_size) || tag != CBS_ASN1_SET) {
+    if (!CBS_get_any_ber_asn1_element(&cms, &enveloped_data, &tag, &tag_size, NULL) || tag != CBS_ASN1_SET) {
         goto err;
     }
 
@@ -137,7 +137,7 @@ int aws_cms_parse_enveloped_data(
      * See https://tools.ietf.org/html/rfc5652#section-6.1
      */
     CBS encrypted_content_type;
-    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size) || (tag != CBS_ASN1_SEQUENCE) ||
+    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL) || (tag != CBS_ASN1_SEQUENCE) ||
         !CBS_get_asn1(&cms, &encrypted_content_type, CBS_ASN1_OBJECT)) {
         goto err;
     }
@@ -151,8 +151,8 @@ int aws_cms_parse_enveloped_data(
      * See https://tools.ietf.org/html/rfc5652#section-6.3
      */
     CBS content_encryption_algo, algo, iv_string;
-    if (!CBS_get_any_ber_asn1_element(&cms, &content_encryption_algo, &tag, &tag_size) || tag != CBS_ASN1_SEQUENCE ||
-        !CBS_skip(&content_encryption_algo, tag_size) ||
+    if (!CBS_get_any_ber_asn1_element(&cms, &content_encryption_algo, &tag, &tag_size, NULL) ||
+        tag != CBS_ASN1_SEQUENCE || !CBS_skip(&content_encryption_algo, tag_size) ||
         !CBS_get_asn1(&content_encryption_algo, &algo, CBS_ASN1_OBJECT) ||
         !CBS_get_asn1(&content_encryption_algo, &iv_string, CBS_ASN1_OCTETSTRING)) {
         goto err;
@@ -174,7 +174,7 @@ int aws_cms_parse_enveloped_data(
     /* Fetch the encrypted content. This can be optional, but in our usecase it is
      * received as a scattered OCTETSTRING. Concatenate all of them.
      */
-    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size)) { /* ASN1_ENUM */
+    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL)) { /* ASN1_ENUM */
         goto err;
     }
 
@@ -186,7 +186,7 @@ int aws_cms_parse_enveloped_data(
 
     /* Consume all the entries in the scattered list */
     CBS wrapped_encrypted_content;
-    while (CBS_get_any_ber_asn1_element(&cms, &wrapped_encrypted_content, &tag, &tag_size) == 1 &&
+    while (CBS_get_any_ber_asn1_element(&cms, &wrapped_encrypted_content, &tag, &tag_size, NULL) == 1 &&
            tag == CBS_ASN1_OCTETSTRING) {
         CBS encrypted_content_part;
         if (!CBS_get_asn1(&wrapped_encrypted_content, &encrypted_content_part, CBS_ASN1_OCTETSTRING) ||
