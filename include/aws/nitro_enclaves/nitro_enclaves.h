@@ -49,6 +49,9 @@ AWS_EXTERN_C_BEGIN
 AWS_NITRO_ENCLAVES_API
 void aws_nitro_enclaves_library_init(struct aws_allocator *allocator);
 
+/**
+ * Closes the library.
+ */
 AWS_NITRO_ENCLAVES_API
 void aws_nitro_enclaves_library_clean_up(void);
 

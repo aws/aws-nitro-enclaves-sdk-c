@@ -19,8 +19,14 @@ enum aws_rsa_key_size {
     AWS_RSA_4096 = 4096,
 };
 
+/**
+ * The RSA keypair.
+ */
 struct aws_rsa_keypair {
+    /** The allocator. */
     struct aws_allocator *allocator;
+
+    /** The opaque keyspair object. */
     void *key_impl;
 };
 

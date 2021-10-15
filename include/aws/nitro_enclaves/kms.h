@@ -35,7 +35,6 @@ AWS_EXTERN_C_BEGIN
 enum aws_encryption_algorithm {
     /* No encryption algorithm is specified. */
     AWS_EA_UNINITIALIZED = -1,
-
     /* SYMMETRIC_DEFAULT algorithm. */
     AWS_EA_SYMMETRIC_DEFAULT,
     /* RSAES_OAEP_SHA_1 algorithm. */
@@ -44,12 +43,18 @@ enum aws_encryption_algorithm {
     AWS_EA_RSAES_OAEP_SHA_256,
 };
 
+/**
+ * The key encryption algorithm.
+ */
 enum aws_key_encryption_algorithm {
     AWS_KEA_UNINITIALIZED = -1,
 
     AWS_KEA_RSAES_OAEP_SHA_256,
 };
 
+/**
+ * The key spec.
+ */
 enum aws_key_spec {
     AWS_KS_UNINITIALIZED = -1,
 
@@ -57,14 +62,23 @@ enum aws_key_spec {
     AWS_KS_AES_128,
 };
 
+/**
+ * The recipient.
+ */
 struct aws_recipient {
+    /** Encryption algorithm */
     enum aws_key_encryption_algorithm key_encryption_algorithm;
 
+    /** Attestation document */
     struct aws_byte_buf attestation_document;
 
+    /** The allocator */
     struct aws_allocator *const allocator;
 };
 
+/**
+ * The decryption request.
+ */
 struct aws_kms_decrypt_request {
     /**
      * Ciphertext to be decrypted. The blob includes metadata.
@@ -140,6 +154,9 @@ struct aws_kms_decrypt_request {
     struct aws_allocator *const allocator;
 };
 
+/**
+ * The decryption response.
+ */
 struct aws_kms_decrypt_response {
     /**
      * ARN of the key used to perform the decryption. This value is returned if no errors are
@@ -179,6 +196,9 @@ struct aws_kms_decrypt_response {
     struct aws_allocator *const allocator;
 };
 
+/**
+ * The encrypt request.
+ */
 struct aws_kms_encrypt_request {
     /**
      * Plaintext to be encrypted.
@@ -242,6 +262,9 @@ struct aws_kms_encrypt_request {
     struct aws_allocator *const allocator;
 };
 
+/**
+ * The encrypt response.
+ */
 struct aws_kms_encrypt_response {
     /**
      * The Amazon Resource Name (key ARN) of the CMK
@@ -275,6 +298,9 @@ struct aws_kms_encrypt_response {
     struct aws_allocator *const allocator;
 };
 
+/**
+ * The generate data key request.
+ */
 struct aws_kms_generate_data_key_request {
     /**
      * Identifies the symmetric CMK that encrypts the data key.
@@ -345,6 +371,9 @@ struct aws_kms_generate_data_key_request {
     struct aws_allocator *const allocator;
 };
 
+/**
+ * The generate data key response.
+ */
 struct aws_kms_generate_data_key_response {
     /**
      * The identifier of the CMK under which the data encryption key was generated and encrypted.
@@ -383,6 +412,9 @@ struct aws_kms_generate_data_key_response {
     struct aws_allocator *const allocator;
 };
 
+/**
+ * The generate random request.
+ */
 struct aws_kms_generate_random_request {
     /**
      * The length of the byte string.
@@ -415,6 +447,9 @@ struct aws_kms_generate_random_request {
     struct aws_allocator *const allocator;
 };
 
+/**
+ * The generate random response.
+ */
 struct aws_kms_generate_random_response {
     /**
      * The random byte string.
@@ -438,19 +473,35 @@ struct aws_kms_generate_random_response {
     struct aws_allocator *const allocator;
 };
 
+/**
+ * The KMS client configuration.
+ */
 struct aws_nitro_enclaves_kms_client_configuration {
-    /* Optional. Will default to library allocator if NULL. */
+    /**
+     * Will default to library allocator if NULL.
+     *
+     * Required: No.
+     */
     struct aws_allocator *allocator;
 
     /** The name of the AWS region this client uses */
     const struct aws_string *region;
 
-    /* Optional endpoint to use instead of the DNS endpoint. */
+    /**
+     * Endpoint to use instead of the DNS endpoint.
+     *
+     * Required: No.
+     */
     const struct aws_socket_endpoint *endpoint;
-    /* Optional. Specifies the domain of the given endpoint, if the endpoint is set. */
+
+    /**
+     * Specifies the domain of the given endpoint, if the endpoint is set.
+     *
+     * Required: No.
+     */
     enum aws_socket_domain domain;
 
-    /*
+    /**
      * Signing key control:
      *
      *   (1) If "credentials" is valid, use it
@@ -459,14 +510,26 @@ struct aws_nitro_enclaves_kms_client_configuration {
      *
      */
     struct aws_credentials *credentials;
+
+    /**
+     * The credentials provider
+     *
+     * Required: No.
+     */
     struct aws_credentials_provider *credentials_provider;
 };
 
+/**
+ * The KMS client input parameters.
+ */
 struct aws_nitro_enclaves_kms_client {
+    /** The allocator. */
     struct aws_allocator *allocator;
 
+    /** The rest client. */
     struct aws_nitro_enclaves_rest_client *rest_client;
 
+    /** The RSA keypair */
     struct aws_rsa_keypair *keypair;
 };
 
@@ -483,7 +546,7 @@ struct aws_recipient *aws_recipient_new(struct aws_allocator *allocator);
 /**
  * Serializes a Recipient @ref aws_recipient to json.
  *
- * @param[in]   req        The Recipient that is to be serialized.
+ * @param[in]   recipient  The Recipient that is to be serialized.
  *
  * @return                 The serialized Recipient.
  */

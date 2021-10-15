@@ -20,19 +20,34 @@
 #include <aws/io/tls_channel_handler.h>
 
 struct aws_nitro_enclaves_rest_client_configuration {
-    /* Optional. Will default to library allocator if NULL. */
+    /**
+     * Will default to library allocator if NULL.
+     *
+     * Required: No.
+     */
     struct aws_allocator *allocator;
 
-    /* The service and region are used to determine the host name. Used in TLS and signing. */
+    /** The service used to determine the host name. Used in TLS and signing. */
     const struct aws_string *service;
+
+    /** The region used to determine the host name */
     const struct aws_string *region;
 
-    /* Optional endpoint to use instead of the DNS endpoint. */
+    /**
+     * Endpoint to use instead of the DNS endpoint.
+     *
+     * Required: No.
+     */
     const struct aws_socket_endpoint *endpoint;
-    /* Optional. Specifies the domain of the given endpoint, if the endpoint is set. */
+
+    /**
+     * Specifies the domain of the given endpoint, if the endpoint is set.
+     *
+     * Required: No.
+     */
     enum aws_socket_domain domain;
 
-    /*
+    /**
      * Signing key control:
      *
      *   (1) If "credentials" is valid, use it
@@ -42,6 +57,7 @@ struct aws_nitro_enclaves_rest_client_configuration {
      */
     struct aws_credentials *credentials;
 
+    /** The credentials provider. */
     struct aws_credentials_provider *credentials_provider;
 };
 
@@ -49,25 +65,31 @@ struct aws_nitro_enclaves_rest_client_configuration {
  * Configuration of a rest client, used to create new connections and process REST requests.
  */
 struct aws_nitro_enclaves_rest_client {
-    /* The associated allocator from which to allocate internally. */
+    /** The associated allocator from which to allocate internally. */
     struct aws_allocator *allocator;
 
-    /* Internal variables required for creating new connections. */
+    /** Internal variables required for creating new connections. */
     struct aws_tls_ctx *tls_ctx;
 
-    /* Variables required for sync-ing client on creation. */
+    /** Mutex required for syncing client on creation. */
     struct aws_mutex mutex;
+
+    /** Conditional variable required for syncing client on creation. */
     struct aws_condition_variable c_var;
 
-    /* An open connection that is used to create connection streams. */
+    /** An open connection that is used to create connection streams. */
     struct aws_http_connection *connection;
 
-    /* The service and region are used to determine the host name. Used in TLS and signing. */
+    /** The service used to determine the host name. Used in TLS and signing. */
     struct aws_string *service;
+
+    /** The region used to determine the hostname */
     struct aws_string *region;
+
+    /** The hostname */
     struct aws_string *host_name;
 
-    /*
+    /**
      * Signing key control:
      *
      *   (1) If "credentials" is valid, use it
@@ -77,6 +99,7 @@ struct aws_nitro_enclaves_rest_client {
      */
     struct aws_credentials *credentials;
 
+    /** The credentials provider. */
     struct aws_credentials_provider *credentials_provider;
 };
 
@@ -85,15 +108,19 @@ struct aws_nitro_enclaves_rest_client {
  * internal. Do not call aws_http_message_acquire on the response field.
  */
 struct aws_nitro_enclaves_rest_response {
+    /** The allocator. */
     struct aws_allocator *allocator;
 
-    /* Contains the response from the REST request. */
+    /** Contains the response from the REST request. */
     struct aws_http_message *response;
 
-    /* This is the backings store of the aws_input_stream found in the response.
+    /**
+     * This is the backings store of the aws_input_stream found in the response.
      * TODO: make a version of aws_input_stream that owns its own data instead.
      */
     struct aws_byte_cursor __cursor;
+
+    /** The data */
     struct aws_byte_buf __data;
 };
 
