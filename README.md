@@ -1,9 +1,5 @@
 # AWS Nitro Enclaves SDK for C
 
-## Security
-
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
-
 ## License
 
 This project is licensed under the Apache-2.0 License.
@@ -36,3 +32,10 @@ Note that this SDK is currently not supported on Windows.  Only the client side 
 ## Samples
  * [kmstool](docs/kmstool.md)
  * [kmstool-enclave-cli](docs/kmstool.md#kmstool-enclave-cli)
+
+## Security issue notifications
+
+If you discover a potential security issue in the Nitro Enclaves SDK for C, we ask that you notify AWS
+Security via our
+[vulnerability reporting page](https://aws.amazon.com/security/vulnerability-reporting/).
+Please do **not** create a public GitHub issue.
