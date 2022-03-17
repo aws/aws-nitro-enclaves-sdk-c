@@ -9,16 +9,15 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-too
 RUN yum install -y gcc-c++
 RUN yum install -y go
 RUN yum install -y ninja-build
-RUN yum install -y quilt
 
 # We keep the build artifacts in the -build directory
 WORKDIR /tmp/crt-builder
 
-RUN git clone -b v0.0.2 https://github.com/awslabs/aws-lc.git aws-lc #
+RUN git clone -b v1.0.2 https://github.com/awslabs/aws-lc.git aws-lc #
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-lc -B aws-lc/build .
 RUN cmake3 --build aws-lc/build --target install
 
-RUN git clone -b v1.1.1 https://github.com/aws/s2n-tls.git
+RUN git clone -b v1.3.9 https://github.com/aws/s2n-tls.git
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -S s2n-tls -B s2n-tls/build
 RUN cmake3 --build s2n-tls/build --target install
 
@@ -26,7 +25,7 @@ RUN git clone -b v0.6.11 https://github.com/awslabs/aws-c-common.git
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c-common -B aws-c-common/build
 RUN cmake3 --build aws-c-common/build --target install
 
-RUN git clone -b v0.5.12 https://github.com/awslabs/aws-c-cal.git
+RUN git clone -b v0.5.14 https://github.com/awslabs/aws-c-cal.git
 RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja -S aws-c-cal -B aws-c-cal/build
 RUN cmake3 --build aws-c-cal/build --target install
 
