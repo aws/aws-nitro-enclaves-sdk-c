@@ -22,6 +22,11 @@
 #define ALPN_STRING "h2;http/1.1"
 #define CONNECT_TIMEOUT_MS 3000UL
 
+#define USER_AGENT_NAME "aws-nitro_enclaves-sdk-c"
+#ifndef VERSION
+#    define VERSION "unknown"
+#endif
+
 static void s_on_client_connection_setup(struct aws_http_connection *connection, int error_code, void *user_data) {
     struct aws_nitro_enclaves_rest_client *rest_client = user_data;
 
@@ -360,6 +365,12 @@ static struct aws_http_message *s_make_request(
     struct aws_http_header content_length_header = {
         .name = aws_byte_cursor_from_c_str("content-length"), .value = aws_byte_cursor_from_c_str(content_length_str)};
     aws_http_message_add_header(request, content_length_header);
+
+    struct aws_http_header user_agent_header = {
+        .name = aws_byte_cursor_from_c_str("user-agent"),
+        .value = aws_byte_cursor_from_c_str(USER_AGENT_NAME "/" VERSION),
+    };
+    aws_http_message_add_header(request, user_agent_header);
 
     aws_http_message_set_body_stream(request, request_data_stream);
 
