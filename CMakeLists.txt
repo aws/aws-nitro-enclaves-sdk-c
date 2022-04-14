@@ -52,6 +52,16 @@ file(GLOB AWS_NITRO_ENCLAVES_SRC
         "source/*.c"
         )
 
+execute_process(COMMAND git describe
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+	OUTPUT_VARIABLE VERSION)
+if ("${VERSION}" STREQUAL "")
+        set(VERSION "v0.2.0-unknown")
+endif()
+message(STATUS "Version=" ${VERSION})
+add_definitions(-DVERSION="${VERSION}")
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/modules")
 find_package(LibJsonC REQUIRED)
 if (NOT WIN32)
@@ -77,8 +87,7 @@ if (NOT WIN32)
 
     aws_add_sanitizers(${PROJECT_NAME})
 
-    # We are not ABI stable yet
-    set_target_properties(${PROJECT_NAME} PROPERTIES VERSION 1.0.0)
+    set_target_properties(${PROJECT_NAME} PROPERTIES VERSION "${VERSION}")
     set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION 0unstable)
 
     target_compile_definitions(${PROJECT_NAME} PUBLIC)
