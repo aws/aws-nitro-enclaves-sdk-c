@@ -82,6 +82,7 @@ static struct aws_cli_option s_long_options[] = {
 static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     ctx->port = SERVICE_PORT;
     ctx->cid = 0;
+    ctx->message = NULL;
 
     while (true) {
         int option_index = 0;
@@ -92,6 +93,12 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
 
         switch (c) {
             case 0:
+                break;
+            case 0x02:
+                if (ctx->message != NULL) {
+                    s_usage(1);
+                }
+                ctx->message = aws_string_new_from_c_str(ctx->allocator, aws_cli_positional_arg);
                 break;
             case 'p':
                 ctx->port = atoi(aws_cli_optarg);
@@ -116,9 +123,6 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
         s_usage(1);
     }
 
-    if (aws_cli_optind < argc) {
-        ctx->message = aws_string_new_from_c_str(ctx->allocator, argv[aws_cli_optind++]);
-    }
 
     if (ctx->message == NULL) {
         s_usage(1);
