@@ -1231,11 +1231,10 @@ struct aws_kms_decrypt_response *aws_kms_decrypt_response_from_json(
         struct json_object *value = json_object_iter_peek_value(&it);
         int value_type = json_object_get_type(value);
 
-        if (value_type != json_type_string) {
-            goto clean_up;
-        }
-
         if (AWS_SAFE_COMPARE(key, KMS_KEY_ID)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             response->key_id = s_aws_string_from_json(allocator, value);
             if (response->key_id == NULL) {
                 goto clean_up;
@@ -1244,6 +1243,9 @@ struct aws_kms_decrypt_response *aws_kms_decrypt_response_from_json(
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_PLAINTEXT)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             if (s_aws_byte_buf_from_base64_json(allocator, value, &response->plaintext) != AWS_OP_SUCCESS) {
                 goto clean_up;
             }
@@ -1251,6 +1253,9 @@ struct aws_kms_decrypt_response *aws_kms_decrypt_response_from_json(
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_ENCRYPTION_ALGORITHM)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             struct aws_string *str = s_aws_string_from_json(allocator, value);
             if (str == NULL) {
                 goto clean_up;
@@ -1266,14 +1271,15 @@ struct aws_kms_decrypt_response *aws_kms_decrypt_response_from_json(
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_CIPHERTEXT_FOR_RECIPIENT)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             if (s_aws_byte_buf_from_base64_json(allocator, value, &response->ciphertext_for_recipient) !=
                 AWS_OP_SUCCESS) {
                 goto clean_up;
             }
             continue;
         }
-
-        goto clean_up;
     }
 
     /* Validate required parameters. */
@@ -1369,11 +1375,10 @@ struct aws_kms_encrypt_response *aws_kms_encrypt_response_from_json(
         struct json_object *value = json_object_iter_peek_value(&it);
         int value_type = json_object_get_type(value);
 
-        if (value_type != json_type_string) {
-            goto clean_up;
-        }
-
         if (AWS_SAFE_COMPARE(key, KMS_KEY_ID)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             response->key_id = s_aws_string_from_json(allocator, value);
             if (response->key_id == NULL) {
                 goto clean_up;
@@ -1382,6 +1387,9 @@ struct aws_kms_encrypt_response *aws_kms_encrypt_response_from_json(
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_CIPHERTEXT_BLOB)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             if (s_aws_byte_buf_from_base64_json(allocator, value, &response->ciphertext_blob) != AWS_OP_SUCCESS) {
                 goto clean_up;
             }
@@ -1389,6 +1397,9 @@ struct aws_kms_encrypt_response *aws_kms_encrypt_response_from_json(
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_ENCRYPTION_ALGORITHM)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             struct aws_string *str = s_aws_string_from_json(allocator, value);
             if (str == NULL) {
                 goto clean_up;
@@ -1402,8 +1413,6 @@ struct aws_kms_encrypt_response *aws_kms_encrypt_response_from_json(
             aws_string_destroy(str);
             continue;
         }
-
-        goto clean_up;
     }
 
     /* Validate required parameters. */
@@ -1711,10 +1720,6 @@ struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_fr
         struct json_object *value = json_object_iter_peek_value(&it);
         int value_type = json_object_get_type(value);
 
-        if (value_type != json_type_string) {
-            goto clean_up;
-        }
-
         if (AWS_SAFE_COMPARE(key, KMS_KEY_ID)) {
             response->key_id = s_aws_string_from_json(allocator, value);
             if (response->key_id == NULL) {
@@ -1724,6 +1729,9 @@ struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_fr
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_CIPHERTEXT_BLOB)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             if (s_aws_byte_buf_from_base64_json(allocator, value, &response->ciphertext_blob) != AWS_OP_SUCCESS) {
                 goto clean_up;
             }
@@ -1731,6 +1739,9 @@ struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_fr
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_PLAINTEXT)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             if (s_aws_byte_buf_from_base64_json(allocator, value, &response->plaintext) != AWS_OP_SUCCESS) {
                 goto clean_up;
             }
@@ -1738,15 +1749,15 @@ struct aws_kms_generate_data_key_response *aws_kms_generate_data_key_response_fr
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_CIPHERTEXT_FOR_RECIPIENT)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             if (s_aws_byte_buf_from_base64_json(allocator, value, &response->ciphertext_for_recipient) !=
                 AWS_OP_SUCCESS) {
                 goto clean_up;
             }
             continue;
         }
-
-        /* Unexpected key for object type. */
-        goto clean_up;
     }
 
     /* Validate required parameters. */
@@ -1974,11 +1985,10 @@ struct aws_kms_generate_random_response *aws_kms_generate_random_response_from_j
         struct json_object *value = json_object_iter_peek_value(&it);
         int value_type = json_object_get_type(value);
 
-        if (value_type != json_type_string) {
-            goto clean_up;
-        }
-
         if (AWS_SAFE_COMPARE(key, KMS_PLAINTEXT)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             if (s_aws_byte_buf_from_base64_json(allocator, value, &response->plaintext) != AWS_OP_SUCCESS) {
                 goto clean_up;
             }
@@ -1986,15 +1996,15 @@ struct aws_kms_generate_random_response *aws_kms_generate_random_response_from_j
         }
 
         if (AWS_SAFE_COMPARE(key, KMS_CIPHERTEXT_FOR_RECIPIENT)) {
+            if (value_type != json_type_string) {
+                goto clean_up;
+            }
             if (s_aws_byte_buf_from_base64_json(allocator, value, &response->ciphertext_for_recipient) !=
                 AWS_OP_SUCCESS) {
                 goto clean_up;
             }
             continue;
         }
-
-        /* Unexpected value type. */
-        goto clean_up;
     }
 
     json_object_put(obj);
