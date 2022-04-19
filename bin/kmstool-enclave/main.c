@@ -47,12 +47,14 @@ struct app_ctx {
     uint32_t port;
     /* vsock port on which vsock-proxy is available in parent. */
     uint32_t proxy_port;
+    /* alternative kms endpoint hostname */
+    const struct aws_string *kms_endpoint;
 };
 
 static void s_usage(int exit_code) {
     fprintf(stderr, "usage: enclave_server [options]\n");
     fprintf(stderr, "\n Options: \n\n");
-    fprintf(stderr, "    --region REGION: AWS region to use for KMS\n");
+    fprintf(stderr, "    --region REGION: AWS region to use for KMS. Default: us-east-1.\n");
     fprintf(stderr, "    --port PORT: Await new connections on PORT. Default: 3000\n");
     fprintf(stderr, "    --proxy-port PORT: Connect to KMS proxy on PORT. Default: 2000\n");
     fprintf(stderr, "    --help: Display this message and exit");
@@ -71,6 +73,7 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     ctx->port = SERVICE_PORT;
     ctx->proxy_port = PROXY_PORT;
     ctx->region = NULL;
+    ctx->kms_endpoint = NULL;
 
     while (true) {
         int option_index = 0;
@@ -82,10 +85,9 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
         switch (c) {
             case 0:
                 break;
-            case 'r': {
+            case 'r':
                 ctx->region = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                 break;
-            }
             case 'p':
                 ctx->port = atoi(aws_cli_optarg);
                 break;
@@ -218,6 +220,7 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
         .allocator = app_ctx->allocator,
         .endpoint = &endpoint,
         .domain = AWS_SOCKET_VSOCK,
+        .host_name = app_ctx->kms_endpoint,
     };
 
     while (true) {
@@ -386,6 +389,16 @@ int main(int argc, char **argv) {
     /* Parse the commandline */
     app_ctx.allocator = aws_nitro_enclaves_get_allocator();
     s_parse_options(argc, argv, &app_ctx);
+
+    /* Set region if not already set and  */
+    if (app_ctx.region == NULL && getenv("REGION") != NULL && strlen(getenv("REGION")) > 0) {
+        app_ctx.region = aws_string_new_from_c_str(app_ctx.allocator, getenv("REGION"));
+    }
+
+    /* Override KMS endpoint hostname */
+    if (app_ctx.kms_endpoint == NULL && getenv("ENDPOINT") != NULL && strlen(getenv("ENDPOINT")) > 0) {
+        app_ctx.kms_endpoint = aws_string_new_from_c_str(app_ctx.allocator, getenv("ENDPOINT"));
+    }
 
     /* Optional: Enable logging for aws-c-* libraries */
     struct aws_logger err_logger;
