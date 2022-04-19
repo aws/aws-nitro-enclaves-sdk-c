@@ -27,6 +27,7 @@ static int s_test_basic_rest_client(struct aws_allocator *allocator, void *ctx) 
         .service = s_test_service,
         .region = s_test_region,
         .credentials = credentials,
+        .host_name = NULL,
     };
 
     struct aws_nitro_enclaves_rest_client *rest_client = aws_nitro_enclaves_rest_client_new(&client_conf);
@@ -50,6 +51,7 @@ static int s_test_rest_call_blocking(struct aws_allocator *allocator, void *ctx)
         .service = s_test_service,
         .region = s_test_region,
         .credentials = credentials,
+        .host_name = NULL,
     };
 
     struct aws_nitro_enclaves_rest_client *rest_client = aws_nitro_enclaves_rest_client_new(&client_conf);

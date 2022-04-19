@@ -72,16 +72,9 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     struct aws_client_bootstrap *bootstrap = NULL;
     struct aws_host_resolver *host_resolver = NULL;
     struct aws_tls_connection_options tls_connection_options;
-    AWS_ZERO_STRUCT(tls_connection_options);
-
     char host_name_str[256];
-    snprintf(
-        host_name_str,
-        sizeof(host_name_str),
-        "%s.%s.amazonaws.com",
-        aws_string_c_str(configuration->service),
-        aws_string_c_str(configuration->region));
-    struct aws_byte_cursor host_name = aws_byte_cursor_from_c_str(host_name_str);
+    struct aws_byte_cursor host_name;
+    AWS_ZERO_STRUCT(tls_connection_options);
 
     struct aws_nitro_enclaves_rest_client *rest_client =
         aws_mem_calloc(allocator, 1, sizeof(struct aws_nitro_enclaves_rest_client));
@@ -91,9 +84,22 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     }
     rest_client->allocator = allocator;
 
+    if (aws_string_is_valid(configuration->host_name)) {
+        rest_client->host_name = aws_string_clone_or_reuse(rest_client->allocator, configuration->host_name);
+        host_name = aws_byte_cursor_from_string(rest_client->host_name);
+    } else {
+        snprintf(
+            host_name_str,
+            sizeof(host_name_str),
+            "%s.%s.amazonaws.com",
+            aws_string_c_str(configuration->service),
+            aws_string_c_str(configuration->region));
+        host_name = aws_byte_cursor_from_c_str(host_name_str);
+        rest_client->host_name = aws_string_new_from_c_str(rest_client->allocator, host_name_str);
+    }
+
     rest_client->service = aws_string_clone_or_reuse(rest_client->allocator, configuration->service);
     rest_client->region = aws_string_clone_or_reuse(rest_client->allocator, configuration->region);
-    rest_client->host_name = aws_string_new_from_c_str(rest_client->allocator, host_name_str);
     if (rest_client->service == NULL || rest_client->region == NULL || rest_client->host_name == NULL) {
         goto err_clean;
     }
