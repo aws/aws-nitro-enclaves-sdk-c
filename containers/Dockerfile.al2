@@ -77,6 +77,10 @@ FROM amazonlinux as kmstool-enclave
 RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
 COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
 COPY --from=builder /usr/bin/kmstool_enclave /kmstool_enclave
+ARG REGION
+ARG ENDPOINT
+ENV REGION=${REGION}
+ENV ENDPOINT=${ENDPOINT}
 CMD ["/kmstool_enclave"]
 
 # kmstool-instance
