@@ -517,6 +517,14 @@ struct aws_nitro_enclaves_kms_client_configuration {
      * Required: No.
      */
     struct aws_credentials_provider *credentials_provider;
+
+    /**
+     * Allows overriding the default service endpoint (kms.$region.amazonaws.com) with a
+     * custom one. If endpoint is set, this field is used only in certificate validation.
+     *
+     * Required: No.
+     */
+    const struct aws_string *host_name;
 };
 
 /**

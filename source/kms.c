@@ -2497,6 +2497,7 @@ struct aws_nitro_enclaves_kms_client *aws_nitro_enclaves_kms_client_new(
         .region = configuration->region,
         .credentials = configuration->credentials,
         .credentials_provider = configuration->credentials_provider,
+        .host_name = configuration->host_name,
     };
 
     if (configuration->endpoint != NULL) {

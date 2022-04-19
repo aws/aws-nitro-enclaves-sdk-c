@@ -59,6 +59,14 @@ struct aws_nitro_enclaves_rest_client_configuration {
 
     /** The credentials provider. */
     struct aws_credentials_provider *credentials_provider;
+
+    /**
+     * Allows overriding the default service endpoint ($service.$region.amazonaws.com) with a
+     * custom one. If endpoint is set, this field is used only in certificate validation.
+     *
+     * Required: No.
+     */
+    const struct aws_string *host_name;
 };
 
 /**
