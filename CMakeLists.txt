@@ -57,7 +57,7 @@ execute_process(COMMAND git describe
 	OUTPUT_STRIP_TRAILING_WHITESPACE
 	OUTPUT_VARIABLE VERSION)
 if ("${VERSION}" STREQUAL "")
-        set(VERSION "v0.2.0-unknown")
+        set(VERSION "v0.2.1-unknown")
 endif()
 message(STATUS "Version=" ${VERSION})
 add_definitions(-DVERSION="${VERSION}")
