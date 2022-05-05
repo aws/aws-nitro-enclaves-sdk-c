@@ -350,7 +350,9 @@ int s_send_credentials(struct app_ctx *app_ctx) {
 
     aws_byte_buf_clean_up(&access_key_id_buf);
     aws_byte_buf_clean_up(&secret_access_key_buf);
-    aws_byte_buf_clean_up(&session_token_buf);
+    if (session_token.len > 0) {
+        aws_byte_buf_clean_up(&session_token_buf);
+    }
     return s_write_object(app_ctx->peer_fd, set_client);
 }
 
