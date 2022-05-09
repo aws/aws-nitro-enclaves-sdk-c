@@ -342,13 +342,13 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
 
             /* Send back result. */
             rc = s_send_status(peer_fd, STATUS_OK, (const char *)ciphertext_decrypted_b64.buffer);
-            aws_byte_buf_clean_up(&ciphertext_decrypted);
-            aws_byte_buf_clean_up(&ciphertext_decrypted_b64);
+            aws_byte_buf_clean_up_secure(&ciphertext_decrypted);
+            aws_byte_buf_clean_up_secure(&ciphertext_decrypted_b64);
             break_on(rc <= 0);
         decrypt_clean_err:
             /* This is a fallthrough that cleans up local objects ahead of loop_next_err */
-            aws_byte_buf_clean_up(&ciphertext_decrypted);
-            aws_byte_buf_clean_up(&ciphertext_decrypted_b64);
+            aws_byte_buf_clean_up_secure(&ciphertext_decrypted);
+            aws_byte_buf_clean_up_secure(&ciphertext_decrypted_b64);
             goto loop_next_err;
         } else {
             rc = s_send_status(peer_fd, STATUS_ERR, "Operation not recognized");
