@@ -348,9 +348,11 @@ int s_send_credentials(struct app_ctx *app_ctx) {
         json_object_object_add(set_client, "AwsRegion", json_object_new_string(aws_string_c_str(app_ctx->region)));
     }
 
-    aws_byte_buf_clean_up(&access_key_id_buf);
-    aws_byte_buf_clean_up(&secret_access_key_buf);
-    aws_byte_buf_clean_up(&session_token_buf);
+    aws_byte_buf_clean_up_secure(&access_key_id_buf);
+    aws_byte_buf_clean_up_secure(&secret_access_key_buf);
+    if (aws_byte_buf_is_valid(&session_token_buf)) {
+        aws_byte_buf_clean_up_secure(&session_token_buf);
+    }
     return s_write_object(app_ctx->peer_fd, set_client);
 }
 
