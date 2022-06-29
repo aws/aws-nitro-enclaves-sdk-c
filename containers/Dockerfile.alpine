@@ -76,10 +76,10 @@ RUN cmake --build json-c/build --target install
 RUN git clone -b v0.2.1 https://github.com/aws/aws-nitro-enclaves-nsm-api.git
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 RUN cd aws-nitro-enclaves-nsm-api && cargo build --release -p nsm-lib
-RUN mv aws-nitro-enclaves-nsm-api/target/release/libnsm.so /usr/lib64
+RUN mv aws-nitro-enclaves-nsm-api/target/release/libnsm.a /usr/lib
 RUN mv aws-nitro-enclaves-nsm-api/target/release/nsm.h /usr/include
 
-RUN yum install -y doxygen
+RUN apk add doxygen
 COPY . aws-nitro-enclaves-sdk-c
 RUN cmake -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja \
 	-S aws-nitro-enclaves-sdk-c -B aws-nitro-enclaves-sdk-c/build
@@ -92,7 +92,6 @@ RUN cmake --build aws-nitro-enclaves-sdk-c/build --target test
 
 # kmstool-enclave
 FROM alpine:latest as kmstool-enclave
-COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
 COPY --from=builder /usr/bin/kmstool_enclave /kmstool_enclave
 ARG REGION
 ARG ENDPOINT
@@ -102,11 +101,9 @@ CMD ["/kmstool_enclave"]
 
 # kmstool-instance
 FROM alpine:latest as kmstool-instance
-COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
 COPY --from=builder /usr/bin/kmstool_instance /kmstool_instance
 CMD ["/kmstool_instance"]
 
 # kmstool-enclave-cli
 FROM alpine:latest as kmstool-enclave-cli
-COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
 COPY --from=builder /usr/bin/kmstool_enclave_cli /kmstool_enclave_cli
