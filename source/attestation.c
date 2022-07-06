@@ -91,7 +91,7 @@ void aws_attestation_rsa_keypair_destroy(struct aws_rsa_keypair *keypair) {
  *
  * @param[in]   allocator        The allocator to use.
  * @param[in]   public_key       The public key used for attestation.
- * @param[out]  attestation_doc  The public key used for attestation.
+ * @param[out]  attestation_doc  The attestation document.
  *
  * @return                       Returns the error code. If SUCCESS, then attestation_doc is populated.
  */
