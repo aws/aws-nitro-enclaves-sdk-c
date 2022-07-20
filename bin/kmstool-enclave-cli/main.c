@@ -45,6 +45,8 @@ struct app_ctx {
     const struct aws_string *aws_session_token;
 
     const struct aws_string *ciphertext_b64;
+    const struct aws_string *key_id;
+    const struct aws_string *encryption_algorithm;
 };
 
 static void s_usage(int exit_code) {
@@ -56,6 +58,11 @@ static void s_usage(int exit_code) {
     fprintf(stderr, "    --aws-secret-access-key SECRET_ACCESS_KEY: AWS secret access key\n");
     fprintf(stderr, "    --aws-session-token SESSION_TOKEN: Session token associated with the access key ID\n");
     fprintf(stderr, "    --ciphertext CIPHERTEXT: base64-encoded ciphertext that need to decrypt\n");
+    fprintf(stderr, "    --key-id KEY_ID: decrypt key id\n");
+    fprintf(
+        stderr,
+        "    --encryption-algorithm ENCRYPTION_ALGORITHM: encryption algorhthm for ciphertext (is required at key-id "
+        "exists)\n");
     fprintf(stderr, "    --help: Display this message and exit\n");
     exit(exit_code);
 }
@@ -68,6 +75,8 @@ static struct aws_cli_option s_long_options[] = {
     {"aws-secret-access-key", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 's'},
     {"aws-session-token", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 't'},
     {"ciphertext", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'c'},
+    {"key-id", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'K'},
+    {"encryption-algorithm", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'a'},
     {NULL, 0, NULL, 0},
 };
 
@@ -78,10 +87,12 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     ctx->aws_secret_access_key = NULL;
     ctx->aws_session_token = NULL;
     ctx->ciphertext_b64 = NULL;
+    ctx->key_id = NULL;
+    ctx->encryption_algorithm = NULL;
 
     while (true) {
         int option_index = 0;
-        int c = aws_cli_getopt_long(argc, argv, "r:x:k:s:t:c:h", s_long_options, &option_index);
+        int c = aws_cli_getopt_long(argc, argv, "r:x:k:s:t:c:K:a:h", s_long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -107,6 +118,12 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
                 break;
             case 'c':
                 ctx->ciphertext_b64 = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                break;
+            case 'K':
+                ctx->key_id = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                break;
+            case 'a':
+                ctx->encryption_algorithm = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                 break;
             case 'h':
                 s_usage(0);
@@ -140,6 +157,14 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     if (ctx->ciphertext_b64 == NULL) {
         fprintf(stderr, "--ciphertext must be set\n");
         exit(1);
+    }
+
+    // if key id is set check encryption algorithm is exists
+    if (ctx->key_id != NULL) {
+        if (ctx->encryption_algorithm == NULL) {
+            fprintf(stderr, "--encryption-algorithm must be set at key-id exists\n");
+            exit(1);
+        }
     }
 
     // Set default AWS region if not specified
@@ -192,7 +217,9 @@ static int decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_decr
 
     /* Decrypt the data with KMS. */
     struct aws_byte_buf ciphertext_decrypted;
-    rc = aws_kms_decrypt_blocking(client, &ciphertext, &ciphertext_decrypted);
+    rc = aws_kms_decrypt_blocking(
+        client, app_ctx->key_id, app_ctx->encryption_algorithm, &ciphertext, &ciphertext_decrypted);
+
     aws_byte_buf_clean_up(&ciphertext);
     fail_on(rc != AWS_OP_SUCCESS, "Could not decrypt ciphertext");
 

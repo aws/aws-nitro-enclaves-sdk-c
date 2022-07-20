@@ -2612,6 +2612,8 @@ static struct aws_byte_cursor kms_target_generate_random =
 
 int aws_kms_decrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_string *key_id,
+    const struct aws_string *encryption_algorithm,
     const struct aws_byte_buf *ciphertext,
     struct aws_byte_buf *plaintext /* TODO: err_reason */) {
     AWS_PRECONDITION(client != NULL);
@@ -2630,6 +2632,20 @@ int aws_kms_decrypt_blocking(
     }
 
     aws_byte_buf_init_copy(&request_structure->ciphertext_blob, client->allocator, ciphertext);
+
+    if (key_id != NULL) {
+        request_structure->key_id = aws_string_clone_or_reuse(client->allocator, key_id);
+        if (aws_string_compare(encryption_algorithm, s_ea_symmetric_default) == 0) {
+            request_structure->encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
+        } else if (aws_string_compare(encryption_algorithm, s_ea_rsaes_oaep_sha_1) == 0) {
+            request_structure->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_1;
+        } else if (aws_string_compare(encryption_algorithm, s_ea_rsaes_oaep_sha_256) == 0) {
+            request_structure->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_256;
+        } else {
+            fprintf(stderr, "Invalid encryption algorithm\n");
+            goto err_clean;
+        }
+    }
 
     request_structure->recipient = aws_recipient_new(client->allocator);
     if (request_structure->recipient == NULL) {
