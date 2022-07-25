@@ -972,8 +972,8 @@ void aws_nitro_enclaves_kms_client_destroy(struct aws_nitro_enclaves_kms_client 
  * Calling it from a non-enclave environment will fail.
  *
  * @param[in]   client                  The AWS KMS client to use for calling the API.
- * @param[in]   key_id                  The ARN or alias of AWS KMS CMK used to encrypt the data key.
- * @param[in]   encryption_algorithm    The encryption algorithm that will be used to decrypt the ciphertext.
+ * @param[in]   key_id                  The ARN or alias of AWS KMS CMK used to encrypt the data key. (For symmetric keys, set key_id and encryption_algorithm to NULL as the ciphertext may contain key-id)
+ * @param[in]   encryption_algorithm    The encryption algorithm that will be used to decrypt the ciphertext. (For symmetric keys, set key_id and encryption_algorithm to NULL as the ciphertext may contain key-id)
  * @param[in]   ciphertext              The ciphertext to decrypt.
  * @param[out]  plaintext               The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
  * @return
