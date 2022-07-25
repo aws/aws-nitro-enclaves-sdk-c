@@ -5,8 +5,9 @@
 This project is licensed under the Apache-2.0 License.
 
 ## Dependencies
+
 | name                       | version              | link                                              |
-|----------------------------|----------------------|---------------------------------------------------|
+| -------------------------- | -------------------- | ------------------------------------------------- |
 | aws-lc                     | v1.0.2               | https://github.com/awslabs/aws-lc/                |
 | S2N                        | v1.3.11              | https://github.com/aws/s2n-tls.git                |
 | aws-c-common               | v0.6.20              | https://github.com/awslabs/aws-c-common           |
@@ -21,18 +22,28 @@ This project is licensed under the Apache-2.0 License.
 
 ## Building
 
-### Linux - Using containers:
 The simplest way to use this SDK is by using one of the available containers as a base:
+
+### Linux - Using containers:
+
 ```
 docker build -f containers/Dockerfile.al2 --target builder -t aws-nitro-enclaves-sdk-c .
 ```
 
+### ARM64v8 - Using containers:
+
+```
+docker build -f containers/Dockerfile.arm64v8.al2 --target builder -t aws-nitro-enclaves-sdk-c .
+```
+
 ### Windows
-Note that this SDK is currently not supported on Windows.  Only the client side sample application (kmstool_instance) is supported on Windows.
+
+Note that this SDK is currently not supported on Windows. Only the client side sample application (kmstool_instance) is supported on Windows.
 
 ## Samples
- * [kmstool](docs/kmstool.md)
- * [kmstool-enclave-cli](docs/kmstool.md#kmstool-enclave-cli)
+
+- [kmstool](docs/kmstool.md)
+- [kmstool-enclave-cli](docs/kmstool.md#kmstool-enclave-cli)
 
 ## Security issue notifications
 
