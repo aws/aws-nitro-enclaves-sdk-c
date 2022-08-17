@@ -323,7 +323,7 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
 
             /* Decrypt the data with KMS. */
             struct aws_byte_buf ciphertext_decrypted;
-            rc = aws_kms_decrypt_blocking(client, &ciphertext, &ciphertext_decrypted);
+            rc = aws_kms_decrypt_blocking(client, NULL, NULL, &ciphertext, &ciphertext_decrypted);
             aws_byte_buf_clean_up(&ciphertext);
             fail_on(rc != AWS_OP_SUCCESS, loop_next_err, "Could not decrypt ciphertext");
 
