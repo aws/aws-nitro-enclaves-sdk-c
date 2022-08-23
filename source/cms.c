@@ -1,5 +1,5 @@
 /**
- * Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2020-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0.
  */
 
@@ -171,29 +171,41 @@ int aws_cms_parse_enveloped_data(
         goto err;
     }
 
-    /* Fetch the encrypted content. This can be optional, but in our usecase it is
-     * received as a scattered OCTETSTRING. Concatenate all of them.
-     */
-    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL)) { /* ASN1_ENUM */
-        goto err;
-    }
-
     CBB encrypted_content;
     /* Grow as much as needed. Do not limit KMS encrypted content size from here. */
     if (!CBB_init(&encrypted_content, 0)) {
         goto err;
     }
 
-    /* Consume all the entries in the scattered list */
     CBS wrapped_encrypted_content;
-    while (CBS_get_any_ber_asn1_element(&cms, &wrapped_encrypted_content, &tag, &tag_size, NULL) == 1 &&
-           tag == CBS_ASN1_OCTETSTRING) {
-        CBS encrypted_content_part;
-        if (!CBS_get_asn1(&wrapped_encrypted_content, &encrypted_content_part, CBS_ASN1_OCTETSTRING) ||
-            !CBB_add_bytes(&encrypted_content, CBS_data(&encrypted_content_part), CBS_len(&encrypted_content_part))) {
-
+    /* Consume all the entries in the scattered list */
+    if (CBS_peek_asn1_tag(&cms, CBS_ASN1_CONTEXT_SPECIFIC) == 1) {
+        /* Fixed length context specific IMPLICIT OCTETSTRING content. Not explicitly marked as a CBS_ASN1_OCTETSTRING.
+         */
+        while (CBS_get_any_asn1(&cms, &wrapped_encrypted_content, &tag) == 1) /* ASN1_CONTEXT_SPECIFIC */ {
+            if (!CBB_add_bytes(
+                    &encrypted_content, CBS_data(&wrapped_encrypted_content), CBS_len(&wrapped_encrypted_content))) {
+                CBB_cleanup(&encrypted_content);
+                goto err;
+            }
+        }
+    } else {
+        /* Indefinite-length explicit scattered OCTETSTRING content. Aggregate them if more than one. */
+        if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL)) { /* ASN1_ENUM */
             CBB_cleanup(&encrypted_content);
             goto err;
+        }
+        /* Consume all the entries in the scattered list */
+        while (CBS_get_any_ber_asn1_element(&cms, &wrapped_encrypted_content, &tag, &tag_size, NULL) == 1 &&
+               tag == CBS_ASN1_OCTETSTRING) {
+            CBS encrypted_content_part;
+            if (!CBS_get_asn1(&wrapped_encrypted_content, &encrypted_content_part, CBS_ASN1_OCTETSTRING) ||
+                !CBB_add_bytes(
+                    &encrypted_content, CBS_data(&encrypted_content_part), CBS_len(&encrypted_content_part))) {
+
+                CBB_cleanup(&encrypted_content);
+                goto err;
+            }
         }
     }
 
