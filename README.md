@@ -8,14 +8,14 @@ This project is licensed under the Apache-2.0 License.
 | name                       | version              | link                                              |
 |----------------------------|----------------------|---------------------------------------------------|
 | aws-lc                     | v1.0.2               | https://github.com/awslabs/aws-lc/                |
-| S2N                        | v1.3.11              | https://github.com/aws/s2n-tls.git                |
-| aws-c-common               | v0.6.20              | https://github.com/awslabs/aws-c-common           |
+| s2n-tls                    | v1.3.20              | https://github.com/aws/s2n-tls.git                |
+| aws-c-common               | v0.8.0               | https://github.com/awslabs/aws-c-common           |
 | aws-c-sdkutils             | v0.1.2               | https://github.com/awslabs/aws-c-sdkutils         |
-| aws-c-io                   | v0.10.21             | https://github.com/awslabs/aws-c-io               |
+| aws-c-io                   | v0.11.0              | https://github.com/awslabs/aws-c-io               |
 | aws-c-compression          | v0.2.14              | https://github.com/awslabs/aws-c-compression      |
-| aws-c-http                 | v0.6.13              | https://github.com/awslabs/aws-c-http             |
-| aws-c-cal                  | v0.5.17              | https://github.com/awslabs/aws-c-cal              |
-| aws-c-auth                 | v0.6.11              | https://github.com/awslabs/aws-c-auth             |
+| aws-c-http                 | v0.6.19              | https://github.com/awslabs/aws-c-http             |
+| aws-c-cal                  | v0.5.18              | https://github.com/awslabs/aws-c-cal              |
+| aws-c-auth                 | v0.6.15              | https://github.com/awslabs/aws-c-auth             |
 | aws-nitro-enclaves-nsm-api | v0.2.1               | https://github.com/aws/aws-nitro-enclaves-nsm-api |
 | json-c                     | json-c-0.16-20220414 | https://github.com/json-c/json-c                  |
 
