@@ -61,7 +61,7 @@ static void s_usage(int exit_code) {
     fprintf(stderr, "    --key-id KEY_ID: decrypt key id (for symmetric keys, is optional)\n");
     fprintf(
         stderr,
-        "    --encryption-algorithm ENCRYPTION_ALGORITHM: encryption algorhthm for ciphertext (is required if key-id "
+        "    --encryption-algorithm ENCRYPTION_ALGORITHM: encryption algorithm for ciphertext (is required if key-id "
         "exists)\n");
     fprintf(stderr, "    --help: Display this message and exit\n");
     exit(exit_code);
