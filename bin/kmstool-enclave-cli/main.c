@@ -406,10 +406,10 @@ int main(int argc, char **argv) {
     if (argc < 2) {
         print_commands(1);
     }
-    
+    fprintf(stderr, "argc is %d\n", argc);
     subcommand = argv[1];
     fprintf(stderr, "subcommand is %s\n", subcommand);
-    fprintf(stderr, "argc is %d\n", argc);
+
     /* Optional: Enable logging for aws-c-* libraries */
     struct aws_logger err_logger;
     struct aws_logger_standard_options options = {
