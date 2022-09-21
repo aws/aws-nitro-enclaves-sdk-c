@@ -408,7 +408,8 @@ int main(int argc, char **argv) {
     }
     
     subcommand = argv[1];
-    
+    fprintf(stderr, "subcommand is %s\n", subcommand);
+    fprintf(stderr, "argc is %d\n", argc);
     /* Optional: Enable logging for aws-c-* libraries */
     struct aws_logger err_logger;
     struct aws_logger_standard_options options = {
