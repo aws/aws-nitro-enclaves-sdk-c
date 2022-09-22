@@ -138,7 +138,7 @@ static struct aws_cli_option s_long_options[] = {
     {"key-id", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'K'},
     {"key-spec", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'p'},
     {"encryption-algorithm", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'a'},
-    {"number_of_bytes", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'n'},
+    {"number-of-bytes", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'n'},
     {"help", AWS_CLI_OPTIONS_NO_ARGUMENT, NULL, 'h'},
     {NULL, 0, NULL, 0},
 };
@@ -282,8 +282,8 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
         }
     } else if (strncmp(subcommand, GENRAND_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
         /* Check if ciphertext is set */
-        if (ctx->number_of_bytes == NULL) {
-            fprintf(stderr, "--number_of_bytes must be set\n");
+        if (ctx->number_of_bytes < 1 || ctx->number_of_bytes > 1024) {
+            fprintf(stderr, "--number-of-bytes must be set and size between 1-1024\n");
             exit(1);
         }
     }
@@ -516,18 +516,6 @@ int main(int argc, char **argv) {
     
         aws_byte_buf_clean_up(&ciphertext_b64);
         aws_byte_buf_clean_up(&plaintext_b64);
-    } else if (strncmp(subcommand, GENRAND_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
-        struct aws_byte_buf random_string_b64;
-
-        rc = gen_random(&app_ctx, &random_string_b64);
-
-        /* Error out if ciphertext wasn't decrypted */
-        fail_on(rc != AWS_OP_SUCCESS, "Could not generate random\n");
-
-        /* Print the base64-encoded plaintext to stdout */
-        fprintf(stdout, "RANDOM: %s\n", (const char *)random_string_b64.buffer);
-
-        aws_byte_buf_clean_up(&random_string_b64);
     } else {
         print_commands(1);
     }
