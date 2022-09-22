@@ -231,7 +231,7 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
                 } else if (strncmp(subcommand, GENRAND_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
                     switch(c) {
                         case 'n' :
-                            ctx->number_of_bytes = (uint32_t)aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                            ctx->number_of_bytes = atoi(aws_cli_optarg);
                             break;
                     }
                 }
@@ -283,7 +283,7 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
     } else if (strncmp(subcommand, GENRAND_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
         /* Check if ciphertext is set */
         if (ctx->number_of_bytes < 1 || ctx->number_of_bytes > 1024) {
-            fprintf(stderr, "--number-of-bytes must be set and size between 1-1024\n");
+            fprintf(stderr, "--number-of-bytes must be set and size between 1-1024, current no: %d\n", ctx->number_of_bytes);
             exit(1);
         }
     }
@@ -425,11 +425,10 @@ static int gen_datakey(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_
 }
 
 /*
- * Function to generate a data key from KMS with attestation.
+ * Function to generate a random string from KMS with attestation.
  *
  * @param[in]  app_ctx: Struct that has all of the necessary arguments
- * @param[out] ciphertext_decrypted_b64: Byte buffer where the ciphertext blob will be stored
- * @param[out] plaintext_b64: Byte buffer where the plaintext output will be stored
+ * @param[out] randomstr_b64: Byte buffer where the random string output will be stored
  */
 static int gen_random(struct app_ctx *app_ctx, struct aws_byte_buf *randomstr_b64) {
     ssize_t rc = 0;
@@ -468,15 +467,11 @@ int main(int argc, char **argv) {
 
     /* Parse the commandline */
     app_ctx.allocator = aws_nitro_enclaves_get_allocator();
-    
-    /* Verifies there are at least two arguments */    
+    /* Verifies there are at least two arguments */
     if (argc < 2) {
         print_commands(1);
     }
-    fprintf(stderr, "argc is %d\n", argc);
     subcommand = argv[1];
-    fprintf(stderr, "subcommand is %s\n", subcommand);
-
     /* Optional: Enable logging for aws-c-* libraries */
     struct aws_logger err_logger;
     struct aws_logger_standard_options options = {
@@ -516,6 +511,18 @@ int main(int argc, char **argv) {
     
         aws_byte_buf_clean_up(&ciphertext_b64);
         aws_byte_buf_clean_up(&plaintext_b64);
+    } else if (strncmp(subcommand, GENRAND_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
+        struct aws_byte_buf random_string_b64;
+
+        rc = gen_random(&app_ctx, &random_string_b64);
+
+        /* Error out if ciphertext wasn't decrypted */
+        fail_on(rc != AWS_OP_SUCCESS, "Could not generate random\n");
+
+        /* Print the base64-encoded plaintext to stdout */
+        fprintf(stdout, "RANDOM: %s\n", (const char *)random_string_b64.buffer);
+
+        aws_byte_buf_clean_up(&random_string_b64);
     } else {
         print_commands(1);
     }
