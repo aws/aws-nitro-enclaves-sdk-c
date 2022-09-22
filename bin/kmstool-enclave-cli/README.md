@@ -36,37 +36,139 @@ By doing that, this tool can be used by any programming langauge that can intera
       ```
 
 1. Use any subprocess method from your chosen programming language to interact with `kmstool-enclave-cli`
-   The tool take the following parameters:
 
-   1. `--region` AWS region to use for KMS
+1. Use generate random API  
+   
+   `--region` AWS region to use for KMS
 
-   1. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
+   `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
 
-   1. `--aws-access-key-id` AWS access key ID
+   `--aws-access-key-id` AWS access key ID
 
-   1. `--aws-secret-access-key` AWS secret access key
+   `--aws-secret-access-key` AWS secret access key
 
-   1. `--aws-session-token` Session token associated with the access key ID
+   `--aws-session-token` Session token associated with the access key ID
 
-   1. `--ciphertext` Base64-encoded ciphertext that need to decrypt
+   `--number_of_bytes` The length of the random byte string. This parameter is required(1-1024)
 
    And output the base64-encoded plaintext if the execution success
+   Output Sample:
+   ```shell
+   RANDOM: *********
+   ```
 
-   Below is an example for Python using `subprocess`
+   Below is an example for command line
 
    ```
+           /kmstool_enclave_cli genrand 
+           --region us-east-1 
+           --proxy-port 8000 
+           --aws-access-key-id access_key_id
+           --aws-secret-access-key secret_access_key 
+           --aws-session-token token
+           --number_of_bytes 24
+   ```
+1. Use KMS decrypt API
+
+   `--region` AWS region to use for KMS
+
+   `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
+
+   `--aws-access-key-id` AWS access key ID
+
+   `--aws-secret-access-key` AWS secret access key
+
+   `--aws-session-token` Session token associated with the access key ID
+
+   `--ciphertext` base64-encoded ciphertext that need to decrypt
+
+   `--key-id` decrypt key id (for symmetric keys, is optional)
+
+   `--encryption-algorithm` encryption algorithm for ciphertext
+
+   And output the base64-encoded plaintext if the execution success
+   
+   Output Sample:
+   ```shell
+   PLAINTEXT: *********
+   ```
+
+   Below is an example for command line
+
+   ```
+           /kmstool_enclave_cli decrypt 
+           --region us-east-1 
+           --proxy-port 8000 
+           --aws-access-key-id access_key_id
+           --aws-secret-access-key secret_access_key 
+           --aws-session-token token
+           --ciphertext xxxxxx
+           --key-id  xxxx
+           --encryption-algorithm xxx
+   ```
+1. Use generate data key API
+
+   `--region` AWS region to use for KMS
+
+   `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
+
+   `--aws-access-key-id` AWS access key ID
+
+   `--aws-secret-access-key` AWS secret access key
+
+   `--aws-session-token` Session token associated with the access key ID
+
+   `--key-id` KEY_ID: key id
+
+   `--key-spec` KEY_SPEC: The key spec used to create the key (AES-256 or AES-128)
+
+   And output the base64-encoded plaintext if the execution success
+   Output Sample:
+   ```shell
+   CIPHERTEXT: **************
+   PLAINTEXT: xxxxxxxx
+   ```
+
+   Below is an example for command line
+
+   ```
+           /kmstool_enclave_cli genrand 
+           --region us-east-1 
+           --proxy-port 8000 
+           --aws-access-key-id access_key_id
+           --aws-secret-access-key secret_access_key 
+           --aws-session-token token
+           --number_of_bytes 24
+   ```
+1. Python Sample code:
+   ```python
    proc = subprocess.Popen(
-       [
-           "/kmstool_enclave_cli",
-           "--region", "us-east-1",
-           "--proxy-port", "8000",
-           "--aws-access-key-id", access_key_id,
-           "--aws-secret-access-key", secret_access_key,
-           "--aws-session-token", token,
-           "--ciphertext", ciphertext,
-       ],
-       stdout=subprocess.PIPE
-   )
-
-   plaintext = proc.communicate()[0].decode()
+    [
+        "/kmstool_enclave_cli",
+        "decrypt",
+        "--region", "us-east-1",
+        "--proxy-port", "8000",
+        "--aws-access-key-id", access_key_id,
+        "--aws-secret-access-key", secret_access_key,
+        "--aws-session-token", token,
+        "--ciphertext", ciphertext,
+    ],
+    stdout=subprocess.PIPE)
+    plaintext = proc.communicate()[0].decode()
    ```
+1. Java Sample Code:
+```javascript
+         String[] cmd = new String[] {
+                 this.kmsToolEnvlaveCli,
+                 "decrypt",
+                 "--region", credential.getRegion(),
+                 "--aws-access-key-id", credential.getAccessKeyId(),
+                 "--aws-secret-access-key", credential.getSecretAccessKey(),
+                 "--aws-session-token", credential.getSessionToken(),
+                 "--ciphertext", content
+         };
+         ProcessBuilder builder = new ProcessBuilder(Arrays.asList(cmd));
+         builder.inheritIO().redirectOutput(ProcessBuilder.Redirect.PIPE);
+         Process process = builder.start();
+         String procOutput = IOUtils.toString(process.getInputStream(), StandardCharsets.UTF_8);
+```
