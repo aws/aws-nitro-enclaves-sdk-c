@@ -71,22 +71,35 @@ RUN cmake3 -DCMAKE_PREFIX_PATH=/usr -DCMAKE_INSTALL_PREFIX=/usr -GNinja \
 RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --parallel $(nproc) --target install
 RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --parallel $(nproc) --target docs
 
-# Test
-FROM builder as test
-RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --target test
-
 # kmstool-enclave
-FROM amazonlinux:2 as kmstool-enclave
+RUN mkdir -p /rootfs
+WORKDIR /rootfs
 
-# TODO: building packages statically instead of cleaning up unwanted packages from amazonlinux
-RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
-COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
-COPY --from=builder /usr/bin/kmstool_enclave /kmstool_enclave
+RUN BINS="\
+    /usr/lib64/libnsm.so \
+    /usr/bin/kmstool_enclave \
+    " && \
+    for bin in $BINS; do \
+        { echo "$bin"; ldd "$bin" | grep -Eo "/.*lib.*/[^ ]+"; } | \
+            while read path; do \
+                mkdir -p ".$(dirname $path)"; \
+                cp -fL "$path" ".$path"; \
+            done \
+    done
+
+RUN mkdir -p /rootfs/etc/pki/tls/certs/ \
+    && cp -f /etc/pki/tls/certs/* /rootfs/etc/pki/tls/certs/
+RUN find /rootfs
+
+FROM scratch as kmstool-enclave
+
+COPY --from=builder /rootfs /
+
 ARG REGION
 ARG ENDPOINT
 ENV REGION=${REGION}
 ENV ENDPOINT=${ENDPOINT}
-CMD ["/kmstool_enclave"]
+CMD ["/usr/bin/kmstool_enclave"]
 
 # kmstool-instance
 FROM amazonlinux:2 as kmstool-instance
@@ -104,3 +117,8 @@ FROM amazonlinux:2 as kmstool-enclave-cli
 RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
 COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
 COPY --from=builder /usr/bin/kmstool_enclave_cli /kmstool_enclave_cli
+
+# Test
+FROM builder as test
+WORKDIR /tmp/crt-builder
+RUN cmake3 --build aws-nitro-enclaves-sdk-c/build --parallel $(nproc) --target test
