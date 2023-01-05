@@ -183,7 +183,9 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
                          case 'a':
                             ctx->encryption_algorithm = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                             break;
-
+                         case 'K':
+                            ctx->key_id = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                            break;
                         default:
                             fprintf(stderr, "Unknown option: %s\n", aws_cli_optarg);
                             s_usage_decrypt(1);
