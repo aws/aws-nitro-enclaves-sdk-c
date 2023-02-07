@@ -16,9 +16,11 @@
 #define DEFAULT_PROXY_PORT  8000
 #define DEFAULT_REGION      "us-east-1"
 #define DEFAULT_PARENT_CID  "3"
+#define DEFAULT_NUMBER_OF_BYTES 32
 
 #define DECRYPT_CMD "decrypt"
 #define GENKEY_CMD  "genkey"
+#define GENRAND_CMD  "genrand"
 
 #define AES_256_ARG "AES-256"
 #define AES_128_ARG "AES-128"
@@ -59,6 +61,7 @@ struct app_ctx {
     const struct aws_string *encryption_algorithm;
     const struct aws_string *key_id;
     enum aws_key_spec key_spec;
+    uint32_t number_of_bytes;
 };
 
 /*
@@ -69,6 +72,7 @@ static void print_commands(int exit_code) {
     fprintf(stderr, "\n Commands: \n\n");
     fprintf(stderr, "    decrypt: Decrypt a given ciphertext blob.\n");
     fprintf(stderr, "    genkey: Generate a datakey from KMS encrypted with the given key id.\n");
+    fprintf(stderr, "    genrand: Generate a random string.\n");
     exit(exit_code);
 }
 
@@ -107,6 +111,22 @@ static void s_usage_genkey(int exit_code) {
     exit(exit_code);
 }
 
+/*
+ * Function to print out the arguments for genrand
+ */
+static void s_usage_genrand(int exit_code) {
+    fprintf(stderr, "usage: kmstool_enclave_cli genrand [options]\n");
+    fprintf(stderr, "\n Options: \n\n");
+    fprintf(stderr, "    --help: Displays this message and exits\n");
+    fprintf(stderr, "    --region REGION: AWS region to use for KMS. Default: 'us-east-1'\n");
+    fprintf(stderr, "    --proxy-port PORT: Connect to KMS proxy on PORT. Default: 8000\n");
+    fprintf(stderr, "    --aws-access-key-id ACCESS_KEY_ID: AWS access key ID\n");
+    fprintf(stderr, "    --aws-secret-access-key SECRET_ACCESS_KEY: AWS secret access key\n");
+    fprintf(stderr, "    --aws-session-token SESSION_TOKEN: Session token associated with the access key ID\n");
+    fprintf(stderr, "    --number_of_bytes NUMBER_OF_BYTES: The length of the random byte string. This parameter is required(1-1024)\n");
+    exit(exit_code);
+}
+
 /* Command line options */
 static struct aws_cli_option s_long_options[] = {
     {"region", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'r'},
@@ -118,6 +138,7 @@ static struct aws_cli_option s_long_options[] = {
     {"key-id", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'K'},
     {"key-spec", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'p'},
     {"encryption-algorithm", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'a'},
+    {"number-of-bytes", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'n'},
     {"help", AWS_CLI_OPTIONS_NO_ARGUMENT, NULL, 'h'},
     {NULL, 0, NULL, 0},
 };
@@ -140,12 +161,13 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
     ctx->key_id = NULL;
     ctx->key_spec = -1;
     ctx->encryption_algorithm = NULL;
+    ctx->number_of_bytes = DEFAULT_NUMBER_OF_BYTES;
 
     aws_cli_optind = 2;
     while (true) {
         int option_index = 0;
 
-        int c = aws_cli_getopt_long(argc, argv, "r:x:k:s:t:c:K:p:a:h", s_long_options, &option_index);
+        int c = aws_cli_getopt_long(argc, argv, "r:x:k:s:t:c:K:p:a:n:h", s_long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -173,6 +195,8 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
                     s_usage_decrypt(1);
                 else if (strncmp(subcommand, GENKEY_CMD, MAX_SUB_COMMAND_LENGTH) == 0)
                     s_usage_genkey(1);
+                else if (strncmp(subcommand, GENRAND_CMD, MAX_SUB_COMMAND_LENGTH) == 0)
+                    s_usage_genrand(1);
                 break;
             default:
                 if (strncmp(subcommand, DECRYPT_CMD, MAX_SUB_COMMAND_LENGTH) == 0) { 
@@ -204,6 +228,12 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
                                 fprintf(stderr, "Unknown key spec: %s\n", aws_cli_optarg);
                                 s_usage_genkey(1);
                             }
+                            break;
+                    }
+                } else if (strncmp(subcommand, GENRAND_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
+                    switch(c) {
+                        case 'n' :
+                            ctx->number_of_bytes = atoi(aws_cli_optarg);
                             break;
                     }
                 }
@@ -250,6 +280,12 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
         /* Check if key spec is set */
         if (ctx->key_spec == -1) {
             fprintf(stderr, "--key-spec must be set\n");
+            exit(1);
+        }
+    } else if (strncmp(subcommand, GENRAND_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
+        /* Check if ciphertext is set */
+        if (ctx->number_of_bytes < 1 || ctx->number_of_bytes > 1024) {
+            fprintf(stderr, "--number-of-bytes must be set and size between 1-1024, current no: %d\n", ctx->number_of_bytes);
             exit(1);
         }
     }
@@ -390,6 +426,36 @@ static int gen_datakey(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_
     return AWS_OP_SUCCESS;
 }
 
+/*
+ * Function to generate a random string from KMS with attestation.
+ *
+ * @param[in]  app_ctx: Struct that has all of the necessary arguments
+ * @param[out] randomstr_b64: Byte buffer where the random string output will be stored
+ */
+static int gen_random(struct app_ctx *app_ctx, struct aws_byte_buf *randomstr_b64) {
+    ssize_t rc = 0;
+
+    struct aws_credentials *credentials = NULL;
+    struct aws_nitro_enclaves_kms_client *client = NULL;
+
+    init_kms_client(app_ctx, &credentials, &client);
+
+    /* Generate data key with KMS. */
+    struct aws_byte_buf randomstr;
+    rc = aws_kms_generate_random_blocking(client, app_ctx->number_of_bytes, &randomstr);
+    fail_on(rc != AWS_OP_SUCCESS, "Could not generate random string");
+
+    /* Encode ciphertext into base64 for printing out the result. */
+    rc = encode_b64(app_ctx, &randomstr, randomstr_b64);
+    fail_on(rc != AWS_OP_SUCCESS, "Could not encode random string");
+
+    /* Cleaning up allocated memory. */
+    aws_nitro_enclaves_kms_client_destroy(client);
+    aws_credentials_release(credentials);
+
+    return AWS_OP_SUCCESS;
+}
+
 int main(int argc, char **argv) {
     struct app_ctx app_ctx;
     int rc;
@@ -403,14 +469,11 @@ int main(int argc, char **argv) {
 
     /* Parse the commandline */
     app_ctx.allocator = aws_nitro_enclaves_get_allocator();
-    
-    /* Verifies there are at least two arguments */    
+    /* Verifies there are at least two arguments */
     if (argc < 2) {
         print_commands(1);
     }
-    
     subcommand = argv[1];
-    
     /* Optional: Enable logging for aws-c-* libraries */
     struct aws_logger err_logger;
     struct aws_logger_standard_options options = {
@@ -450,6 +513,18 @@ int main(int argc, char **argv) {
     
         aws_byte_buf_clean_up(&ciphertext_b64);
         aws_byte_buf_clean_up(&plaintext_b64);
+    } else if (strncmp(subcommand, GENRAND_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
+        struct aws_byte_buf random_string_b64;
+
+        rc = gen_random(&app_ctx, &random_string_b64);
+
+        /* Error out if ciphertext wasn't decrypted */
+        fail_on(rc != AWS_OP_SUCCESS, "Could not generate random\n");
+
+        /* Print the base64-encoded plaintext to stdout */
+        fprintf(stdout, "RANDOM: %s\n", (const char *)random_string_b64.buffer);
+
+        aws_byte_buf_clean_up(&random_string_b64);
     } else {
         print_commands(1);
     }
