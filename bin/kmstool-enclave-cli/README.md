@@ -36,21 +36,32 @@ By doing that, this tool can be used by any programming langauge that can intera
       ```
 
 1. Use any subprocess method from your chosen programming language to interact with `kmstool-enclave-cli`
-   The tool take the following parameters:
 
-   1. `--region` AWS region to use for KMS
+   The **`decrypt`** call takes the following parameters:
+   1. `decrypt` command
 
-   1. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
+   2. `--region` AWS region to use for KMS
 
-   1. `--aws-access-key-id` AWS access key ID
+   3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
 
-   1. `--aws-secret-access-key` AWS secret access key
+   4. `--aws-access-key-id` AWS access key ID
 
-   1. `--aws-session-token` Session token associated with the access key ID
+   5. `--aws-secret-access-key` AWS secret access key
 
-   1. `--ciphertext` Base64-encoded ciphertext that need to decrypt
+   6. `--aws-session-token` Session token associated with the access key ID
 
-   And output the base64-encoded plaintext if the execution success
+   7. `--ciphertext` Base64-encoded ciphertext that need to decrypt
+
+   8. `--key-id KEY_ID` decrypt key id (for symmetric keys, is optional)
+
+   9. `--encryption-algorithm` encryption algorithm for ciphertext (required if `--key-id` has been set)
+
+
+   and outputs the base64-encoded plaintext with `PLAINTEXT: ` as prefix if the execution succeeds.
+
+   ```shell
+   PLAINTEXT: <base64-encoded plaintext>
+   ```
 
    Below is an example for Python using `subprocess`
 
@@ -58,6 +69,7 @@ By doing that, this tool can be used by any programming langauge that can intera
    proc = subprocess.Popen(
        [
            "/kmstool_enclave_cli",
+           "decrypt",
            "--region", "us-east-1",
            "--proxy-port", "8000",
            "--aws-access-key-id", access_key_id,
@@ -68,5 +80,50 @@ By doing that, this tool can be used by any programming langauge that can intera
        stdout=subprocess.PIPE
    )
 
-   plaintext = proc.communicate()[0].decode()
+   result_b64 = proc.communicate()[0].decode()
+   plaintext_b64 = result.split(":")[1].strip()
+   ```
+
+   The **`genkey`** call takes the following parameters:
+   1.  `genkey` command
+
+   2. `--region` AWS region to use for KMS
+
+   3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
+
+   4. `--aws-access-key-id` AWS access key ID
+
+   5. `--aws-secret-access-key` AWS secret access key
+
+   6. `--aws-session-token` Session token associated with the access key ID
+
+   7. `--key-id` KMS key ID to be used
+
+   8. `--key-spec` The key spec used to create the key (AES-256 or AES-128)
+
+   and outputs the base64-encoded datakey with `CIPHERTEXT: ` as prefix if the execution succeeds.
+
+   ```shell
+   CIPHERTEXT: <base64-encoded datakey>
+   ```
+
+   Below is an example for Python using `subprocess`
+
+   ```
+   proc = subprocess.Popen(
+       [
+           "/kmstool_enclave_cli",
+           "genkey",
+           "--region", "us-east-1",
+           "--proxy-port", "8000",
+           "--aws-access-key-id", access_key_id,
+           "--aws-secret-access-key", secret_access_key,
+           "--aws-session-token", token,
+           "--ciphertext", ciphertext,
+       ],
+       stdout=subprocess.PIPE
+   )
+
+   result_b64 = proc.communicate()[0].decode()
+   plaintext_b64 = result_b64.split(":")[1].strip()
    ```
