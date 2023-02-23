@@ -127,3 +127,19 @@ By doing that, this tool can be used by any programming langauge that can intera
    result_b64 = proc.communicate()[0].decode()
    plaintext_b64 = result_b64.split(":")[1].strip()
    ```
+
+## Troubleshooting
+
+### Missing Common CA Certificates
+If you are running `kmstool-enclave-cli` in an environment that does not have the common CA certificates installed, you will face the following error:
+```shell
+[ERROR] [2023-02-23T15:16:21Z] [00007efd15f94840] [tls-handler] - ctx: configuration error: Error initializing trust store (Error encountered in /tmp/crt-builder/s2n-tls/tls/s2n_x509_validator.c:120)
+[ERROR] [2023-02-23T15:16:21Z] [00007efd15f94840] [tls-handler] - Failed to set ca_path: (null) and ca_file (null)
+```
+
+To solve the problem, use a docker image that has common CA certificates pre-installed like `amazonlinux:2`. [`kmstool-enclave`](https://github.com/aws/aws-nitro-enclaves-sdk-c/blob/main/docs/kmstool.md) explicitly gets the common CA certificates [installed during the build process](https://github.com/aws/aws-nitro-enclaves-sdk-c/blob/main/containers/Dockerfile.al2#L90) to enable a minimal enclave build from [`scratch`](https://docs.docker.com/build/building/base-images/#create-a-simple-parent-image-using-scratch).
+
+If you want to use a generic docker image with a smaller initial footprint, e.g. `debian:buster-slim`, you have to install the CA certificates during the docker build step similar to this:
+```shell
+RUN apt-get update && apt-get install -y ca-certificates
+```
