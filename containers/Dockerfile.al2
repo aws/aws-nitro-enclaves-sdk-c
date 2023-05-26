@@ -1,7 +1,9 @@
 # Copyright 2020-2022 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM amazonlinux:2 as builder
+ARG BASE_IMAGE=public.ecr.aws/amazonlinux/amazonlinux:2
+
+FROM $BASE_IMAGE as builder
 
 RUN yum install -y \
 	cmake3 \
@@ -102,7 +104,7 @@ ENV ENDPOINT=${ENDPOINT}
 CMD ["/usr/bin/kmstool_enclave"]
 
 # kmstool-instance
-FROM amazonlinux:2 as kmstool-instance
+FROM $BASE_IMAGE as kmstool-instance
 
 # TODO: building packages statically instead of cleaning up unwanted packages from amazonlinux
 RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
@@ -111,7 +113,7 @@ COPY --from=builder /usr/bin/kmstool_instance /kmstool_instance
 CMD ["/kmstool_instance"]
 
 # kmstool-enclave-cli
-FROM amazonlinux:2 as kmstool-enclave-cli
+FROM $BASE_IMAGE as kmstool-enclave-cli
 
 # TODO: building packages statically instead of cleaning up unwanted packages from amazonlinux
 RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
