@@ -20,6 +20,25 @@
 #define ENVELOPED_DATA_VERSION (2)
 #define ENVELOPED_DATA_RECIPIENT_VERSION (2)
 
+/* A helper wrapper function to facilitate function calls made to
+ * CBS_get_any_ber_asn1_element.
+ */
+static inline int get_any_ber_asn1_element(
+    CBS *cbs,
+    CBS *out,
+    CBS_ASN1_TAG *out_tag,
+    size_t *out_header_len) {
+
+    /* TODO: out_indefinite is dereferenced by CBS_get_any_ber_asn1_element,
+     * but we don't need *out_indefinite right now. When we update
+     * the parser's code, it needs to be refactored to use *out_indefinite
+     * to distinguish indefinite from empty elements.
+     */
+    int indefinite_temp;
+
+    return CBS_get_any_ber_asn1_element(cbs, out, out_tag, out_header_len, NULL, &indefinite_temp);
+}
+
 /**
  * A highly specialized function that parses a BER-encoded CMS Enveloped Data
  * content stream and outputs specific entries required for decrypting content
@@ -64,7 +83,7 @@ int aws_cms_parse_enveloped_data(
     size_t tag_size;
 
     CBS content_type;
-    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL) || /* ASN1_SEQ */
+    if (!get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size) || /* ASN1_SEQ */
         (tag != CBS_ASN1_SEQUENCE) || !CBS_get_asn1(&cms, &content_type, CBS_ASN1_OBJECT)) {
         goto err;
     }
@@ -75,11 +94,12 @@ int aws_cms_parse_enveloped_data(
 
     /* Validate the version */
     CBS version;
-    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL) || /* ASN1_ENUM */
-        !CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL) || (tag != CBS_ASN1_SEQUENCE) || /* ASN1_SEQ */
+    if (!get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size) || /* ASN1_ENUM */
+        !get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size) || (tag != CBS_ASN1_SEQUENCE) || /* ASN1_SEQ */
         !CBS_get_asn1(&cms, &version, CBS_ASN1_INTEGER)) {
         goto err;
     }
+
     uint8_t env_ver = 0;
     if (!CBS_get_u8(&version, &env_ver) || env_ver != ENVELOPED_DATA_VERSION) {
         goto err;
@@ -89,7 +109,7 @@ int aws_cms_parse_enveloped_data(
      * See https://tools.ietf.org/html/rfc5652#section-6.1
      */
     CBS enveloped_data;
-    if (!CBS_get_any_ber_asn1_element(&cms, &enveloped_data, &tag, &tag_size, NULL) || tag != CBS_ASN1_SET) {
+    if (!get_any_ber_asn1_element(&cms, &enveloped_data, &tag, &tag_size) || tag != CBS_ASN1_SET) {
         goto err;
     }
 
@@ -137,7 +157,7 @@ int aws_cms_parse_enveloped_data(
      * See https://tools.ietf.org/html/rfc5652#section-6.1
      */
     CBS encrypted_content_type;
-    if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL) || (tag != CBS_ASN1_SEQUENCE) ||
+    if (!get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size) || (tag != CBS_ASN1_SEQUENCE) ||
         !CBS_get_asn1(&cms, &encrypted_content_type, CBS_ASN1_OBJECT)) {
         goto err;
     }
@@ -151,7 +171,7 @@ int aws_cms_parse_enveloped_data(
      * See https://tools.ietf.org/html/rfc5652#section-6.3
      */
     CBS content_encryption_algo, algo, iv_string;
-    if (!CBS_get_any_ber_asn1_element(&cms, &content_encryption_algo, &tag, &tag_size, NULL) ||
+    if (!get_any_ber_asn1_element(&cms, &content_encryption_algo, &tag, &tag_size) ||
         tag != CBS_ASN1_SEQUENCE || !CBS_skip(&content_encryption_algo, tag_size) ||
         !CBS_get_asn1(&content_encryption_algo, &algo, CBS_ASN1_OBJECT) ||
         !CBS_get_asn1(&content_encryption_algo, &iv_string, CBS_ASN1_OCTETSTRING)) {
@@ -191,12 +211,12 @@ int aws_cms_parse_enveloped_data(
         }
     } else {
         /* Indefinite-length explicit scattered OCTETSTRING content. Aggregate them if more than one. */
-        if (!CBS_get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size, NULL)) { /* ASN1_ENUM */
+        if (!get_any_ber_asn1_element(&cms, NULL, &tag, &tag_size)) { /* ASN1_ENUM */
             CBB_cleanup(&encrypted_content);
             goto err;
         }
         /* Consume all the entries in the scattered list */
-        while (CBS_get_any_ber_asn1_element(&cms, &wrapped_encrypted_content, &tag, &tag_size, NULL) == 1 &&
+        while (get_any_ber_asn1_element(&cms, &wrapped_encrypted_content, &tag, &tag_size) == 1 &&
                tag == CBS_ASN1_OCTETSTRING) {
             CBS encrypted_content_part;
             if (!CBS_get_asn1(&wrapped_encrypted_content, &encrypted_content_part, CBS_ASN1_OCTETSTRING) ||
