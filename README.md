@@ -16,7 +16,7 @@ This project is licensed under the Apache-2.0 License.
 | aws-c-http                 | v0.7.6               | https://github.com/awslabs/aws-c-http             |
 | aws-c-cal                  | v0.5.27              | https://github.com/awslabs/aws-c-cal              |
 | aws-c-auth                 | v0.7.0               | https://github.com/awslabs/aws-c-auth             |
-| aws-nitro-enclaves-nsm-api | v0.3.0               | https://github.com/aws/aws-nitro-enclaves-nsm-api |
+| aws-nitro-enclaves-nsm-api | v0.4.0               | https://github.com/aws/aws-nitro-enclaves-nsm-api |
 | json-c                     | json-c-0.16-20220414 | https://github.com/json-c/json-c                  |
 
 ## Building
