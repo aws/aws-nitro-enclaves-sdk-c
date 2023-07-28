@@ -9,13 +9,13 @@ This project is licensed under the Apache-2.0 License.
 |----------------------------|----------------------|---------------------------------------------------|
 | aws-lc                     | v1.12.0              | https://github.com/awslabs/aws-lc/                |
 | s2n-tls                    | v1.3.46              | https://github.com/aws/s2n-tls.git                |
-| aws-c-common               | v0.8.23              | https://github.com/awslabs/aws-c-common           |
-| aws-c-sdkutils             | v0.1.11              | https://github.com/awslabs/aws-c-sdkutils         |
-| aws-c-io                   | v0.13.26             | https://github.com/awslabs/aws-c-io               |
-| aws-c-compression          | v0.2.17              | https://github.com/awslabs/aws-c-compression      |
+| aws-c-common               | v0.8.0               | https://github.com/awslabs/aws-c-common           |
+| aws-c-sdkutils             | v0.1.2               | https://github.com/awslabs/aws-c-sdkutils         |
+| aws-c-io                   | v0.11.0              | https://github.com/awslabs/aws-c-io               |
+| aws-c-compression          | v0.2.14              | https://github.com/awslabs/aws-c-compression      |
 | aws-c-http                 | v0.7.6               | https://github.com/awslabs/aws-c-http             |
-| aws-c-cal                  | v0.5.27              | https://github.com/awslabs/aws-c-cal              |
-| aws-c-auth                 | v0.7.0               | https://github.com/awslabs/aws-c-auth             |
+| aws-c-cal                  | v0.5.18              | https://github.com/awslabs/aws-c-cal              |
+| aws-c-auth                 | v6.15.0              | https://github.com/awslabs/aws-c-auth             |
 | aws-nitro-enclaves-nsm-api | v0.4.0               | https://github.com/aws/aws-nitro-enclaves-nsm-api |
 | json-c                     | json-c-0.16-20220414 | https://github.com/json-c/json-c                  |
 
