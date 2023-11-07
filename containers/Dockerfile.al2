@@ -4,7 +4,7 @@ RUN yum upgrade -y
 RUN amazon-linux-extras enable epel
 RUN yum clean -y metadata && yum install -y epel-release
 RUN yum install -y cmake3 gcc git tar make
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.60
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.63
 
 RUN yum install -y gcc-c++
 RUN yum install -y go
