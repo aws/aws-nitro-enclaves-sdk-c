@@ -1,4 +1,4 @@
-FROM amazonlinux as builder
+FROM amazonlinux:2 as builder
 
 RUN yum upgrade -y
 RUN amazon-linux-extras enable epel
