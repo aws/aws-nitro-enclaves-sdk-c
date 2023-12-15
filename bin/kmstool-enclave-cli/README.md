@@ -37,138 +37,142 @@ By doing that, this tool can be used by any programming langauge that can intera
 
 1. Use any subprocess method from your chosen programming language to interact with `kmstool-enclave-cli`
 
-   The **`decrypt`** call takes the following parameters:
-   1. `decrypt` command
+   1. The **`decrypt`** call takes the following parameters:
+      1. `decrypt` command
 
-   2. `--region` AWS region to use for KMS
+      2. `--region` AWS region to use for KMS
 
-   3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
+      3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
 
-   4. `--aws-access-key-id` AWS access key ID
+      4. `--aws-access-key-id` AWS access key ID
 
-   5. `--aws-secret-access-key` AWS secret access key
+      5. `--aws-secret-access-key` AWS secret access key
 
-   6. `--aws-session-token` Session token associated with the access key ID
+      6. `--aws-session-token` Session token associated with the access key ID
 
-   7. `--ciphertext` Base64-encoded ciphertext that need to decrypt
+      7. `--ciphertext` Base64-encoded ciphertext that need to decrypt
 
-   8. `--key-id KEY_ID` decrypt key id (for symmetric keys, is optional)
+      8. `--key-id KEY_ID` decrypt key id (for symmetric keys, is optional)
 
-   9. `--encryption-algorithm` encryption algorithm for ciphertext (required if `--key-id` has been set)
+      9. `--encryption-algorithm` encryption algorithm for ciphertext (required if `--key-id` has been set)
 
 
-   and outputs the base64-encoded plaintext with `PLAINTEXT: ` as prefix if the execution succeeds.
+      and outputs the base64-encoded plaintext with `PLAINTEXT: ` as prefix if the execution succeeds.
 
-   ```shell
-   PLAINTEXT: <base64-encoded plaintext>
-   ```
+      ```shell
+      PLAINTEXT: <base64-encoded plaintext>
+      ```
 
-   Below is an example for Python using `subprocess`
+      Below is an example for Python using `subprocess`
 
-   ```
-   proc = subprocess.Popen(
-       [
-           "/kmstool_enclave_cli",
-           "decrypt",
-           "--region", "us-east-1",
-           "--proxy-port", "8000",
-           "--aws-access-key-id", access_key_id,
-           "--aws-secret-access-key", secret_access_key,
-           "--aws-session-token", token,
-           "--ciphertext", ciphertext,
-       ],
-       stdout=subprocess.PIPE
-   )
+      ```python
+      proc = subprocess.Popen(
+          [
+              "/kmstool_enclave_cli",
+              "decrypt",
+              "--region", "us-east-1",
+              "--proxy-port", "8000",
+              "--aws-access-key-id", access_key_id,
+              "--aws-secret-access-key", secret_access_key,
+              "--aws-session-token", token,
+              "--ciphertext", ciphertext,
+          ],
+          stdout=subprocess.PIPE
+      )
 
-   result_b64 = proc.communicate()[0].decode()
-   plaintext_b64 = result.split(":")[1].strip()
-   ```
+      result = proc.communicate()[0].decode()
+      plaintext_b64 = result.split(":")[1].strip()
+      ```
 
-   The **`genkey`** call takes the following parameters:
-   1.  `genkey` command
+   1. The **`genkey`** call takes the following parameters:
+      1.  `genkey` command
 
-   2. `--region` AWS region to use for KMS
+      2. `--region` AWS region to use for KMS
 
-   3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
+      3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
 
-   4. `--aws-access-key-id` AWS access key ID
+      4. `--aws-access-key-id` AWS access key ID
 
-   5. `--aws-secret-access-key` AWS secret access key
+      5. `--aws-secret-access-key` AWS secret access key
 
-   6. `--aws-session-token` Session token associated with the access key ID
+      6. `--aws-session-token` Session token associated with the access key ID
 
-   7. `--key-id` KMS key ID to be used
+      7. `--key-id` KMS key ID to be used
 
-   8. `--key-spec` The key spec used to create the key (AES-256 or AES-128)
+      8. `--key-spec` The key spec used to create the key (AES-256 or AES-128)
 
-   and outputs the base64-encoded datakey with `CIPHERTEXT: ` as prefix if the execution succeeds.
+      and outputs the base64-encoded encrypted datakey with `CIPHERTEXT: ` as prefix, and base64-encoded plaintext datakey with `PLAINTEXT: ` as prefix if the execution succeeds.
 
-   ```shell
-   CIPHERTEXT: <base64-encoded datakey>
-   ```
+      ```shell
+      CIPHERTEXT: <base64-encoded encrypted datakey>
+      PLAINTEXT: <base64-encoded plaintext datakey>
+      ```
 
-   Below is an example for Python using `subprocess`
+      Below is an example for Python using `subprocess`
 
-   ```
-   proc = subprocess.Popen(
-       [
-           "/kmstool_enclave_cli",
-           "genkey",
-           "--region", "us-east-1",
-           "--proxy-port", "8000",
-           "--aws-access-key-id", access_key_id,
-           "--aws-secret-access-key", secret_access_key,
-           "--aws-session-token", token,
-           "--ciphertext", ciphertext,
-       ],
-       stdout=subprocess.PIPE
-   )
+      ```python
+      proc = subprocess.Popen(
+          [
+              "/kmstool_enclave_cli",
+              "genkey",
+              "--region", "us-east-1",
+              "--proxy-port", "8000",
+              "--aws-access-key-id", access_key_id,
+              "--aws-secret-access-key", secret_access_key,
+              "--aws-session-token", token,
+              "--key-id", key_id,
+              "--key-spec", key_spec,
+          ],
+          stdout=subprocess.PIPE
+      )
 
-   result_b64 = proc.communicate()[0].decode()
-   plaintext_b64 = result_b64.split(":")[1].strip()
-   ```
+      result = proc.communicate()[0].decode()
 
-   The **`genrandom`** call takes the following parameters:
-   1.  `genrandom` command
+      ciphertext_b64 = result.split("\n")[0].split(":")[1].strip()
+      plaintext_b64 = result.split("\n")[1].split(":")[1].strip()
+      ```
 
-   2. `--region` AWS region to use for KMS
+   1. The **`genrandom`** call takes the following parameters:
+      1.  `genrandom` command
 
-   3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
+      2. `--region` AWS region to use for KMS
 
-   4. `--aws-access-key-id` AWS access key ID
+      3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
 
-   5. `--aws-secret-access-key` AWS secret access key
+      4. `--aws-access-key-id` AWS access key ID
 
-   6. `--aws-session-token` Session token associated with the access key ID
+      5. `--aws-secret-access-key` AWS secret access key
 
-   7. `--length` The length of the random byte string (in bytes)
+      6. `--aws-session-token` Session token associated with the access key ID
 
-   and outputs the base64-encoded random bytes with `PLAINTEXT: ` as prefix if the execution succeeds.
+      7. `--length` The length of the random byte string (in bytes)
 
-   ```shell
-   PLAINTEXT: <base64-encoded random bytes>
-   ```
+      and outputs the base64-encoded random bytes with `PLAINTEXT: ` as prefix if the execution succeeds.
 
-   Below is an example for Python using `subprocess`
+      ```shell
+      PLAINTEXT: <base64-encoded random bytes>
+      ```
 
-   ```python
-   proc = subprocess.Popen(
-       [
-           "/kmstool_enclave_cli",
-           "genrandom",
-           "--region", "us-east-1",
-           "--proxy-port", "8000",
-           "--aws-access-key-id", access_key_id,
-           "--aws-secret-access-key", secret_access_key,
-           "--aws-session-token", token,
-           "--length", length,
-       ],
-       stdout=subprocess.PIPE
-   )
+      Below is an example for Python using `subprocess`
 
-   result_b64 = proc.communicate()[0].decode()
-   plaintext_b64 = result_b64.split(":")[1].strip()
-   ```
+      ```python
+      proc = subprocess.Popen(
+          [
+              "/kmstool_enclave_cli",
+              "genrandom",
+              "--region", "us-east-1",
+              "--proxy-port", "8000",
+              "--aws-access-key-id", access_key_id,
+              "--aws-secret-access-key", secret_access_key,
+              "--aws-session-token", token,
+              "--length", length,
+          ],
+          stdout=subprocess.PIPE
+      )
+
+      result = proc.communicate()[0].decode()
+      plaintext_b64 = result.split(":")[1].strip()
+      ```
 
 ## Troubleshooting
 
