@@ -128,6 +128,48 @@ By doing that, this tool can be used by any programming langauge that can intera
    plaintext_b64 = result_b64.split(":")[1].strip()
    ```
 
+   The **`genrandom`** call takes the following parameters:
+   1.  `genrandom` command
+
+   2. `--region` AWS region to use for KMS
+
+   3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
+
+   4. `--aws-access-key-id` AWS access key ID
+
+   5. `--aws-secret-access-key` AWS secret access key
+
+   6. `--aws-session-token` Session token associated with the access key ID
+
+   7. `--length` The length of the random byte string (in bytes)
+
+   and outputs the base64-encoded random bytes with `PLAINTEXT: ` as prefix if the execution succeeds.
+
+   ```shell
+   PLAINTEXT: <base64-encoded random bytes>
+   ```
+
+   Below is an example for Python using `subprocess`
+
+   ```python
+   proc = subprocess.Popen(
+       [
+           "/kmstool_enclave_cli",
+           "genrandom",
+           "--region", "us-east-1",
+           "--proxy-port", "8000",
+           "--aws-access-key-id", access_key_id,
+           "--aws-secret-access-key", secret_access_key,
+           "--aws-session-token", token,
+           "--length", length,
+       ],
+       stdout=subprocess.PIPE
+   )
+
+   result_b64 = proc.communicate()[0].decode()
+   plaintext_b64 = result_b64.split(":")[1].strip()
+   ```
+
 ## Troubleshooting
 
 ### Missing Common CA Certificates
