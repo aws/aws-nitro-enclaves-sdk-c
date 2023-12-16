@@ -12,7 +12,7 @@
 # * nitro-enclaves-allocator with at least 1G RAM and 2 CPUs
 #
 # Usage:
-# KMS_KEY_ARN=arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab ./tests/integration/test_kms.sh
+# KMS_KEY_ARN=arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab ./tests/kmstool-enclaves/integration/test_kms.sh
 
 set -eu
 

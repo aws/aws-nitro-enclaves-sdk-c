@@ -126,7 +126,7 @@ if (NOT WIN32)
 
     if (NOT CMAKE_CROSSCOMPILING)
         if (BUILD_TESTING)
-            add_subdirectory(tests)
+            add_subdirectory(tests/kmstool-enclaves)
         endif()
     endif()
         
