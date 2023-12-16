@@ -17,6 +17,8 @@
 
 set -eu
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
 cleanup() {
     docker rmi kmstool-enclave-cli:$RAND_TAG &>/dev/null ||:
 
@@ -51,18 +53,16 @@ readonly KMS_KEY_REGION=${KMS_KEY_REGION:-us-east-1}
 
 trap cleanup EXIT
 
-CURRENT_DIR=$(pwd)
-
 # Build the kmstool-enclave-cli binary
-cd ../../bin/kmstool-enclave-cli
+cd ${SCRIPT_DIR}/../../bin/kmstool-enclave-cli
 ./build.sh
 
 # Copy the binary into test folder
-cp -f kmstool_enclave_cli ${CURRENT_DIR}/test-enclave/
-cp -f libnsm.so ${CURRENT_DIR}/test-enclave/
+cp -f kmstool_enclave_cli ${SCRIPT_DIR}/test-enclave/
+cp -f libnsm.so ${SCRIPT_DIR}/test-enclave/
 
 # Build the test enclave
-cd ${CURRENT_DIR}/test-enclave
+cd ${SCRIPT_DIR}/test-enclave
 nitro-cli build-enclave --docker-dir ./ --docker-uri kmstool-enclave-cli:$RAND_TAG --output-file $TEMP_DIR/test.eif
 
 # Run vsock-proxy
