@@ -68,11 +68,16 @@
    |                                                                                    |
    |                                                                                    |
    |                                                                                    |
-   |                                   TEST: SUCCESS                                    |
+   |                                    TEST RESULT                                     |
    |                                                                                    |
    |                                                                                    |
    |                                                                                    |
    |                                                                                    |
    |                                                                                    |
    ======================================================================================
+   Decrypt: SUCCESS
+   GenKey: SUCCESS
+   GenRandom: SUCCESS
+   ================
+   Status: SUCCESS
    ```
