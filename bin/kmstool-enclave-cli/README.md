@@ -101,10 +101,11 @@ By doing that, this tool can be used by any programming langauge that can intera
 
    8. `--key-spec` The key spec used to create the key (AES-256 or AES-128)
 
-   and outputs the base64-encoded datakey with `CIPHERTEXT: ` as prefix if the execution succeeds.
+   and outputs the base64-encoded encrypted copy of the data key with `CIPHERTEXT: ` as prefix and base64-encoded plaintext data key with `PLAINTEXT: ` as prefix if the execution succeeds.
 
    ```shell
-   CIPHERTEXT: <base64-encoded datakey>
+   CIPHERTEXT: <Base64-encoded binary data object>
+   PLAINTEXT: <Base64-encoded binary data object>
    ```
 
    Below is an example for Python using `subprocess`
@@ -119,13 +120,13 @@ By doing that, this tool can be used by any programming langauge that can intera
            "--aws-access-key-id", access_key_id,
            "--aws-secret-access-key", secret_access_key,
            "--aws-session-token", token,
-           "--ciphertext", ciphertext,
+           "--key-id", kms_key_id,
+           "--key-spec", kms_key_spec,
        ],
        stdout=subprocess.PIPE
    )
 
    result_b64 = proc.communicate()[0].decode()
-   plaintext_b64 = result_b64.split(":")[1].strip()
    ```
 
 ## Troubleshooting
