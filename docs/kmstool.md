@@ -291,7 +291,7 @@ Back on the first terminal session where you [encrypted the test message](#encry
 CMK_REGION=us-east-1 # Must match above
 ENCLAVE_CID=$(nitro-cli describe-enclaves | jq -r .[0].EnclaveCID)
 # Run docker with network host to allow it to fetch IAM credentials with IMDSv2
-docker run --network host -it kmstool-instance \
+docker run --network host --security-opt seccomp=unconfined -it kmstool-instance \
     /kmstool_instance --cid "$ENCLAVE_CID" --region "$CMK_REGION" "$CIPHERTEXT"
 ```
 PowerShell:
