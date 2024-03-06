@@ -77,8 +77,6 @@ aws_use_package(aws-c-io)
 aws_use_package(aws-c-http)
 aws_use_package(aws-c-auth)
 
-add_subdirectory(bin/kmstool-instance)
-
 if (NOT WIN32)
     add_library(${PROJECT_NAME} ${LIBTYPE} ${AWS_NITRO_ENCLAVES_HEADERS} ${AWS_NITRO_ENCLAVES_SRC})
     aws_set_common_properties(${PROJECT_NAME})
@@ -131,7 +129,6 @@ if (NOT WIN32)
     endif()
         
     if (NOT CMAKE_CROSSCOMPILING)
-        add_subdirectory(bin/kmstool-enclave)
         add_subdirectory(bin/kmstool-enclave-cli)
     endif()
     

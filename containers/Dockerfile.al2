@@ -79,7 +79,6 @@ WORKDIR /rootfs
 
 RUN BINS="\
     /usr/lib64/libnsm.so \
-    /usr/bin/kmstool_enclave \
     " && \
     for bin in $BINS; do \
         { echo "$bin"; ldd "$bin" | grep -Eo "/.*lib.*/[^ ]+"; } | \
@@ -92,25 +91,6 @@ RUN BINS="\
 RUN mkdir -p /rootfs/etc/pki/tls/certs/ \
     && cp -f /etc/pki/tls/certs/* /rootfs/etc/pki/tls/certs/
 RUN find /rootfs
-
-FROM scratch as kmstool-enclave
-
-COPY --from=builder /rootfs /
-
-ARG REGION
-ARG ENDPOINT
-ENV REGION=${REGION}
-ENV ENDPOINT=${ENDPOINT}
-CMD ["/usr/bin/kmstool_enclave"]
-
-# kmstool-instance
-FROM $BASE_IMAGE as kmstool-instance
-
-# TODO: building packages statically instead of cleaning up unwanted packages from amazonlinux
-RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
-COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
-COPY --from=builder /usr/bin/kmstool_instance /kmstool_instance
-CMD ["/kmstool_instance"]
 
 # kmstool-enclave-cli
 FROM $BASE_IMAGE as kmstool-enclave-cli

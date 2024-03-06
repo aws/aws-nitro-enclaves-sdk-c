@@ -28,11 +28,10 @@ docker build -f containers/Dockerfile.al2 --target builder -t aws-nitro-enclaves
 ```
 
 ### Windows
-Note that this SDK is currently not supported on Windows.  Only the client side sample application (kmstool_instance) is supported on Windows.
+Note that this SDK is currently not supported on Windows.
 
 ## Samples
- * [kmstool](docs/kmstool.md)
- * [kmstool-enclave-cli](docs/kmstool.md#kmstool-enclave-cli)
+ * [kmstool-enclave-cli](bin/kmstool-enclave-cli/README.md)
 
 ## Security issue notifications
 
