@@ -7,17 +7,17 @@ This project is licensed under the Apache-2.0 License.
 ## Dependencies
 | name                       | version              | link                                              |
 |----------------------------|----------------------|---------------------------------------------------|
-| aws-lc                     | v1.12.0              | https://github.com/awslabs/aws-lc/                |
-| s2n-tls                    | v1.3.46              | https://github.com/aws/s2n-tls.git                |
-| aws-c-common               | v0.8.0               | https://github.com/awslabs/aws-c-common           |
-| aws-c-sdkutils             | v0.1.2               | https://github.com/awslabs/aws-c-sdkutils         |
-| aws-c-io                   | v0.11.0              | https://github.com/awslabs/aws-c-io               |
-| aws-c-compression          | v0.2.14              | https://github.com/awslabs/aws-c-compression      |
-| aws-c-http                 | v0.7.6               | https://github.com/awslabs/aws-c-http             |
-| aws-c-cal                  | v0.5.18              | https://github.com/awslabs/aws-c-cal              |
-| aws-c-auth                 | v6.15.0              | https://github.com/awslabs/aws-c-auth             |
+| aws-lc                     | v1.17.4              | https://github.com/awslabs/aws-lc/                |
+| s2n-tls                    | v1.4.0               | https://github.com/aws/s2n-tls.git                |
+| aws-c-common               | v0.9.12              | https://github.com/awslabs/aws-c-common           |
+| aws-c-sdkutils             | v0.1.15              | https://github.com/awslabs/aws-c-sdkutils         |
+| aws-c-io                   | v0.14.0              | https://github.com/awslabs/aws-c-io               |
+| aws-c-compression          | v0.2.18              | https://github.com/awslabs/aws-c-compression      |
+| aws-c-http                 | v0.8.0               | https://github.com/awslabs/aws-c-http             |
+| aws-c-cal                  | v0.6.15               | https://github.com/awslabs/aws-c-cal              |
+| aws-c-auth                 | v0.7.10              | https://github.com/awslabs/aws-c-auth             |
 | aws-nitro-enclaves-nsm-api | v0.4.0               | https://github.com/aws/aws-nitro-enclaves-nsm-api |
-| json-c                     | json-c-0.16-20220414 | https://github.com/json-c/json-c                  |
+| json-c                     | json-c-0.17-20230812 | https://github.com/json-c/json-c                  |
 
 ## Building
 
