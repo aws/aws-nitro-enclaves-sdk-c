@@ -976,7 +976,7 @@ void aws_nitro_enclaves_kms_client_destroy(struct aws_nitro_enclaves_kms_client 
  * @param[in]   encryption_algorithm    The encryption algorithm that will be used to decrypt the ciphertext. (For symmetric keys, set key_id and encryption_algorithm to NULL as the ciphertext may contain key-id)
  * @param[in]   ciphertext              The ciphertext to decrypt.
  * @param[out]  plaintext               The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
- * @return
+ * @return                              Returns AWS_OP_SUCCESS if the call succeeds and plaintext is populated.
  */
 AWS_NITRO_ENCLAVES_API
 int aws_kms_decrypt_blocking(
@@ -984,7 +984,24 @@ int aws_kms_decrypt_blocking(
     const struct aws_string *key_id,
     const struct aws_string *encryption_algorithm,
     const struct aws_byte_buf *ciphertext,
-    struct aws_byte_buf *plaintext /* TODO: err_reason */);
+    struct aws_byte_buf *plaintext);
+
+/**
+ * Call [AWS KMS Decrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Decrypt.html).
+ * This function blocks and waits for the reply.
+ * This function generates an Attestation Document and calls AWS KMS with enclave-specific parameters.
+ * Calling it from a non-enclave environment will fail.
+ *
+ * @param[in]   client                  The AWS KMS client to use for calling the API.
+ * @param[in]   request_structure       The pre-filled structure with the request data.
+ * @param[out]  plaintext               The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
+ * @return                              Returns AWS_OP_SUCCESS if the call succeeds and plaintext is populated.
+ */
+AWS_NITRO_ENCLAVES_API
+int aws_kms_decrypt_blocking_from_request(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_kms_decrypt_request *request_structure,
+    struct aws_byte_buf *plaintext);
 
 /**
  * Call [AWS KMS Encrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html).
@@ -1001,8 +1018,22 @@ int aws_kms_encrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
     const struct aws_string *key_id,
     const struct aws_byte_buf *plaintext,
-    struct aws_byte_buf *ciphertext_blob
-    /* TODO: err_reason */);
+    struct aws_byte_buf *ciphertext_blob);
+
+    /**
+ * Call [AWS KMS Encrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html).
+ * This function blocks and waits for the reply.
+ *
+ * @param[in]   client              The AWS KMS client to use for calling the API.
+ * @param[in]   request_structure   The pre-filled structure with the request data.
+ * @param[out]  ciphertext_blob     The ciphertext blob output of the call. Should be an empty, but non-null aws_byte_buf.
+ * @return                          Returns AWS_OP_SUCCESS if the call succeeds and ciphertext_blob is populated.
+ */
+AWS_NITRO_ENCLAVES_API
+int aws_kms_encrypt_blocking_from_request(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_kms_encrypt_request *request_structure,
+    struct aws_byte_buf *ciphertext_blob);
 
 /**
  * Call [AWS KMS GenerateDataKey API](https://docs.aws.amazon.com/kms/latest/APIReference/API_GenerateDataKey.html).
