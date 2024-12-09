@@ -13,6 +13,8 @@ target_include_directories(${KMSTOOL_ENCLAVE_PROJECT_NAME} PUBLIC
 
 target_link_libraries(${KMSTOOL_ENCLAVE_PROJECT_NAME} aws-nitro-enclaves-sdk-c)
 
+target_compile_options(${KMSTOOL_ENCLAVE_PROJECT_NAME} PUBLIC "-Wall" "-Werror")
+
 if (BUILD_SHARED_LIBS AND NOT WIN32)
     message(INFO " kmstool will be built with shared libs, but you may need to set LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib to run the application")
 endif()
