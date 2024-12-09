@@ -35,11 +35,13 @@ typedef SOCKET socket_t;
 
 #define SERVICE_PORT 3000
 #define BUF_SIZE 8192
+#define DEFAULT_ENCRYPTION_CONTEXT_ELEMENT_NUM 10
 
 struct app_ctx {
     struct aws_allocator *allocator;
     const struct aws_string *message;
     const struct aws_string *region;
+    struct aws_hash_table encryption_context;
     uint32_t port;
     uint32_t cid;
     socket_t peer_fd;
@@ -66,6 +68,10 @@ static void s_usage(int exit_code) {
         stderr,
         "    --region REGION: AWS region to use for KMS; if enclave "
         "already has a region set via its arguments, this will cause an error\n");
+    fprintf(
+        stderr,
+        "    --encryption-context NAME=VALUE: key-value string pair to add to "
+        "the request's Encryption context\n");
     fprintf(stderr, "    ENCRYPTED_MESSAGE: Base64 encoded message\n");
     fprintf(stderr, "    --help: Display this message and exit\n");
     exit(exit_code);
@@ -75,9 +81,40 @@ static struct aws_cli_option s_long_options[] = {
     {"port", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'p'},
     {"cid", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'c'},
     {"region", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'r'},
+    {"encryption-context", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'e'},
     {"help", AWS_CLI_OPTIONS_NO_ARGUMENT, NULL, 'h'},
     {NULL, 0, NULL, 0},
 };
+
+static void s_parse_encryption_context_arg(
+    struct aws_allocator *allocator,
+    struct aws_hash_table *map,
+    const char *arg) {
+    size_t separator_pos = 0;
+    while (arg[separator_pos] != '\0' && arg[separator_pos] != '=') {
+        ++separator_pos;
+    }
+
+    if (arg[separator_pos] == '\0') {
+        return;
+    }
+
+    struct aws_string *map_key = aws_string_new_from_array(allocator, (const uint8_t *)arg, separator_pos);
+    if (map_key == NULL) {
+        return;
+    }
+
+    struct aws_string *map_value = aws_string_new_from_c_str(allocator, &arg[separator_pos + 1]);
+    if (map_value == NULL) {
+        aws_string_destroy(map_key);
+        return;
+    }
+
+    if (aws_hash_table_put(map, map_key, map_value, NULL) != AWS_OP_SUCCESS) {
+        aws_string_destroy(map_key);
+        aws_string_destroy(map_value);
+    }
+}
 
 static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     ctx->port = SERVICE_PORT;
@@ -86,7 +123,7 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
 
     while (true) {
         int option_index = 0;
-        int c = aws_cli_getopt_long(argc, argv, "p:c:r:h", s_long_options, &option_index);
+        int c = aws_cli_getopt_long(argc, argv, "p:c:r:e:h", s_long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -108,6 +145,9 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
                 break;
             case 'r':
                 ctx->region = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                break;
+            case 'e':
+                s_parse_encryption_context_arg(ctx->allocator, &ctx->encryption_context, aws_cli_optarg);
                 break;
             case 'h':
                 s_usage(0);
@@ -443,11 +483,64 @@ end:
     }
 }
 
+struct json_object *s_encryption_context_to_json(struct aws_hash_table *context) {
+    AWS_PRECONDITION(context);
+
+    struct json_object *json_context = json_object_new_object();
+    if (json_context == NULL) {
+        return NULL;
+    }
+
+    for (struct aws_hash_iter iter = aws_hash_iter_begin(context);
+         !aws_hash_iter_done(&iter);
+         aws_hash_iter_next(&iter)) {
+        const struct aws_string *map_key = iter.element.key;
+        const struct aws_string *map_value = iter.element.value;
+
+        struct json_object *elem = json_object_new_string(aws_string_c_str(map_value));
+        if (elem == NULL) {
+            goto cleanup;
+        }
+
+        if (json_object_object_add(json_context, aws_string_c_str(map_key), elem) < 0) {
+            json_object_put(elem);
+            goto cleanup;
+        }
+    }
+
+    return json_context;
+
+cleanup:
+    json_object_put(json_context);
+    return NULL;
+}
+
 int s_send_decrypt_command(struct app_ctx *app_ctx) {
     struct json_object *decrypt = json_object_new_object();
+    if (decrypt == NULL) {
+        return AWS_OP_ERR;
+    }
+
     json_object_object_add(decrypt, "Operation", json_object_new_string("Decrypt"));
     json_object_object_add(decrypt, "Ciphertext", json_object_new_string(aws_string_c_str(app_ctx->message)));
+
+    if (aws_hash_table_get_entry_count(&app_ctx->encryption_context) != 0) {
+        struct json_object *encryption_context = s_encryption_context_to_json(&app_ctx->encryption_context);
+        if (!encryption_context) {
+            goto cleanup;
+        }
+
+        if (json_object_object_add(decrypt, "EncryptionContext", encryption_context) < 0) {
+            json_object_put(encryption_context);
+            goto cleanup;
+        }
+    }
+
     return s_write_object(app_ctx->peer_fd, decrypt);
+
+cleanup:
+    json_object_put(decrypt);
+    return AWS_OP_ERR;
 }
 
 int main(int argc, char **argv) {
@@ -455,6 +548,17 @@ int main(int argc, char **argv) {
     int rc = 0;
     app_ctx.allocator = aws_default_allocator();
     aws_auth_library_init(app_ctx.allocator);
+    if (aws_hash_table_init(
+            &app_ctx.encryption_context,
+            app_ctx.allocator,
+            DEFAULT_ENCRYPTION_CONTEXT_ELEMENT_NUM,
+            aws_hash_string,
+            aws_hash_callback_string_eq,
+            aws_hash_callback_string_destroy,
+            aws_hash_callback_string_destroy) != AWS_OP_SUCCESS) {
+        fprintf(stderr, "Could not initialize encryption context map");
+        exit(1);
+    }
     s_parse_options(argc, argv, &app_ctx);
     aws_mutex_init(&app_ctx.mutex);
     aws_condition_variable_init(&app_ctx.c_var);
@@ -527,6 +631,7 @@ int main(int argc, char **argv) {
     s_handle_status(&app_ctx);
 
     s_close_socket(app_ctx.peer_fd);
+    aws_hash_table_clean_up(&app_ctx.encryption_context);
     aws_mutex_clean_up(&app_ctx.mutex);
     aws_condition_variable_clean_up(&app_ctx.c_var);
     aws_credentials_release(app_ctx.credentials);

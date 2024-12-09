@@ -321,10 +321,20 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
             rc = aws_base64_decode(&ciphertext_b64, &ciphertext);
             fail_on(rc != AWS_OP_SUCCESS, loop_next_err, "Ciphertext not a base64 string");
 
+            /* Extract Encryption context, if it is present */
+            struct aws_string *encryption_context_str = NULL;
+            struct json_object *encryption_context_json = json_object_object_get(object, "EncryptionContext");
+            if (encryption_context_json) {
+                encryption_context_str = aws_string_new_from_c_str(
+                    app_ctx->allocator, json_object_get_string(encryption_context_json));
+            }
+
             /* Decrypt the data with KMS. */
             struct aws_byte_buf ciphertext_decrypted;
-            rc = aws_kms_decrypt_blocking(client, NULL, NULL, &ciphertext, &ciphertext_decrypted);
+            rc = aws_kms_decrypt_blocking_with_context(
+                client, NULL, NULL, &ciphertext, encryption_context_str, &ciphertext_decrypted);
             aws_byte_buf_clean_up(&ciphertext);
+            aws_string_destroy(encryption_context_str);
             fail_on(rc != AWS_OP_SUCCESS, loop_next_err, "Could not decrypt ciphertext");
 
             json_object_put(object);
