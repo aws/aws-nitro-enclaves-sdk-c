@@ -2610,19 +2610,46 @@ static struct aws_byte_cursor kms_target_generate_data_key =
 static struct aws_byte_cursor kms_target_generate_random =
     AWS_BYTE_CUR_INIT_FROM_STRING_LITERAL("TrentService.GenerateRandom");
 
+static struct aws_kms_decrypt_response *s_kms_get_decrypt_response_from_request(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_kms_decrypt_request *request_structure) {
+    AWS_PRECONDITION(client != NULL);
+    AWS_PRECONDITION(request_structure != NULL);
+    struct aws_string *response = NULL;
+    struct aws_string *request = NULL;
+    struct aws_kms_decrypt_response *response_structure = NULL;
+    int rc = 0;
+
+    request = aws_kms_decrypt_request_to_json(request_structure);
+    if (request == NULL) {
+        goto finalize;
+    }
+
+    rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_decrypt, request, &response);
+    if (rc != 200) {
+        fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
+        goto finalize;
+    }
+
+    response_structure = aws_kms_decrypt_response_from_json(client->allocator, response);
+
+finalize:
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+
+    return response_structure;
+}
+
 int aws_kms_decrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
     const struct aws_string *key_id,
     const struct aws_string *encryption_algorithm,
     const struct aws_byte_buf *ciphertext,
-    struct aws_byte_buf *plaintext /* TODO: err_reason */) {
+    struct aws_byte_buf *plaintext) {
     AWS_PRECONDITION(client != NULL);
     AWS_PRECONDITION(ciphertext != NULL);
     AWS_PRECONDITION(plaintext != NULL);
 
-    struct aws_string *response = NULL;
-    struct aws_string *request = NULL;
-    struct aws_kms_decrypt_response *response_structure = NULL;
     struct aws_kms_decrypt_request *request_structure = NULL;
     int rc = 0;
 
@@ -2658,40 +2685,70 @@ int aws_kms_decrypt_blocking(
     }
     request_structure->recipient->key_encryption_algorithm = AWS_KEA_RSAES_OAEP_SHA_256;
 
-    request = aws_kms_decrypt_request_to_json(request_structure);
-    if (request == NULL) {
-        goto err_clean;
-    }
-
-    rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_decrypt, request, &response);
-    if (rc != 200) {
-        fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
-        goto err_clean;
-    }
-
-    response_structure = aws_kms_decrypt_response_from_json(client->allocator, response);
-    if (response_structure == NULL) {
-        fprintf(stderr, "Could not read response from KMS: %d\n", rc);
-        goto err_clean;
-    }
-
-    rc = s_decrypt_ciphertext_for_recipient(
-        client->allocator, &response_structure->ciphertext_for_recipient, client->keypair, plaintext);
+    rc = aws_kms_decrypt_blocking_from_request(client, request_structure, plaintext);
 
     aws_kms_decrypt_request_destroy(request_structure);
-    aws_kms_decrypt_response_destroy(response_structure);
-    aws_string_destroy(request);
-    aws_string_destroy(response);
-
     return rc;
+
 err_clean:
     aws_kms_decrypt_request_destroy(request_structure);
-    aws_kms_decrypt_response_destroy(response_structure);
-    aws_string_destroy(request);
-    aws_string_destroy(response);
     return AWS_OP_ERR;
 }
 
+int aws_kms_decrypt_blocking_from_request(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_kms_decrypt_request *request_structure,
+    struct aws_byte_buf *plaintext) {
+    AWS_PRECONDITION(client != NULL);
+    AWS_PRECONDITION(request_structure != NULL);
+    AWS_PRECONDITION(plaintext != NULL);
+
+    struct aws_kms_decrypt_response *response_structure = NULL;
+    int rc = AWS_OP_ERR;
+
+    response_structure = s_kms_get_decrypt_response_from_request(client, request_structure);
+    if (response_structure == NULL) {
+        fprintf(stderr, "Could not read response from KMS\n");
+    } else {
+        rc = s_decrypt_ciphertext_for_recipient(
+            client->allocator, &response_structure->ciphertext_for_recipient, client->keypair, plaintext);
+    }
+
+    aws_kms_decrypt_response_destroy(response_structure);
+
+    return rc;
+}
+
+static struct aws_kms_encrypt_response *s_kms_get_encrypt_response_from_request(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_kms_encrypt_request *request_structure) {
+    AWS_PRECONDITION(client != NULL);
+    AWS_PRECONDITION(request_structure != NULL);
+    struct aws_string *response = NULL;
+    struct aws_string *request = NULL;
+    struct aws_kms_encrypt_response *response_structure = NULL;
+    int rc = 0;
+
+    request = aws_kms_encrypt_request_to_json(request_structure);
+    if (request == NULL) {
+        goto finalize;
+    }
+
+    rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_encrypt, request, &response);
+    if (rc != 200) {
+        fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
+        goto finalize;
+    }
+
+    response_structure = aws_kms_encrypt_response_from_json(client->allocator, response);
+
+finalize:
+    aws_string_destroy(request);
+    aws_string_destroy(response);
+
+    return response_structure;
+}
+    
 int aws_kms_encrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
     const struct aws_string *key_id,
@@ -2703,9 +2760,6 @@ int aws_kms_encrypt_blocking(
     AWS_PRECONDITION(ciphertext_blob != NULL);
     AWS_PRECONDITION(plaintext != NULL);
 
-    struct aws_string *response = NULL;
-    struct aws_string *request = NULL;
-    struct aws_kms_encrypt_response *response_structure = NULL;
     struct aws_kms_encrypt_request *request_structure = NULL;
     int rc = 0;
 
@@ -2717,37 +2771,34 @@ int aws_kms_encrypt_blocking(
     aws_byte_buf_init_copy(&request_structure->plaintext, client->allocator, plaintext);
     request_structure->key_id = aws_string_clone_or_reuse(client->allocator, key_id);
 
-    request = aws_kms_encrypt_request_to_json(request_structure);
-    if (request == NULL) {
-        goto err_clean;
-    }
+    rc = aws_kms_encrypt_blocking_from_request(client, request_structure, ciphertext_blob);
 
-    rc = s_aws_nitro_enclaves_kms_client_call_blocking(client, kms_target_encrypt, request, &response);
-    if (rc != 200) {
-        fprintf(stderr, "Got non-200 answer from KMS: %d\n", rc);
-        goto err_clean;
-    }
+    aws_kms_encrypt_request_destroy(request_structure);
 
-    response_structure = aws_kms_encrypt_response_from_json(client->allocator, response);
+    return rc;
+}
+
+int aws_kms_encrypt_blocking_from_request(
+    struct aws_nitro_enclaves_kms_client *client,
+    const struct aws_kms_encrypt_request *request_structure,
+    struct aws_byte_buf *ciphertext_blob) {
+    AWS_PRECONDITION(client != NULL);
+    AWS_PRECONDITION(request_structure != NULL);
+    AWS_PRECONDITION(ciphertext_blob != NULL);
+
+    struct aws_kms_encrypt_response *response_structure = NULL;
+    int rc = AWS_OP_ERR;
+
+    response_structure = s_kms_get_encrypt_response_from_request(client, request_structure);
     if (response_structure == NULL) {
-        fprintf(stderr, "Could not read response from KMS: %d\n", rc);
-        goto err_clean;
+        fprintf(stderr, "Could not read response from KMS\n");
+    } else {
+        rc = aws_byte_buf_init_copy(ciphertext_blob, client->allocator, &response_structure->ciphertext_blob);
     }
 
-    aws_byte_buf_init_copy(ciphertext_blob, client->allocator, &response_structure->ciphertext_blob);
-
-    aws_kms_encrypt_request_destroy(request_structure);
     aws_kms_encrypt_response_destroy(response_structure);
-    aws_string_destroy(request);
-    aws_string_destroy(response);
 
-    return AWS_OP_SUCCESS;
-err_clean:
-    aws_kms_encrypt_request_destroy(request_structure);
-    aws_kms_encrypt_response_destroy(response_structure);
-    aws_string_destroy(request);
-    aws_string_destroy(response);
-    return AWS_OP_ERR;
+    return rc;
 }
 
 int aws_kms_generate_data_key_blocking(
