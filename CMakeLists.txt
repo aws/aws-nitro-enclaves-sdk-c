@@ -91,6 +91,7 @@ if (NOT WIN32)
     set_target_properties(${PROJECT_NAME} PROPERTIES SOVERSION 0unstable)
 
     target_compile_definitions(${PROJECT_NAME} PUBLIC)
+    target_compile_options(${PROJECT_NAME} PRIVATE "-Wall" "-Werror" "-Wpedantic")
 
     if (BUILD_RELOCATABLE_BINARIES)
         target_compile_definitions(${PROJECT_NAME} PRIVATE "-DCOMPAT_MODE")
