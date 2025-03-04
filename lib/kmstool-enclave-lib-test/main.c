@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
         char *output_dec = NULL;
 
         // Decrypt the ciphertext.
-        if (kmstool_enclave_decrypt(&params_decrypt, &output_dec) != 0 || output_dec_b64 == NULL) {
+        if (kmstool_enclave_decrypt(&params_decrypt, &output_dec) != 0 || output_dec == NULL) {
             fprintf(stderr, "Decryption failed at iteration %d\n", i);
             free(output_enc);
             exit(EXIT_FAILURE);
