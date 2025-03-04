@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
             "9+V8pysXJbZf0HZsffLI91T3AOM5XFMkQp+ynSF8ao92FkLVuX+4A==",
         .key_id = "60b8ce3a-7466-42b7-96a7-a3868f0fd1bf",
         .encryption_algorithm = "SYMMETRIC_DEFAULT",
-        .with_logs = 1,
+        .with_logs = 0,
     };
 
     kmstool_enclave_init(&params_init);
@@ -75,8 +75,6 @@ int main(int argc, char **argv) {
         }
 
         // Validate that the decrypted output matches the original plaintext.
-        fprintf(stderr, "----plaintext ----%s\n", plaintext);
-
         if (strncmp((char *)plaintext_check, (char *)output_dec, output_dec_len) != 0) {
             fprintf(
                 stderr, "Mismatch at iteration %d: expected %s, got %s\n", i, (char *)plaintext, (char *)output_dec);
