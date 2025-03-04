@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
 
-        fprintf(stderr, "Encryption success with data length %d\n", output_enc_len);
+        fprintf(stderr, "Encryption success with data length %ld\n", output_enc_len);
 
         struct kmstool_decrypt_params params_decrypt = {.ciphertext = output_enc, .ciphertext_len = output_enc_len};
 
