@@ -80,6 +80,7 @@ WORKDIR /rootfs
 RUN BINS="\
     /usr/lib64/libnsm.so \
     /usr/bin/kmstool_enclave \
+    /usr/bin/kmstool_enclave_lib_test \
     " && \
     for bin in $BINS; do \
         { echo "$bin"; ldd "$bin" | grep -Eo "/.*lib.*/[^ ]+"; } | \
@@ -119,6 +120,23 @@ FROM $BASE_IMAGE as kmstool-enclave-cli
 RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
 COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
 COPY --from=builder /usr/bin/kmstool_enclave_cli /kmstool_enclave_cli
+
+# kmstool-enclave-lib
+FROM $BASE_IMAGE as kmstool-enclave-lib
+
+# TODO: building packages statically instead of cleaning up unwanted packages from amazonlinux
+RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
+COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
+COPY --from=builder /usr/lib64/libkmstool-enclave-lib.so /libkmstool-enclave-lib.so
+
+#kmstool-enclave-lib-test
+FROM $BASE_IMAGE as kmstool-enclave-lib-test
+
+# TODO: building packages statically instead of cleaning up unwanted packages from amazonlinux
+# RUN rpm -e python python-libs python-urlgrabber python2-rpm pygpgme pyliblzma python-iniparse pyxattr python-pycurl amazon-linux-extras yum yum-metadata-parser yum-plugin-ovl yum-plugin-priorities
+COPY --from=builder /usr/lib64/libnsm.so /usr/lib64/libnsm.so
+COPY --from=builder /usr/lib64/libkmstool-enclave-lib.so /libkmstool-enclave-lib.so
+COPY --from=builder /usr/bin/kmstool_enclave_lib_test /kmstool_enclave_lib_test
 
 # Test
 FROM builder as test
