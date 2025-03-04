@@ -6,6 +6,10 @@
 #include <unistd.h>
 
 int main(int argc, char **argv) {
+    /* Mark unused parameters to avoid warnings */
+    (void)argc;
+    (void)argv;
+
     /* Global static application context */
     struct kmstool_init_params params_init = {
         .region = "ap-southeast-1",
