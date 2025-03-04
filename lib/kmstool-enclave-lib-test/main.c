@@ -43,8 +43,8 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < 100; i++) {
         // Create a unique plaintext string for each iteration.
-        uint8_t plaintext[32];
-        snprintf((char *)plaintext, sizeof(plaintext), "test1234567890_%d", i);
+        uint8_t plaintext[256];
+        sprintf((char *)plaintext, "test1234567890_%d", i);
         struct kmstool_encrypt_params params_encrypt = {
             .plaintext = plaintext, .plaintext_len = strlen((char *)plaintext)};
 
