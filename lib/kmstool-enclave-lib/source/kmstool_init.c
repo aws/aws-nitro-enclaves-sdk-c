@@ -135,11 +135,7 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
     }
 
     /* Initialize context with provided parameters */
-    int result = app_ctx_init_with_params(ctx, params);
-    if (result != KMSTOOL_SUCCESS) {
-        app_lib_clean_up(ctx);
-        return result;
-    }
+    app_ctx_init_with_params(ctx, params);
 
     /* Initialize KMS client */
     ssize_t rc = kms_client_init(ctx);
