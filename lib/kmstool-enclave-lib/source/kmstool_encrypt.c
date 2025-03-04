@@ -52,6 +52,9 @@ int app_lib_encrypt(
         return rc;
     }
 
+    *ciphertext_out = malloc(ciphertext_buf.len);
+    memcpy(*ciphertext_out, ciphertext_buf.buffer, ciphertext_buf.len);
+    *ciphertext_out_len = ciphertext_buf.len;
     aws_byte_buf_clean_up_secure(&ciphertext_buf);
     return ENCLAVE_KMS_SUCCESS;
 }

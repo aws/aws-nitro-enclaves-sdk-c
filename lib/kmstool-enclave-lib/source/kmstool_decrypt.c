@@ -43,7 +43,7 @@ int app_lib_decrypt(
         return rc;
     }
 
-    uint8_t *plaintext_out = malloc(plaintext_buf.len);
+    *plaintext_out = malloc(plaintext_buf.len);
     memcpy(*plaintext_out, plaintext_buf.buffer, plaintext_buf.len);
     *plaintext_out_len = plaintext_buf.len;
     aws_byte_buf_clean_up_secure(&plaintext_buf);
