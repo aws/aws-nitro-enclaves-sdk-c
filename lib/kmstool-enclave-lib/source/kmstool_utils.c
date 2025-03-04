@@ -1,7 +1,7 @@
 #include "../include/kmstool_utils.h"
 
 /* Encode the given text buffer to base64 and store it in text_b64 */
- int encode_b64(const struct app_ctx *ctx, const struct aws_byte_buf *text, struct aws_byte_buf *text_b64) {
+int encode_b64(const struct app_ctx *ctx, const struct aws_byte_buf *text, struct aws_byte_buf *text_b64) {
     ssize_t rc = AWS_OP_ERR;
     size_t text_b64_len;
 
@@ -25,7 +25,7 @@
 }
 
 /* Decord the given text buffer from base64 and store it in text */
- int decode_b64(const struct app_ctx *ctx, const struct aws_string *text_b64, struct aws_byte_buf *text) {
+int decode_b64(const struct app_ctx *ctx, const struct aws_string *text_b64, struct aws_byte_buf *text) {
     ssize_t rc = AWS_OP_ERR;
     size_t text_len;
 
