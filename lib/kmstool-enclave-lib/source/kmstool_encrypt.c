@@ -33,14 +33,14 @@ int app_lib_encrypt(
         fprintf(stderr, "plaintext should not be NULL or empty\n");
         *ciphertext_out = NULL;
         *ciphertext_out_len = 0;
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     if (params->plaintext_len > MAX_ENCRYPT_DATA_SIZE) {
         fprintf(stderr, "plaintext too large (max size: %d bytes)\n", MAX_ENCRYPT_DATA_SIZE);
         *ciphertext_out = NULL;
         *ciphertext_out_len = 0;
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     struct aws_byte_buf ciphertext_buf = {0};
@@ -58,12 +58,12 @@ int app_lib_encrypt(
         aws_byte_buf_clean_up_secure(&ciphertext_buf);
         *ciphertext_out = NULL;
         *ciphertext_out_len = 0;
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     memcpy(output, ciphertext_buf.buffer, ciphertext_buf.len);
     *ciphertext_out = output;
     *ciphertext_out_len = ciphertext_buf.len;
     aws_byte_buf_clean_up_secure(&ciphertext_buf);
-    return ENCLAVE_KMS_SUCCESS;
+    return KMSTOOL_SUCCESS;
 }

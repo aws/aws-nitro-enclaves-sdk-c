@@ -60,47 +60,47 @@ static int kms_client_init(struct app_ctx *ctx) {
  * @param ctx The KMS Tool enclave context to initialize
  * @param params Configuration parameters including AWS credentials and KMS settings
  *
- * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure
+ * @return KMSTOOL_SUCCESS on success, KMSTOOL_ERROR on failure
  */
 int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) {
     if (ctx->allocator != NULL || ctx->kms_client != NULL) {
         fprintf(stderr, "kms tool enclave lib has already been initialized\n");
-        return ENCLAVE_KMS_SUCCESS;
+        return KMSTOOL_SUCCESS;
     }
 
     /* Set default AWS region if not specified */
     if (params->region == NULL) {
         fprintf(stderr, "region must be set\n");
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     /* Check if AWS access key ID is set */
     if (params->aws_access_key_id == NULL) {
         fprintf(stderr, "aws_access_key_id must be set\n");
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     /* Check if AWS secret access key is set */
     if (params->aws_secret_access_key == NULL) {
         fprintf(stderr, "aws_secret_access_key must be set\n");
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     /* Check if AWS session token is set */
     if (params->aws_session_token == NULL) {
         fprintf(stderr, "aws_session_token must be set\n");
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     if (params->key_id == NULL) {
         fprintf(stderr, "key_id must be set\n");
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     /* Check if encryption algorithm is set */
     if (params->encryption_algorithm == NULL) {
         fprintf(stderr, "encryption_algorithm must be set\n");
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     /* Initialize the AWS Nitro Enclaves library */
@@ -108,20 +108,20 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
 
     if (aws_nitro_enclaves_library_seed_entropy(1024) != AWS_OP_SUCCESS) {
         aws_nitro_enclaves_library_clean_up();
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     ctx->allocator = aws_nitro_enclaves_get_allocator();
     if (ctx->allocator == NULL) {
         aws_nitro_enclaves_library_clean_up();
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     if (params->with_logs == 1) {
         ctx->logger = malloc(sizeof(struct aws_logger));
         if (ctx->logger == NULL) {
             aws_nitro_enclaves_library_clean_up();
-            return ENCLAVE_KMS_ERROR;
+            return KMSTOOL_ERROR;
         }
         struct aws_logger_standard_options options = {
             .file = stderr,
@@ -132,7 +132,7 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
             free(ctx->logger);
             ctx->logger = NULL;
             aws_nitro_enclaves_library_clean_up();
-            return ENCLAVE_KMS_ERROR;
+            return KMSTOOL_ERROR;
         }
         aws_logger_set(ctx->logger);
     }
@@ -143,10 +143,10 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
     if (rc != AWS_OP_SUCCESS) {
         app_lib_clean_up(ctx);
         fprintf(stderr, "failed to init kms client: %s\n", aws_error_str(aws_last_error()));
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
-    return ENCLAVE_KMS_SUCCESS;
+    return KMSTOOL_SUCCESS;
 }
 
 /**
@@ -160,7 +160,7 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
  * - AWS Nitro Enclaves library
  *
  * @param ctx The KMS Tool enclave context to clean up
- * @return ENCLAVE_KMS_SUCCESS on success
+ * @return KMSTOOL_SUCCESS on success
  */
 int app_lib_clean_up(struct app_ctx *ctx) {
     if (ctx->region) {
@@ -211,7 +211,7 @@ int app_lib_clean_up(struct app_ctx *ctx) {
     }
 
     ctx->allocator = NULL;
-    return ENCLAVE_KMS_SUCCESS;
+    return KMSTOOL_SUCCESS;
 }
 
 /**
@@ -222,12 +222,12 @@ int app_lib_clean_up(struct app_ctx *ctx) {
  *
  * @param ctx The KMS Tool enclave context
  * @param params New AWS credentials
- * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure
+ * @return KMSTOOL_SUCCESS on success, KMSTOOL_ERROR on failure
  */
 int app_lib_update_aws_key(struct app_ctx *ctx, const struct kmstool_update_aws_key_params *params) {
     if (ctx->allocator == NULL) {
         fprintf(stderr, "should init kms tool lib before update\n");
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     /* Free previously allocated memory for aws_access_key_id if it exists */
@@ -262,8 +262,8 @@ int app_lib_update_aws_key(struct app_ctx *ctx, const struct kmstool_update_aws_
     rc = kms_client_init(ctx);
     if (rc != AWS_OP_SUCCESS) {
         fprintf(stderr, "failed to update kms client \n");
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
-    return ENCLAVE_KMS_SUCCESS;
+    return KMSTOOL_SUCCESS;
 }

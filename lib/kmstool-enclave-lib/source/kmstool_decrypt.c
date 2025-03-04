@@ -31,7 +31,7 @@ int app_lib_decrypt(
         fprintf(stderr, "ciphertext should not be NULL or empty\n");
         *plaintext_out = NULL;
         *plaintext_out_len = 0;
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     struct aws_byte_buf plaintext_buf = {0};
@@ -49,12 +49,12 @@ int app_lib_decrypt(
         aws_byte_buf_clean_up_secure(&plaintext_buf);
         *plaintext_out = NULL;
         *plaintext_out_len = 0;
-        return ENCLAVE_KMS_ERROR;
+        return KMSTOOL_ERROR;
     }
 
     memcpy(output, plaintext_buf.buffer, plaintext_buf.len);
     *plaintext_out = output;
     *plaintext_out_len = plaintext_buf.len;
     aws_byte_buf_clean_up_secure(&plaintext_buf);
-    return ENCLAVE_KMS_SUCCESS;
+    return KMSTOOL_SUCCESS;
 }

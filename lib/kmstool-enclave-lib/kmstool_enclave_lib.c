@@ -30,7 +30,7 @@ static struct app_ctx g_ctx = {0};
  * and sets up all necessary resources for KMS operations.
  *
  * @param params Configuration parameters including AWS credentials and settings
- * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure
+ * @return KMSTOOL_SUCCESS on success, KMSTOOL_ERROR on failure
  */
 API_EXPORT int kmstool_enclave_init(const struct kmstool_init_params *params) {
     return app_lib_init(&g_ctx, params);
@@ -42,7 +42,7 @@ API_EXPORT int kmstool_enclave_init(const struct kmstool_init_params *params) {
  * Releases all resources associated with the global application context
  * and performs necessary cleanup operations.
  *
- * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure
+ * @return KMSTOOL_SUCCESS on success, KMSTOOL_ERROR on failure
  */
 API_EXPORT int kmstool_enclave_stop() {
     return app_lib_clean_up(&g_ctx);
@@ -55,7 +55,7 @@ API_EXPORT int kmstool_enclave_stop() {
  * reinitializes the KMS client with the new credentials.
  *
  * @param params New AWS credentials to use
- * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure
+ * @return KMSTOOL_SUCCESS on success, KMSTOOL_ERROR on failure
  */
 API_EXPORT int kmstool_enclave_update_aws_key(const struct kmstool_update_aws_key_params *params) {
     return app_lib_update_aws_key(&g_ctx, params);
@@ -70,7 +70,7 @@ API_EXPORT int kmstool_enclave_update_aws_key(const struct kmstool_update_aws_ke
  * @param params Encryption parameters including plaintext data
  * @param ciphertext_out Pointer to store the encrypted data
  * @param ciphertext_out_len Pointer to store the length of encrypted data
- * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure
+ * @return KMSTOOL_SUCCESS on success, KMSTOOL_ERROR on failure
  */
 API_EXPORT int kmstool_enclave_encrypt(
     const struct kmstool_encrypt_params *params,
@@ -88,7 +88,7 @@ API_EXPORT int kmstool_enclave_encrypt(
  * @param params Decryption parameters including ciphertext data
  * @param plaintext_out Pointer to store the decrypted data
  * @param plaintext_out_len Pointer to store the length of decrypted data
- * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure
+ * @return KMSTOOL_SUCCESS on success, KMSTOOL_ERROR on failure
  */
 API_EXPORT int kmstool_enclave_decrypt(
     const struct kmstool_decrypt_params *params,

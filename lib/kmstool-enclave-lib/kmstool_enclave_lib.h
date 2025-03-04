@@ -23,7 +23,7 @@ extern "C" {
  * These status codes indicate the result of KMS Tool operations.
  * All functions in this library return one of these values.
  */
-enum kmstool_status {
+enum KMSTOOL_STATUS {
     KMSTOOL_ERROR = -1,  /* Operation failed */
     KMSTOOL_SUCCESS = 0, /* Operation succeeded */
 };
