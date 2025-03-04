@@ -6,12 +6,12 @@
 /* Initialize app context with the provided parameters */
 static void app_ctx_init_with_params(struct app_ctx *ctx, const struct kmstool_init_params *params) {
     ctx->proxy_port = params->proxy_port;
-    ctx->region = aws_string_new_from_c_str(ctx->allocator, params->aws_region);
+    ctx->aws_region = aws_string_new_from_c_str(ctx->allocator, params->aws_region);
     ctx->aws_access_key_id = aws_string_new_from_c_str(ctx->allocator, params->aws_access_key_id);
     ctx->aws_secret_access_key = aws_string_new_from_c_str(ctx->allocator, params->aws_secret_access_key);
     ctx->aws_session_token = aws_string_new_from_c_str(ctx->allocator, params->aws_session_token);
-    ctx->key_id = aws_string_new_from_c_str(ctx->allocator, params->kms_key_id);
-    ctx->encryption_algorithm = aws_string_new_from_c_str(ctx->allocator, params->kms_algorithm);
+    ctx->kms_key_id = aws_string_new_from_c_str(ctx->allocator, params->kms_key_id);
+    ctx->kms_algorithm = aws_string_new_from_c_str(ctx->allocator, params->kms_algorithm);
 }
 
 /* Initialize KMS client with AWS credentials and vsock endpoint configuration */
@@ -64,42 +64,38 @@ static int kms_client_init(struct app_ctx *ctx) {
  */
 int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) {
     if (ctx->allocator != NULL || ctx->kms_client != NULL) {
-        fprintf(stderr, "kms tool enclave lib has already been initialized\n");
+        fprintf(stderr, "KMS tool enclave lib has already been initialized\n");
         return KMSTOOL_SUCCESS;
     }
 
-    /* Set default AWS region if not specified */
-    if (params->region == NULL) {
-        fprintf(stderr, "region must be set\n");
+    /* Validate required parameters */
+    if (params->aws_region == NULL) {
+        fprintf(stderr, "AWS region must be set\n");
         return KMSTOOL_ERROR;
     }
 
-    /* Check if AWS access key ID is set */
     if (params->aws_access_key_id == NULL) {
-        fprintf(stderr, "aws_access_key_id must be set\n");
+        fprintf(stderr, "AWS access key ID must be set\n");
         return KMSTOOL_ERROR;
     }
 
-    /* Check if AWS secret access key is set */
     if (params->aws_secret_access_key == NULL) {
-        fprintf(stderr, "aws_secret_access_key must be set\n");
+        fprintf(stderr, "AWS secret access key must be set\n");
         return KMSTOOL_ERROR;
     }
 
-    /* Check if AWS session token is set */
     if (params->aws_session_token == NULL) {
-        fprintf(stderr, "aws_session_token must be set\n");
+        fprintf(stderr, "AWS session token must be set\n");
         return KMSTOOL_ERROR;
     }
 
-    if (params->key_id == NULL) {
-        fprintf(stderr, "key_id must be set\n");
+    if (params->kms_key_id == NULL) {
+        fprintf(stderr, "KMS key ID must be set\n");
         return KMSTOOL_ERROR;
     }
 
-    /* Check if encryption algorithm is set */
-    if (params->encryption_algorithm == NULL) {
-        fprintf(stderr, "encryption_algorithm must be set\n");
+    if (params->kms_algorithm == NULL) {
+        fprintf(stderr, "KMS algorithm must be set\n");
         return KMSTOOL_ERROR;
     }
 
@@ -117,7 +113,8 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
         return KMSTOOL_ERROR;
     }
 
-    if (params->with_logs == 1) {
+    /* Initialize logger if enabled */
+    if (params->enable_logging == 1) {
         ctx->logger = malloc(sizeof(struct aws_logger));
         if (ctx->logger == NULL) {
             aws_nitro_enclaves_library_clean_up();
@@ -139,10 +136,11 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
 
     app_ctx_init_with_params(ctx, params);
 
+    /* Initialize KMS client */
     ssize_t rc = kms_client_init(ctx);
     if (rc != AWS_OP_SUCCESS) {
         app_lib_clean_up(ctx);
-        fprintf(stderr, "failed to init kms client: %s\n", aws_error_str(aws_last_error()));
+        fprintf(stderr, "Failed to initialize KMS client: %s\n", aws_error_str(aws_last_error()));
         return KMSTOOL_ERROR;
     }
 
