@@ -29,7 +29,7 @@ int app_lib_encrypt(
     size_t *ciphertext_out_len) {
     ssize_t rc = AWS_OP_ERR;
 
-    if (params->plaintext == NULL || strlen(params->plaintext_len) == 0) {
+    if (params->plaintext == NULL || params->plaintext_len == 0) {
         fprintf(stderr, "plaintext should not be NULL\n");
         *ciphertext_out = NULL;
         *ciphertext_out_len = 0;
