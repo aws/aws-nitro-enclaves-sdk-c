@@ -70,14 +70,16 @@ int main(int argc, char **argv) {
             exit(EXIT_FAILURE);
         }
         // Validate that the decrypted output matches the original plaintext.
-        if (memcmp(plaintext, output_dec, output_dec_len) != 0) {
+        if (strcmp((char *)plaintext, (char *)output_dec) != 0) {
             fprintf(
-                stderr,
-                "Mismatch at iteration %d: expected %s, got %.*s\n",
-                i,
-                plaintext,
-                (int)output_dec_len,
-                output_dec);
+                stderr, "Mismatch at iteration %d: expected %s, got %s\n", i, (char *)plaintext, (char *)output_dec);
+            free(output_enc);
+            free(output_dec);
+            exit(EXIT_FAILURE);
+        }
+
+        if (strlen((char *)plaintext) != output_dec_len) {
+            fprintf(stderr, "Mismatch len expected %zu got %zu\n", strlen((char *)plaintext), output_dec_len);
             free(output_enc);
             free(output_dec);
             exit(EXIT_FAILURE);
