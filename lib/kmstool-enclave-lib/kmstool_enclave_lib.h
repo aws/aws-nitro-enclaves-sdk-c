@@ -5,6 +5,9 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
+#include <stdint.h>
+
 /* Enum to represent the result of KMS operations. */
 enum RESULT {
     ENCLAVE_KMS_ERROR = -1,  /* Operation failed. */
@@ -13,10 +16,13 @@ enum RESULT {
 
 /* Struct to hold initialization parameters for the KMS tool enclave. */
 struct kmstool_init_params {
-    /* KMS region to use. */
-    const char *region;
+    const unsigned int with_logs;
+
     /* vsock port on which vsock-proxy is available in parent. */
     const unsigned int proxy_port;
+
+    /* KMS region to use. */
+    const char *region;
 
     /* KMS credentials */
     const char *aws_access_key_id;
@@ -26,8 +32,6 @@ struct kmstool_init_params {
     /* KMS key */
     const char *key_id;
     const char *encryption_algorithm;
-
-    const unsigned int with_logs;
 };
 
 /**
@@ -61,15 +65,20 @@ struct kmstool_update_aws_key_params {
 int kmstool_enclave_update_aws_key(const struct kmstool_update_aws_key_params *params);
 
 struct kmstool_encrypt_params {
-    /* Plaintext to encrypt (must be base64-encoded) */
-    const char *plaintext_b64;
+    /* Plaintext to encrypt */
+    const uint8_t *plaintext;
+    const size_t plaintext_len;
 };
 
-int kmstool_enclave_encrypt(const struct kmstool_encrypt_params *params, char **ciphertext_b64_out);
+int kmstool_enclave_encrypt(
+    const struct kmstool_encrypt_params *params,
+    uint8_t **ciphertext_out,
+    size_t *ciphertext_out_len);
 
 struct kmstool_decrypt_params {
-    /* Ciphertext to decrypt (must be base64-encoded) */
-    const char *ciphertext_b64;
+    /* Ciphertext to decrypt */
+    const uint8_t *ciphertext;
+    const size_t ciphertext_len;
 };
 
 /**
@@ -79,7 +88,10 @@ struct kmstool_decrypt_params {
  * @param plaintext_b64_out Pointer to store the decrypted plaintext (must be freed by caller).
  * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure.
  */
-int kmstool_enclave_decrypt(const struct kmstool_decrypt_params *params, char **plaintext_b64_out);
+int kmstool_enclave_decrypt(
+    const struct kmstool_decrypt_params *params,
+    uint8_t **plaintext_out,
+    size_t *plaintext_out_len);
 
 #ifdef __cplusplus
 }

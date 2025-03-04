@@ -43,36 +43,41 @@ int main(int argc, char **argv) {
 
     for (int i = 0; i < 100; i++) {
         // Create a unique plaintext string for each iteration.
-        char plaintext[32];
-        snprintf(plaintext, sizeof(plaintext), "test1234567890_%d", i);
+        uint8_t plaintext[32];
+        snprintf((char *)plaintext, sizeof(plaintext), "test1234567890_%d", i);
         struct kmstool_encrypt_params params_encrypt = {
-            .plaintext_b64 = plaintext,
-        };
-        char *output_enc = NULL;
+            .plaintext = plaintext, .plaintext_len = strlen((char *)plaintext)};
 
+        uint8_t *output_enc = NULL;
+        size_t output_enc_len = 0;
         // Encrypt the plaintext.
-        if (kmstool_enclave_encrypt(&params_encrypt, &output_enc) != 0 || output_enc == NULL) {
+        if (kmstool_enclave_encrypt(&params_encrypt, &output_enc, &output_enc_len) != 0 || output_enc == NULL) {
             fprintf(stderr, "Encryption failed at iteration %d\n", i);
             exit(EXIT_FAILURE);
         }
 
-        fprintf(stderr, "Encryption success with data %s\n", output_enc);
+        fprintf(stderr, "Encryption success with data length %d\n", output_enc_len);
 
-        struct kmstool_decrypt_params params_decrypt = {
-            .ciphertext_b64 = output_enc,
-        };
+        struct kmstool_decrypt_params params_decrypt = {.ciphertext = output_enc, .ciphertext_len = output_enc_len};
 
-        char *output_dec = NULL;
+        uint8_t *output_dec = NULL;
+        size_t output_dec_len = 0;
 
         // Decrypt the ciphertext.
-        if (kmstool_enclave_decrypt(&params_decrypt, &output_dec) != 0 || output_dec == NULL) {
+        if (kmstool_enclave_decrypt(&params_decrypt, &output_dec, &output_dec_len) != 0 || output_dec == NULL) {
             fprintf(stderr, "Decryption failed at iteration %d\n", i);
             free(output_enc);
             exit(EXIT_FAILURE);
         }
         // Validate that the decrypted output matches the original plaintext.
-        if (strcmp(plaintext, output_dec) != 0) {
-            fprintf(stderr, "Mismatch at iteration %d: expected %s, got %s\n", i, plaintext, output_dec);
+        if (memcmp(plaintext, output_dec, output_dec_len) != 0) {
+            fprintf(
+                stderr,
+                "Mismatch at iteration %d: expected %s, got %.*s\n",
+                i,
+                plaintext,
+                (int)output_dec_len,
+                output_dec);
             free(output_enc);
             free(output_dec);
             exit(EXIT_FAILURE);
