@@ -6,8 +6,6 @@
 #include <unistd.h>
 
 int main(int argc, char **argv) {
-    fprintf(stderr, "params %d %p \n", argc, (void *)argv);
-
     /* Global static application context */
     struct kmstool_init_params params_init = {
         .region = "ap-southeast-1",
