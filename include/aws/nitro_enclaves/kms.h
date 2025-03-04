@@ -94,7 +94,7 @@ struct aws_kms_decrypt_request {
      *
      * Required: No.
      */
-    enum aws_encryption_algorithm kms_algorithm;
+    enum aws_encryption_algorithm encryption_algorithm;
 
     /**
      * Specifies the encryption context to use when decrypting the data. An encryption
@@ -137,7 +137,7 @@ struct aws_kms_decrypt_request {
      *
      * Required: No.
      */
-    struct aws_string *kms_key_id;
+    struct aws_string *key_id;
 
     /**
      * Recipient field.
@@ -164,7 +164,7 @@ struct aws_kms_decrypt_response {
      *
      * Required: Yes.
      */
-    struct aws_string *kms_key_id;
+    struct aws_string *key_id;
 
     /**
      * Decrypted plaintext data. This value may not be returned if the customer master key is
@@ -179,7 +179,7 @@ struct aws_kms_decrypt_response {
      *
      * Required: No.
      */
-    enum aws_encryption_algorithm kms_algorithm;
+    enum aws_encryption_algorithm encryption_algorithm;
 
     /**
      * Ciphertext for recipient field.
@@ -213,7 +213,7 @@ struct aws_kms_encrypt_request {
      *
      * Required: No.
      */
-    enum aws_encryption_algorithm kms_algorithm;
+    enum aws_encryption_algorithm encryption_algorithm;
 
     /**
      * Specifies the encryption context that will be used to encrypt the data.
@@ -252,7 +252,7 @@ struct aws_kms_encrypt_request {
      *
      * Required: Yes.
      */
-    struct aws_string *kms_key_id;
+    struct aws_string *key_id;
 
     /**
      * Allocator used for memory management of associated resources.
@@ -272,7 +272,7 @@ struct aws_kms_encrypt_response {
      *
      * Required: Yes.
      */
-    struct aws_string *kms_key_id;
+    struct aws_string *key_id;
 
     /**
      * The encrypted plaintext.
@@ -288,7 +288,7 @@ struct aws_kms_encrypt_response {
      *
      * Required: Yes.
      */
-    enum aws_encryption_algorithm kms_algorithm;
+    enum aws_encryption_algorithm encryption_algorithm;
 
     /**
      * Allocator used for memory management of associated resources.
@@ -307,7 +307,7 @@ struct aws_kms_generate_data_key_request {
      *
      * Required: Yes.
      */
-    struct aws_string *kms_key_id;
+    struct aws_string *key_id;
 
     /**
      * Specifies the encryption context that will be used when encrypting the data key.
@@ -380,7 +380,7 @@ struct aws_kms_generate_data_key_response {
      *
      * Required: Yes.
      */
-    struct aws_string *kms_key_id;
+    struct aws_string *key_id;
 
     /**
      * The encrypted data encryption key.
@@ -484,8 +484,8 @@ struct aws_nitro_enclaves_kms_client_configuration {
      */
     struct aws_allocator *allocator;
 
-    /** The name of the AWS aws_region this client uses */
-    const struct aws_string *aws_region;
+    /** The name of the AWS region this client uses */
+    const struct aws_string *region;
 
     /**
      * Endpoint to use instead of the DNS endpoint.
@@ -519,7 +519,7 @@ struct aws_nitro_enclaves_kms_client_configuration {
     struct aws_credentials_provider *credentials_provider;
 
     /**
-     * Allows overriding the default service endpoint (kms.$aws_region.amazonaws.com) with a
+     * Allows overriding the default service endpoint (kms.$region.amazonaws.com) with a
      * custom one. If endpoint is set, this field is used only in certificate validation.
      *
      * Required: No.
@@ -761,7 +761,7 @@ struct aws_kms_generate_data_key_request *aws_kms_generate_data_key_request_new(
 /**
  * Serializes a KMS Generate Data Key Request @ref aws_kms_generate_data_key_request to json.
  *
- * @note The request must contain the required @ref aws_kms_generate_data_key_request::kms_key_id parameter.
+ * @note The request must contain the required @ref aws_kms_generate_data_key_request::key_id parameter.
  *
  * @param[in]   req        The KMS Generate Data Key Request that is to be serialized.
  *
@@ -920,7 +920,7 @@ void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_res
  * uses explicit credentials instead of a credential provider.
  * The client shall retain ownership on the input parameters after this function returns.
  *
- * @param[in]   aws_region              The AWS aws_region.
+ * @param[in]   region              The AWS region.
  * @param[in]   endpoint            The remote endpoint.
  * @param[in]   domain              The remote domain. If the endpoint is set.
  * @param[in]   access_key_id       The AWS_ACCESS_KEY_ID.
@@ -931,7 +931,7 @@ void aws_kms_generate_random_response_destroy(struct aws_kms_generate_random_res
  */
 AWS_NITRO_ENCLAVES_API
 struct aws_nitro_enclaves_kms_client_configuration *aws_nitro_enclaves_kms_client_config_default(
-    struct aws_string *aws_region,
+    struct aws_string *region,
     struct aws_socket_endpoint *endpoint,
     enum aws_socket_domain domain,
     struct aws_string *access_key_id,
@@ -972,10 +972,8 @@ void aws_nitro_enclaves_kms_client_destroy(struct aws_nitro_enclaves_kms_client 
  * Calling it from a non-enclave environment will fail.
  *
  * @param[in]   client                  The AWS KMS client to use for calling the API.
- * @param[in]   kms_key_id                  The ARN or alias of AWS KMS CMK used to encrypt the data key. (For symmetric
- * keys, set kms_key_id and kms_algorithm to NULL as the ciphertext may contain key-id)
- * @param[in]   kms_algorithm    The encryption algorithm that will be used to decrypt the ciphertext. (For symmetric
- * keys, set kms_key_id and kms_algorithm to NULL as the ciphertext may contain key-id)
+ * @param[in]   key_id                  The ARN or alias of AWS KMS CMK used to encrypt the data key. (For symmetric keys, set key_id and encryption_algorithm to NULL as the ciphertext may contain key-id)
+ * @param[in]   encryption_algorithm    The encryption algorithm that will be used to decrypt the ciphertext. (For symmetric keys, set key_id and encryption_algorithm to NULL as the ciphertext may contain key-id)
  * @param[in]   ciphertext              The ciphertext to decrypt.
  * @param[out]  plaintext               The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
  * @return                              Returns AWS_OP_SUCCESS if the call succeeds and plaintext is populated.
@@ -983,8 +981,8 @@ void aws_nitro_enclaves_kms_client_destroy(struct aws_nitro_enclaves_kms_client 
 AWS_NITRO_ENCLAVES_API
 int aws_kms_decrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
-    const struct aws_string *kms_key_id,
-    const struct aws_string *kms_algorithm,
+    const struct aws_string *key_id,
+    const struct aws_string *encryption_algorithm,
     const struct aws_byte_buf *ciphertext,
     struct aws_byte_buf *plaintext);
 
@@ -995,21 +993,18 @@ int aws_kms_decrypt_blocking(
  * Calling it from a non-enclave environment will fail.
  *
  * @param[in]   client                  The AWS KMS client to use for calling the API.
- * @param[in]   kms_key_id                  The ARN or alias of AWS KMS CMK used to encrypt the data key. (For symmetric
- * keys, set kms_key_id and kms_algorithm to NULL as the ciphertext may contain key-id)
- * @param[in]   kms_algorithm    The encryption algorithm that will be used to decrypt the ciphertext. (For symmetric
- * keys, set kms_key_id and kms_algorithm to NULL as the ciphertext may contain key-id)
+ * @param[in]   key_id                  The ARN or alias of AWS KMS CMK used to encrypt the data key. (For symmetric keys, set key_id and encryption_algorithm to NULL as the ciphertext may contain key-id)
+ * @param[in]   encryption_algorithm    The encryption algorithm that will be used to decrypt the ciphertext. (For symmetric keys, set key_id and encryption_algorithm to NULL as the ciphertext may contain key-id)
  * @param[in]   ciphertext              The ciphertext to decrypt.
- * @param[in]   encryption_context      Optional string containing a valid JSON with [Encryption
- * context](https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html) to be added to the request.
+ * @param[in]   encryption_context      Optional string containing a valid JSON with [Encryption context](https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html) to be added to the request.
  * @param[out]  plaintext               The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
  * @return                              Returns AWS_OP_SUCCESS if the call succeeds and plaintext is populated.
  */
 AWS_NITRO_ENCLAVES_API
 int aws_kms_decrypt_blocking_with_context(
     struct aws_nitro_enclaves_kms_client *client,
-    const struct aws_string *kms_key_id,
-    const struct aws_string *kms_algorithm,
+    const struct aws_string *key_id,
+    const struct aws_string *encryption_algorithm,
     const struct aws_byte_buf *ciphertext,
     const struct aws_string *encryption_context,
     struct aws_byte_buf *plaintext);
@@ -1036,7 +1031,7 @@ int aws_kms_decrypt_blocking_from_request(
  * This function blocks and waits for the reply.
  *
  * @param[in]   client      The AWS KMS client to use for calling the API.
- * @param[in]   kms_key_id      The ARN or alias of AWS KMS CMK used to encrypt the plaintext.
+ * @param[in]   key_id      The ARN or alias of AWS KMS CMK used to encrypt the plaintext.
  * @param[in]   plaintext   The plaintext to encrypt.
  * @param[out]  ciphertext_blob  The ciphertext blob output of the call. Should be an empty, but non-null aws_byte_buf.
  * @return                  Returns AWS_OP_SUCCESS if the call succeeds and ciphertext_blob is populated.
@@ -1044,7 +1039,7 @@ int aws_kms_decrypt_blocking_from_request(
 AWS_NITRO_ENCLAVES_API
 int aws_kms_encrypt_blocking(
     struct aws_nitro_enclaves_kms_client *client,
-    const struct aws_string *kms_key_id,
+    const struct aws_string *key_id,
     const struct aws_byte_buf *plaintext,
     struct aws_byte_buf *ciphertext_blob);
 
@@ -1053,30 +1048,27 @@ int aws_kms_encrypt_blocking(
  * This function blocks and waits for the reply.
  *
  * @param[in]   client              The AWS KMS client to use for calling the API.
- * @param[in]   kms_key_id              The ARN or alias of AWS KMS CMK used to encrypt the plaintext.
+ * @param[in]   key_id              The ARN or alias of AWS KMS CMK used to encrypt the plaintext.
  * @param[in]   plaintext           The plaintext to encrypt.
- * @param[in]   encryption_context  Optional string containing a valid JSON with [Encryption
- * context](https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html) to be added to the request.
- * @param[out]  ciphertext_blob     The ciphertext blob output of the call. Should be an empty, but non-null
- * aws_byte_buf.
+ * @param[in]   encryption_context  Optional string containing a valid JSON with [Encryption context](https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html) to be added to the request.
+ * @param[out]  ciphertext_blob     The ciphertext blob output of the call. Should be an empty, but non-null aws_byte_buf.
  * @return                          Returns AWS_OP_SUCCESS if the call succeeds and ciphertext_blob is populated.
  */
 AWS_NITRO_ENCLAVES_API
 int aws_kms_encrypt_blocking_with_context(
     struct aws_nitro_enclaves_kms_client *client,
-    const struct aws_string *kms_key_id,
+    const struct aws_string *key_id,
     const struct aws_byte_buf *plaintext,
     const struct aws_string *encryption_context,
     struct aws_byte_buf *ciphertext_blob);
 
-/**
+    /**
  * Call [AWS KMS Encrypt API](https://docs.aws.amazon.com/kms/latest/APIReference/API_Encrypt.html).
  * This function blocks and waits for the reply.
  *
  * @param[in]   client              The AWS KMS client to use for calling the API.
  * @param[in]   request_structure   The pre-filled structure with the request data.
- * @param[out]  ciphertext_blob     The ciphertext blob output of the call. Should be an empty, but non-null
- * aws_byte_buf.
+ * @param[out]  ciphertext_blob     The ciphertext blob output of the call. Should be an empty, but non-null aws_byte_buf.
  * @return                          Returns AWS_OP_SUCCESS if the call succeeds and ciphertext_blob is populated.
  */
 AWS_NITRO_ENCLAVES_API
@@ -1092,7 +1084,7 @@ int aws_kms_encrypt_blocking_from_request(
  * Calling it from a non-enclave environment will fail.
  *
  * @param[in]   client       The AWS KMS client to use for calling the API.
- * @param[in]   kms_key_id       The ARN or alias of AWS KMS CMK used to encrypt the data key.
+ * @param[in]   key_id       The ARN or alias of AWS KMS CMK used to encrypt the data key.
  * @param[in]   key_spec     The spec of key to generate: an AES128 or an AES256 key.
  * @param[out]  plaintext    The plaintext output of the call. Should be an empty, but non-null aws_byte_buf.
  * @param[out]  ciphertext_blob The ciphertext blob output of the call. Should be an empty, but non-null aws_byte_buf.
@@ -1102,7 +1094,7 @@ int aws_kms_encrypt_blocking_from_request(
 AWS_NITRO_ENCLAVES_API
 int aws_kms_generate_data_key_blocking(
     struct aws_nitro_enclaves_kms_client *client,
-    const struct aws_string *kms_key_id,
+    const struct aws_string *key_id,
     enum aws_key_spec key_spec,
     struct aws_byte_buf *plaintext,
     struct aws_byte_buf *ciphertext_blob

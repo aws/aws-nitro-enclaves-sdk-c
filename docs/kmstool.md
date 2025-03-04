@@ -26,9 +26,9 @@ enclave, and contains an `Operation` field that can be
     1. `SetClient` operation requires `AwsAccessKeyId` and
 `AwsSecretAccessKey` fields to be set to the corresponding
 IAM Credentials, as well as `AwsSessionToken` if available.
-Additionaly, it can specify `AwsRegion` to allow client to change aws_region, if
-enclave does not already have a specific aws_region set. If neither side sets a
-specific aws_region, "us-east-1" is used.
+Additionaly, it can specify `AwsRegion` to allow client to change region, if
+enclave does not already have a specific region set. If neither side sets a
+specific region, "us-east-1" is used.
 Example: `{"Operation": "SetClient", "AwsAccessKeyId": "AKIAIOSFODNN7EXAMPLE",
 "AwsSecretAccessKey": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY", "AwsRegion": "us-east-1"}`.
     2. `Decrypt` operation requires a `Ciphertext` fields to be set.
@@ -273,16 +273,16 @@ $EnclaveID=$(nitro-cli describe-enclaves | ConvertFrom-Json).EnclaveID
 
 In a third (new) terminal session, start vsock-proxy on port 8000. This allows the enclave egress to
 kms.us-east-1.amazonaws.com. To change regions, you will need to update the `CMK_REGION` variable,
-and also change the aws_region for the client similarly. You can find more details
+and also change the region for the client similarly. You can find more details
 [here](https://github.com/aws/aws-nitro-enclaves-cli/blob/main/vsock_proxy/README.md).
 
 ```sh
-CMK_REGION=us-east-1 # The aws_region where you created your AWS KMS CMK
+CMK_REGION=us-east-1 # The region where you created your AWS KMS CMK
 vsock-proxy 8000 kms.$CMK_REGION.amazonaws.com 443
 ```
 PowerShell:
 ```powershell
-$CMK_REGION="us-east-1" # the aws_region where you created your AWS KMS CMK
+$CMK_REGION="us-east-1" # the region where you created your AWS KMS CMK
 vsock-proxy 8000 kms.$CMK_REGION.amazonaws.com 443
 ```
 
@@ -292,13 +292,13 @@ CMK_REGION=us-east-1 # Must match above
 ENCLAVE_CID=$(nitro-cli describe-enclaves | jq -r .[0].EnclaveCID)
 # Run docker with network host to allow it to fetch IAM credentials with IMDSv2
 docker run --network host --security-opt seccomp=unconfined -it kmstool-instance \
-    /kmstool_instance --cid "$ENCLAVE_CID" --aws_region "$CMK_REGION" "$CIPHERTEXT"
+    /kmstool_instance --cid "$ENCLAVE_CID" --region "$CMK_REGION" "$CIPHERTEXT"
 ```
 PowerShell:
 ```powershell
 $CMK_REGION="us-east-1" # Must match above
 $EnclaveCID=$(nitro-cli describe-enclaves | ConvertFrom-Json).EnclaveCID
-kmstool_instance --cid $EnclaveCID --aws_region $CMK_REGION
+kmstool_instance --cid $EnclaveCID --region $CMK_REGION
 ```
 
 At the end, you should be able to get back the message set above, in this case,

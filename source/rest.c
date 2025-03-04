@@ -61,7 +61,7 @@ static void s_on_client_connection_shutdown(struct aws_http_connection *connecti
 struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     struct aws_nitro_enclaves_rest_client_configuration *configuration) {
     AWS_PRECONDITION(aws_string_is_valid(configuration->service));
-    AWS_PRECONDITION(aws_string_is_valid(configuration->aws_region));
+    AWS_PRECONDITION(aws_string_is_valid(configuration->region));
     AWS_PRECONDITION(configuration->credentials != NULL || configuration->credentials_provider != NULL);
 
     struct aws_allocator *allocator =
@@ -93,14 +93,14 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
             sizeof(host_name_str),
             "%s.%s.amazonaws.com",
             aws_string_c_str(configuration->service),
-            aws_string_c_str(configuration->aws_region));
+            aws_string_c_str(configuration->region));
         host_name = aws_byte_cursor_from_c_str(host_name_str);
         rest_client->host_name = aws_string_new_from_c_str(rest_client->allocator, host_name_str);
     }
 
     rest_client->service = aws_string_clone_or_reuse(rest_client->allocator, configuration->service);
-    rest_client->aws_region = aws_string_clone_or_reuse(rest_client->allocator, configuration->aws_region);
-    if (rest_client->service == NULL || rest_client->aws_region == NULL || rest_client->host_name == NULL) {
+    rest_client->region = aws_string_clone_or_reuse(rest_client->allocator, configuration->region);
+    if (rest_client->service == NULL || rest_client->region == NULL || rest_client->host_name == NULL) {
         goto err_clean;
     }
 
@@ -248,7 +248,7 @@ void aws_nitro_enclaves_rest_client_destroy(struct aws_nitro_enclaves_rest_clien
     aws_mutex_clean_up(&rest_client->mutex);
     aws_condition_variable_clean_up(&rest_client->c_var);
     aws_string_destroy(rest_client->service);
-    aws_string_destroy(rest_client->aws_region);
+    aws_string_destroy(rest_client->region);
     aws_string_destroy(rest_client->host_name);
     aws_credentials_release(rest_client->credentials);
     aws_credentials_provider_release(rest_client->credentials_provider);
@@ -457,7 +457,7 @@ struct aws_nitro_enclaves_rest_response *aws_nitro_enclaves_rest_client_request_
         .config_type = AWS_SIGNING_CONFIG_AWS,
         .algorithm = AWS_SIGNING_ALGORITHM_V4,
         .signature_type = AWS_ST_HTTP_REQUEST_HEADERS,
-        .aws_region = aws_byte_cursor_from_string(rest_client->aws_region),
+        .region = aws_byte_cursor_from_string(rest_client->region),
         .service = aws_byte_cursor_from_string(rest_client->service),
         .credentials = rest_client->credentials,
         .credentials_provider = rest_client->credentials_provider,

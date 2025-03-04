@@ -32,7 +32,7 @@ echo "==========================================================================
 set +e
 
 /app/kmstool_enclave_cli decrypt \
-    --aws_region us-east-1 \
+    --region us-east-1 \
     --proxy-port 8000 \
     --aws-access-key-id ${ACCESS_KEY_ID} \
     --aws-secret-access-key ${SECRET_ACCESS_KEY} \
@@ -65,7 +65,7 @@ echo "==========================================================================
 set +e
 
 /app/kmstool_enclave_cli genkey \
-    --aws_region us-east-1 \
+    --region us-east-1 \
     --proxy-port 8000 \
     --aws-access-key-id ${ACCESS_KEY_ID} \
     --aws-secret-access-key ${SECRET_ACCESS_KEY} \
@@ -99,7 +99,7 @@ echo "==========================================================================
 set +e
 
 /app/kmstool_enclave_cli genrandom \
-    --aws_region us-east-1 \
+    --region us-east-1 \
     --proxy-port 8000 \
     --aws-access-key-id ${ACCESS_KEY_ID} \
     --aws-secret-access-key ${SECRET_ACCESS_KEY} \

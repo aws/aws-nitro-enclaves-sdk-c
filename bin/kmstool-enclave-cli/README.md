@@ -40,7 +40,7 @@ By doing that, this tool can be used by any programming langauge that can intera
    1. The **`decrypt`** call takes the following parameters:
       1. `decrypt` command
 
-      2. `--aws_region` AWS aws_region to use for KMS
+      2. `--region` AWS region to use for KMS
 
       3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
 
@@ -70,7 +70,7 @@ By doing that, this tool can be used by any programming langauge that can intera
           [
               "/kmstool_enclave_cli",
               "decrypt",
-              "--aws_region", "us-east-1",
+              "--region", "us-east-1",
               "--proxy-port", "8000",
               "--aws-access-key-id", access_key_id,
               "--aws-secret-access-key", secret_access_key,
@@ -87,7 +87,7 @@ By doing that, this tool can be used by any programming langauge that can intera
    1. The **`genkey`** call takes the following parameters:
       1.  `genkey` command
 
-      2. `--aws_region` AWS aws_region to use for KMS
+      2. `--region` AWS region to use for KMS
 
       3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
 
@@ -115,12 +115,12 @@ By doing that, this tool can be used by any programming langauge that can intera
           [
               "/kmstool_enclave_cli",
               "genkey",
-              "--aws_region", "us-east-1",
+              "--region", "us-east-1",
               "--proxy-port", "8000",
               "--aws-access-key-id", access_key_id,
               "--aws-secret-access-key", secret_access_key,
               "--aws-session-token", token,
-              "--key-id", kms_key_id,
+              "--key-id", key_id,
               "--key-spec", key_spec,
           ],
           stdout=subprocess.PIPE
@@ -135,7 +135,7 @@ By doing that, this tool can be used by any programming langauge that can intera
    1. The **`genrandom`** call takes the following parameters:
       1.  `genrandom` command
 
-      2. `--aws_region` AWS aws_region to use for KMS
+      2. `--region` AWS region to use for KMS
 
       3. `--proxy-port` Connect to KMS proxy on PORT. Default: 8000
 
@@ -160,7 +160,7 @@ By doing that, this tool can be used by any programming langauge that can intera
           [
               "/kmstool_enclave_cli",
               "genrandom",
-              "--aws_region", "us-east-1",
+              "--region", "us-east-1",
               "--proxy-port", "8000",
               "--aws-access-key-id", access_key_id,
               "--aws-secret-access-key", secret_access_key,

@@ -30,8 +30,8 @@ struct aws_nitro_enclaves_rest_client_configuration {
     /** The service used to determine the host name. Used in TLS and signing. */
     const struct aws_string *service;
 
-    /** The aws_region used to determine the host name */
-    const struct aws_string *aws_region;
+    /** The region used to determine the host name */
+    const struct aws_string *region;
 
     /**
      * Endpoint to use instead of the DNS endpoint.
@@ -61,7 +61,7 @@ struct aws_nitro_enclaves_rest_client_configuration {
     struct aws_credentials_provider *credentials_provider;
 
     /**
-     * Allows overriding the default service endpoint ($service.$aws_region.amazonaws.com) with a
+     * Allows overriding the default service endpoint ($service.$region.amazonaws.com) with a
      * custom one. If endpoint is set, this field is used only in certificate validation.
      *
      * Required: No.
@@ -91,8 +91,8 @@ struct aws_nitro_enclaves_rest_client {
     /** The service used to determine the host name. Used in TLS and signing. */
     struct aws_string *service;
 
-    /** The aws_region used to determine the hostname */
-    struct aws_string *aws_region;
+    /** The region used to determine the hostname */
+    struct aws_string *region;
 
     /** The hostname */
     struct aws_string *host_name;

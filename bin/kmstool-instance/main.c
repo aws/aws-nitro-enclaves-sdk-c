@@ -40,7 +40,7 @@ typedef SOCKET socket_t;
 struct app_ctx {
     struct aws_allocator *allocator;
     const struct aws_string *message;
-    const struct aws_string *aws_region;
+    const struct aws_string *region;
     struct aws_hash_table encryption_context;
     uint32_t port;
     uint32_t cid;
@@ -66,8 +66,8 @@ static void s_usage(int exit_code) {
     fprintf(stderr, "    --cid CID: Enclave CID\n");
     fprintf(
         stderr,
-        "    --aws_region REGION: AWS aws_region to use for KMS; if enclave "
-        "already has a aws_region set via its arguments, this will cause an error\n");
+        "    --region REGION: AWS region to use for KMS; if enclave "
+        "already has a region set via its arguments, this will cause an error\n");
     fprintf(
         stderr,
         "    --encryption-context NAME=VALUE: key-value string pair to add to "
@@ -80,7 +80,7 @@ static void s_usage(int exit_code) {
 static struct aws_cli_option s_long_options[] = {
     {"port", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'p'},
     {"cid", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'c'},
-    {"aws_region", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'r'},
+    {"region", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'r'},
     {"encryption-context", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'e'},
     {"help", AWS_CLI_OPTIONS_NO_ARGUMENT, NULL, 'h'},
     {NULL, 0, NULL, 0},
@@ -144,7 +144,7 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
                 ctx->cid = atoi(aws_cli_optarg);
                 break;
             case 'r':
-                ctx->aws_region = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                ctx->region = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                 break;
             case 'e':
                 s_parse_encryption_context_arg(ctx->allocator, &ctx->encryption_context, aws_cli_optarg);
@@ -162,6 +162,7 @@ static void s_parse_options(int argc, char **argv, struct app_ctx *ctx) {
     if (ctx->cid == 0) {
         s_usage(1);
     }
+
 
     if (ctx->message == NULL) {
         s_usage(1);
@@ -382,9 +383,9 @@ int s_send_credentials(struct app_ctx *app_ctx) {
             set_client, "AwsSessionToken", json_object_new_string((const char *)session_token_buf.buffer));
     }
 
-    /* If targeting a particular aws_region, prepare and set it. */
-    if (aws_string_is_valid(app_ctx->aws_region)) {
-        json_object_object_add(set_client, "AwsRegion", json_object_new_string(aws_string_c_str(app_ctx->aws_region)));
+    /* If targeting a particular region, prepare and set it. */
+    if (aws_string_is_valid(app_ctx->region)) {
+        json_object_object_add(set_client, "AwsRegion", json_object_new_string(aws_string_c_str(app_ctx->region)));
     }
 
     aws_byte_buf_clean_up_secure(&access_key_id_buf);
@@ -490,7 +491,8 @@ struct json_object *s_encryption_context_to_json(struct aws_hash_table *context)
         return NULL;
     }
 
-    for (struct aws_hash_iter iter = aws_hash_iter_begin(context); !aws_hash_iter_done(&iter);
+    for (struct aws_hash_iter iter = aws_hash_iter_begin(context);
+         !aws_hash_iter_done(&iter);
          aws_hash_iter_next(&iter)) {
         const struct aws_string *map_key = iter.element.key;
         const struct aws_string *map_value = iter.element.value;
