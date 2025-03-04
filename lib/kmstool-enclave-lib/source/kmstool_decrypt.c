@@ -10,7 +10,7 @@ static int decrypt_from_kms(
     struct aws_byte_buf ciphertext = aws_byte_buf_from_array(params->ciphertext, params->ciphertext_len);
 
     /* Decrypt the data with KMS using the configured key and algorithm */
-    rc = aws_kms_decrypt_blocking(ctx->kms_client, ctx->key_id, ctx->encryption_algorithm, &ciphertext, plaintext);
+    rc = aws_kms_decrypt_blocking(ctx->kms_client, ctx->kms_key_id, ctx->kms_algorithm, &ciphertext, plaintext);
     aws_byte_buf_clean_up_secure(&ciphertext);
     if (rc != AWS_OP_SUCCESS) {
         fprintf(stderr, "Could not decrypt ciphertext\n");

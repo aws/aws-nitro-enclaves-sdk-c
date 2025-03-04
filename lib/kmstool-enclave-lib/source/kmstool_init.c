@@ -24,7 +24,7 @@ static int kms_client_init(struct app_ctx *ctx) {
     /* Configure vsock endpoint for parent enclave communication */
     struct aws_socket_endpoint endpoint = {.address = DEFAULT_PARENT_CID, .port = ctx->proxy_port};
     struct aws_nitro_enclaves_kms_client_configuration configuration = {
-        .allocator = ctx->allocator, .endpoint = &endpoint, .domain = AWS_SOCKET_VSOCK, .region = ctx->region};
+        .allocator = ctx->allocator, .endpoint = &endpoint, .domain = AWS_SOCKET_VSOCK, .aws_region = ctx->aws_region};
 
     /* Create AWS credentials and KMS client */
     struct aws_credentials *new_credentials = aws_credentials_new(
@@ -70,7 +70,7 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
 
     /* Validate required parameters */
     if (params->aws_region == NULL) {
-        fprintf(stderr, "AWS region must be set\n");
+        fprintf(stderr, "AWS aws_region must be set\n");
         return KMSTOOL_ERROR;
     }
 
@@ -156,7 +156,7 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
  * Clean up all resources associated with the KMS Tool enclave library.
  *
  * This function releases all allocated resources including:
- * - AWS strings (region, credentials, etc.)
+ * - AWS strings (aws_region, credentials, etc.)
  * - KMS client
  * - AWS credentials
  * - Logger
@@ -166,9 +166,9 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
  * @return KMSTOOL_SUCCESS on success
  */
 int app_lib_clean_up(struct app_ctx *ctx) {
-    if (ctx->region) {
-        aws_string_destroy(ctx->region);
-        ctx->region = NULL;
+    if (ctx->aws_region) {
+        aws_string_destroy(ctx->aws_region);
+        ctx->aws_region = NULL;
     }
 
     if (ctx->aws_access_key_id) {
@@ -186,14 +186,14 @@ int app_lib_clean_up(struct app_ctx *ctx) {
         ctx->aws_session_token = NULL;
     }
 
-    if (ctx->key_id) {
-        aws_string_destroy(ctx->key_id);
-        ctx->key_id = NULL;
+    if (ctx->kms_key_id) {
+        aws_string_destroy(ctx->kms_key_id);
+        ctx->kms_key_id = NULL;
     }
 
-    if (ctx->encryption_algorithm) {
-        aws_string_destroy(ctx->encryption_algorithm);
-        ctx->encryption_algorithm = NULL;
+    if (ctx->kms_algorithm) {
+        aws_string_destroy(ctx->kms_algorithm);
+        ctx->kms_algorithm = NULL;
     }
 
     if (ctx->kms_client != NULL) {

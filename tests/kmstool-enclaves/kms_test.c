@@ -63,7 +63,7 @@ static int s_test_kms_decrypt_request_ea_to_json(struct aws_allocator *allocator
         &request->ciphertext_blob, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
 
     /* Add Encryption Algorithm to the KMS Decrypt Request. */
-    request->encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
+    request->kms_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
 
     struct aws_string *json = aws_kms_decrypt_request_to_json(request);
     ASSERT_NOT_NULL(json);
@@ -77,7 +77,7 @@ static int s_test_kms_decrypt_request_ea_to_json(struct aws_allocator *allocator
     aws_string_destroy(expected);
     aws_string_destroy(json);
 
-    request->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_1;
+    request->kms_algorithm = AWS_EA_RSAES_OAEP_SHA_1;
     json = aws_kms_decrypt_request_to_json(request);
     ASSERT_NOT_NULL(json);
 
@@ -90,7 +90,7 @@ static int s_test_kms_decrypt_request_ea_to_json(struct aws_allocator *allocator
     aws_string_destroy(expected);
     aws_string_destroy(json);
 
-    request->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_256;
+    request->kms_algorithm = AWS_EA_RSAES_OAEP_SHA_256;
     json = aws_kms_decrypt_request_to_json(request);
     ASSERT_NOT_NULL(json);
 
@@ -103,7 +103,7 @@ static int s_test_kms_decrypt_request_ea_to_json(struct aws_allocator *allocator
     aws_string_destroy(expected);
     aws_string_destroy(json);
 
-    request->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_256 + 1;
+    request->kms_algorithm = AWS_EA_RSAES_OAEP_SHA_256 + 1;
     json = aws_kms_decrypt_request_to_json(request);
     ASSERT_NULL(json);
 
@@ -254,7 +254,7 @@ static int s_test_kms_decrypt_request_to_json(struct aws_allocator *allocator, v
     ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
         &request->ciphertext_blob, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
 
-    request->encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
+    request->kms_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
     ASSERT_SUCCESS(aws_hash_table_init(
         &request->encryption_context,
         allocator,
@@ -275,8 +275,8 @@ static int s_test_kms_decrypt_request_to_json(struct aws_allocator *allocator, v
     ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_first));
     ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_second));
 
-    request->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
-    ASSERT_NOT_NULL(request->key_id);
+    request->kms_key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(request->kms_key_id);
 
     struct aws_string *json =
         aws_string_new_from_c_str(allocator, "{ \"AttestationDocument\": \"" CIPHERTEXT_BLOB_BASE64 "\" }");
@@ -375,7 +375,7 @@ static int s_test_kms_decrypt_request_ea_from_json(struct aws_allocator *allocat
     ASSERT_NOT_NULL(request);
     aws_string_destroy(json);
 
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_UNINITIALIZED);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_UNINITIALIZED);
     aws_kms_decrypt_request_destroy(request);
 
     json = aws_string_new_from_c_str(
@@ -403,7 +403,7 @@ static int s_test_kms_decrypt_request_ea_from_json(struct aws_allocator *allocat
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)request->ciphertext_blob.buffer,
         request->ciphertext_blob.len);
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
     aws_kms_decrypt_request_destroy(request);
 
     json = aws_string_new_from_c_str(
@@ -421,7 +421,7 @@ static int s_test_kms_decrypt_request_ea_from_json(struct aws_allocator *allocat
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)request->ciphertext_blob.buffer,
         request->ciphertext_blob.len);
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_RSAES_OAEP_SHA_1);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_RSAES_OAEP_SHA_1);
     aws_kms_decrypt_request_destroy(request);
 
     json = aws_string_new_from_c_str(
@@ -439,7 +439,7 @@ static int s_test_kms_decrypt_request_ea_from_json(struct aws_allocator *allocat
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)request->ciphertext_blob.buffer,
         request->ciphertext_blob.len);
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_RSAES_OAEP_SHA_256);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_RSAES_OAEP_SHA_256);
     aws_kms_decrypt_request_destroy(request);
 
     return SUCCESS;
@@ -611,7 +611,7 @@ static int s_test_kms_decrypt_request_from_json(struct aws_allocator *allocator,
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)request->ciphertext_blob.buffer,
         request->ciphertext_blob.len);
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
     for (struct aws_hash_iter iter = aws_hash_iter_begin(&request->encryption_context); !aws_hash_iter_done(&iter);
          aws_hash_iter_next(&iter)) {
         ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_KEY, aws_string_c_str(iter.element.key));
@@ -623,7 +623,7 @@ static int s_test_kms_decrypt_request_from_json(struct aws_allocator *allocator,
     ASSERT_STR_EQUALS(TOKEN_FIRST, aws_string_c_str(elem));
     AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 1) == AWS_OP_SUCCESS);
     ASSERT_STR_EQUALS(TOKEN_SECOND, aws_string_c_str(elem));
-    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->key_id));
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->kms_key_id));
     ASSERT_NOT_NULL(request->recipient);
     ASSERT_BIN_ARRAYS_EQUALS(
         CIPHERTEXT_BLOB_DATA,
@@ -681,7 +681,7 @@ static int s_test_kms_encrypt_request_ea_to_json(struct aws_allocator *allocator
         aws_byte_buf_init_copy_from_cursor(&request->plaintext, allocator, aws_byte_cursor_from_c_str(PLAINTEXT_DATA)));
 
     /* Add Encryption Algorithm to the KMS Encrypt Request. */
-    request->encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
+    request->kms_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
 
     struct aws_string *json = aws_kms_encrypt_request_to_json(request);
     ASSERT_NOT_NULL(json);
@@ -695,7 +695,7 @@ static int s_test_kms_encrypt_request_ea_to_json(struct aws_allocator *allocator
     aws_string_destroy(expected);
     aws_string_destroy(json);
 
-    request->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_1;
+    request->kms_algorithm = AWS_EA_RSAES_OAEP_SHA_1;
     json = aws_kms_encrypt_request_to_json(request);
     ASSERT_NOT_NULL(json);
 
@@ -708,7 +708,7 @@ static int s_test_kms_encrypt_request_ea_to_json(struct aws_allocator *allocator
     aws_string_destroy(expected);
     aws_string_destroy(json);
 
-    request->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_256;
+    request->kms_algorithm = AWS_EA_RSAES_OAEP_SHA_256;
     json = aws_kms_encrypt_request_to_json(request);
     ASSERT_NOT_NULL(json);
 
@@ -721,7 +721,7 @@ static int s_test_kms_encrypt_request_ea_to_json(struct aws_allocator *allocator
     aws_string_destroy(expected);
     aws_string_destroy(json);
 
-    request->encryption_algorithm = AWS_EA_RSAES_OAEP_SHA_256 + 1;
+    request->kms_algorithm = AWS_EA_RSAES_OAEP_SHA_256 + 1;
     json = aws_kms_encrypt_request_to_json(request);
     ASSERT_NULL(json);
 
@@ -872,7 +872,7 @@ static int s_test_kms_encrypt_request_to_json(struct aws_allocator *allocator, v
     ASSERT_SUCCESS(
         aws_byte_buf_init_copy_from_cursor(&request->plaintext, allocator, aws_byte_cursor_from_c_str(PLAINTEXT_DATA)));
 
-    request->encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
+    request->kms_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
     ASSERT_SUCCESS(aws_hash_table_init(
         &request->encryption_context,
         allocator,
@@ -893,8 +893,8 @@ static int s_test_kms_encrypt_request_to_json(struct aws_allocator *allocator, v
     ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_first));
     ASSERT_SUCCESS(aws_array_list_push_back(&request->grant_tokens, &token_second));
 
-    request->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
-    ASSERT_NOT_NULL(request->key_id);
+    request->kms_key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(request->kms_key_id);
 
     struct aws_string *json = aws_kms_encrypt_request_to_json(request);
     ASSERT_NOT_NULL(json);
@@ -981,7 +981,7 @@ static int s_test_kms_encrypt_request_ea_from_json(struct aws_allocator *allocat
     ASSERT_NOT_NULL(request);
     aws_string_destroy(json);
 
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_UNINITIALIZED);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_UNINITIALIZED);
     aws_kms_encrypt_request_destroy(request);
 
     json = aws_string_new_from_c_str(
@@ -1006,7 +1006,7 @@ static int s_test_kms_encrypt_request_ea_from_json(struct aws_allocator *allocat
 
     ASSERT_BIN_ARRAYS_EQUALS(
         PLAINTEXT_DATA, sizeof(PLAINTEXT_DATA) - 1, (char *)request->plaintext.buffer, request->plaintext.len);
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
     aws_kms_encrypt_request_destroy(request);
 
     json = aws_string_new_from_c_str(
@@ -1021,7 +1021,7 @@ static int s_test_kms_encrypt_request_ea_from_json(struct aws_allocator *allocat
 
     ASSERT_BIN_ARRAYS_EQUALS(
         PLAINTEXT_DATA, sizeof(PLAINTEXT_DATA) - 1, (char *)request->plaintext.buffer, request->plaintext.len);
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_RSAES_OAEP_SHA_1);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_RSAES_OAEP_SHA_1);
     aws_kms_encrypt_request_destroy(request);
 
     json = aws_string_new_from_c_str(
@@ -1036,7 +1036,7 @@ static int s_test_kms_encrypt_request_ea_from_json(struct aws_allocator *allocat
 
     ASSERT_BIN_ARRAYS_EQUALS(
         PLAINTEXT_DATA, sizeof(PLAINTEXT_DATA) - 1, (char *)request->plaintext.buffer, request->plaintext.len);
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_RSAES_OAEP_SHA_256);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_RSAES_OAEP_SHA_256);
     aws_kms_encrypt_request_destroy(request);
 
     return SUCCESS;
@@ -1196,7 +1196,7 @@ static int s_test_kms_encrypt_request_from_json(struct aws_allocator *allocator,
 
     ASSERT_BIN_ARRAYS_EQUALS(
         PLAINTEXT_DATA, sizeof(PLAINTEXT_DATA) - 1, (char *)request->plaintext.buffer, request->plaintext.len);
-    ASSERT_INT_EQUALS(request->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
+    ASSERT_INT_EQUALS(request->kms_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
     for (struct aws_hash_iter iter = aws_hash_iter_begin(&request->encryption_context); !aws_hash_iter_done(&iter);
          aws_hash_iter_next(&iter)) {
         ASSERT_STR_EQUALS(ENCRYPTION_CONTEXT_KEY, aws_string_c_str(iter.element.key));
@@ -1208,7 +1208,7 @@ static int s_test_kms_encrypt_request_from_json(struct aws_allocator *allocator,
     ASSERT_STR_EQUALS(TOKEN_FIRST, aws_string_c_str(elem));
     AWS_FATAL_ASSERT(aws_array_list_get_at(&request->grant_tokens, &elem, 1) == AWS_OP_SUCCESS);
     ASSERT_STR_EQUALS(TOKEN_SECOND, aws_string_c_str(elem));
-    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->key_id));
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->kms_key_id));
 
     /* Ensure we can serialize back to a JSON. */
     struct aws_string *json_second = aws_kms_encrypt_request_to_json(request);
@@ -1392,13 +1392,13 @@ static int s_test_kms_decrypt_response_to_json(struct aws_allocator *allocator, 
     struct aws_kms_decrypt_response *response = aws_kms_decrypt_response_new(allocator);
     ASSERT_NOT_NULL(response);
 
-    response->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
-    ASSERT_NOT_NULL(response->key_id);
+    response->kms_key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(response->kms_key_id);
 
     ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
         &response->plaintext, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
 
-    response->encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
+    response->kms_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
 
     ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
         &response->ciphertext_for_recipient, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
@@ -1440,7 +1440,7 @@ static int s_test_kms_decrypt_response_from_json(struct aws_allocator *allocator
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)response->plaintext.buffer,
         response->plaintext.len);
-    ASSERT_INT_EQUALS(response->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
+    ASSERT_INT_EQUALS(response->kms_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
     ASSERT_BIN_ARRAYS_EQUALS(
         CIPHERTEXT_BLOB_DATA,
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
@@ -1487,7 +1487,7 @@ static int s_test_kms_decrypt_response_from_json_with_unknown(struct aws_allocat
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)response->plaintext.buffer,
         response->plaintext.len);
-    ASSERT_INT_EQUALS(response->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
+    ASSERT_INT_EQUALS(response->kms_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
     ASSERT_BIN_ARRAYS_EQUALS(
         CIPHERTEXT_BLOB_DATA,
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
@@ -1514,13 +1514,13 @@ static int s_test_kms_encrypt_response_to_json(struct aws_allocator *allocator, 
     struct aws_kms_encrypt_response *response = aws_kms_encrypt_response_new(allocator);
     ASSERT_NOT_NULL(response);
 
-    response->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
-    ASSERT_NOT_NULL(response->key_id);
+    response->kms_key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(response->kms_key_id);
 
     ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
         &response->ciphertext_blob, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
 
-    response->encryption_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
+    response->kms_algorithm = AWS_EA_SYMMETRIC_DEFAULT;
 
     struct aws_string *json = aws_kms_encrypt_response_to_json(response);
     ASSERT_NOT_NULL(json);
@@ -1557,7 +1557,7 @@ static int s_test_kms_encrypt_response_from_json(struct aws_allocator *allocator
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)response->ciphertext_blob.buffer,
         response->ciphertext_blob.len);
-    ASSERT_INT_EQUALS(response->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
+    ASSERT_INT_EQUALS(response->kms_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
 
     /* Ensure we can serialize back to a JSON. */
     struct aws_string *json_second = aws_kms_encrypt_response_to_json(response);
@@ -1597,7 +1597,7 @@ static int s_test_kms_encrypt_response_from_json_with_unknown(struct aws_allocat
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
         (char *)response->ciphertext_blob.buffer,
         response->ciphertext_blob.len);
-    ASSERT_INT_EQUALS(response->encryption_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
+    ASSERT_INT_EQUALS(response->kms_algorithm, AWS_EA_SYMMETRIC_DEFAULT);
 
     /* Ensure we can serialize back to a JSON. */
     struct aws_string *json_second = aws_kms_encrypt_response_to_json(response);
@@ -1619,8 +1619,8 @@ static int s_test_kms_generate_data_key_request_to_json(struct aws_allocator *al
     struct aws_kms_generate_data_key_request *request = aws_kms_generate_data_key_request_new(allocator);
     ASSERT_NOT_NULL(request);
 
-    request->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
-    ASSERT_NOT_NULL(request->key_id);
+    request->kms_key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(request->kms_key_id);
 
     ASSERT_SUCCESS(aws_hash_table_init(
         &request->encryption_context,
@@ -1705,7 +1705,7 @@ static int s_test_kms_generate_data_key_request_from_json(struct aws_allocator *
 
     struct aws_kms_generate_data_key_request *request = aws_kms_generate_data_key_request_from_json(allocator, json);
     ASSERT_NOT_NULL(request);
-    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->key_id));
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->kms_key_id));
     ASSERT_INT_EQUALS(request->key_spec, AWS_KS_AES_256);
     for (struct aws_hash_iter iter = aws_hash_iter_begin(&request->encryption_context); !aws_hash_iter_done(&iter);
          aws_hash_iter_next(&iter)) {
@@ -1741,7 +1741,7 @@ static int s_test_kms_generate_data_key_request_from_json(struct aws_allocator *
 
     request = aws_kms_generate_data_key_request_from_json(allocator, json);
     ASSERT_NOT_NULL(request);
-    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->key_id));
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(request->kms_key_id));
     ASSERT_INT_EQUALS(request->number_of_bytes, 1);
     aws_string_destroy(json);
     aws_kms_generate_data_key_request_destroy(request);
@@ -1756,8 +1756,8 @@ static int s_test_kms_generate_data_key_response_to_json(struct aws_allocator *a
     struct aws_kms_generate_data_key_response *response = aws_kms_generate_data_key_response_new(allocator);
     ASSERT_NOT_NULL(response);
 
-    response->key_id = aws_string_new_from_c_str(allocator, KEY_ID);
-    ASSERT_NOT_NULL(response->key_id);
+    response->kms_key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(response->kms_key_id);
 
     ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(
         &response->ciphertext_blob, allocator, aws_byte_cursor_from_c_str(CIPHERTEXT_BLOB_DATA)));
@@ -1801,7 +1801,7 @@ static int s_test_kms_generate_data_key_response_from_json(struct aws_allocator 
     struct aws_kms_generate_data_key_response *response = aws_kms_generate_data_key_response_from_json(allocator, json);
     ASSERT_NOT_NULL(response);
 
-    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(response->key_id));
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(response->kms_key_id));
     ASSERT_BIN_ARRAYS_EQUALS(
         CIPHERTEXT_BLOB_DATA,
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,
@@ -1857,7 +1857,7 @@ static int s_test_kms_generate_data_key_response_from_json_with_unknown(struct a
         aws_kms_generate_data_key_response_from_json(allocator, json_with_unknown);
     ASSERT_NOT_NULL(response);
 
-    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(response->key_id));
+    ASSERT_STR_EQUALS(KEY_ID, aws_string_c_str(response->kms_key_id));
     ASSERT_BIN_ARRAYS_EQUALS(
         CIPHERTEXT_BLOB_DATA,
         sizeof(CIPHERTEXT_BLOB_DATA) - 1,

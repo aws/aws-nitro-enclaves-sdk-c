@@ -13,13 +13,13 @@
 #include <errno.h>
 #include <unistd.h>
 
-#define DEFAULT_PROXY_PORT  8000
-#define DEFAULT_REGION      "us-east-1"
-#define DEFAULT_PARENT_CID  "3"
+#define DEFAULT_PROXY_PORT 8000
+#define DEFAULT_REGION "us-east-1"
+#define DEFAULT_PARENT_CID "3"
 
 #define DECRYPT_CMD "decrypt"
-#define GENKEY_CMD  "genkey"
-#define GENRANDOM_CMD  "genrandom"
+#define GENKEY_CMD "genkey"
+#define GENRANDOM_CMD "genrandom"
 
 #define AES_256_ARG "AES-256"
 #define AES_128_ARG "AES-128"
@@ -43,8 +43,8 @@ enum status {
 struct app_ctx {
     /* Allocator to use for memory allocations. */
     struct aws_allocator *allocator;
-    /* KMS region to use. */
-    const struct aws_string *region;
+    /* KMS aws_region to use. */
+    const struct aws_string *aws_region;
     /* vsock port on which to open service. */
     uint32_t port;
     /* vsock port on which vsock-proxy is available in parent. */
@@ -57,8 +57,8 @@ struct app_ctx {
 
     /* Data parameters */
     const struct aws_string *ciphertext_b64;
-    const struct aws_string *encryption_algorithm;
-    const struct aws_string *key_id;
+    const struct aws_string *kms_algorithm;
+    const struct aws_string *kms_key_id;
     enum aws_key_spec key_spec;
 
     /* GenRandom parameters */
@@ -84,7 +84,7 @@ static void s_usage_decrypt(int exit_code) {
     fprintf(stderr, "usage: kmstool_enclave_cli decrypt [options]\n");
     fprintf(stderr, "\n Options: \n\n");
     fprintf(stderr, "    --help: Displays this message and exits\n");
-    fprintf(stderr, "    --region REGION: AWS region to use for KMS. Default: 'us-east-1'\n");
+    fprintf(stderr, "    --aws_region REGION: AWS aws_region to use for KMS. Default: 'us-east-1'\n");
     fprintf(stderr, "    --proxy-port PORT: Connect to KMS proxy on PORT. Default: 8000\n");
     fprintf(stderr, "    --aws-access-key-id ACCESS_KEY_ID: AWS access key ID\n");
     fprintf(stderr, "    --aws-secret-access-key SECRET_ACCESS_KEY: AWS secret access key\n");
@@ -102,7 +102,7 @@ static void s_usage_genkey(int exit_code) {
     fprintf(stderr, "usage: kmstool_enclave_cli genkey [options]\n");
     fprintf(stderr, "\n Options: \n\n");
     fprintf(stderr, "    --help: Displays this message and exits\n");
-    fprintf(stderr, "    --region REGION: AWS region to use for KMS. Default: 'us-east-1'\n");
+    fprintf(stderr, "    --aws_region REGION: AWS aws_region to use for KMS. Default: 'us-east-1'\n");
     fprintf(stderr, "    --proxy-port PORT: Connect to KMS proxy on PORT. Default: 8000\n");
     fprintf(stderr, "    --aws-access-key-id ACCESS_KEY_ID: AWS access key ID\n");
     fprintf(stderr, "    --aws-secret-access-key SECRET_ACCESS_KEY: AWS secret access key\n");
@@ -119,7 +119,7 @@ static void s_usage_genrandom(int exit_code) {
     fprintf(stderr, "usage: kmstool_enclave_cli genrandom [options]\n");
     fprintf(stderr, "\n Options: \n\n");
     fprintf(stderr, "    --help: Displays this message and exits\n");
-    fprintf(stderr, "    --region REGION: AWS region to use for KMS. Default: 'us-east-1'\n");
+    fprintf(stderr, "    --aws_region REGION: AWS aws_region to use for KMS. Default: 'us-east-1'\n");
     fprintf(stderr, "    --proxy-port PORT: Connect to KMS proxy on PORT. Default: 8000\n");
     fprintf(stderr, "    --aws-access-key-id ACCESS_KEY_ID: AWS access key ID\n");
     fprintf(stderr, "    --aws-secret-access-key SECRET_ACCESS_KEY: AWS secret access key\n");
@@ -130,7 +130,7 @@ static void s_usage_genrandom(int exit_code) {
 
 /* Command line options */
 static struct aws_cli_option s_long_options[] = {
-    {"region", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'r'},
+    {"aws_region", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'r'},
     {"proxy-port", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'x'},
     {"aws-access-key-id", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 'k'},
     {"aws-secret-access-key", AWS_CLI_OPTIONS_REQUIRED_ARGUMENT, NULL, 's'},
@@ -154,14 +154,14 @@ static struct aws_cli_option s_long_options[] = {
  */
 static void s_parse_options(int argc, char **argv, const char *subcommand, struct app_ctx *ctx) {
     ctx->proxy_port = DEFAULT_PROXY_PORT;
-    ctx->region = NULL;
+    ctx->aws_region = NULL;
     ctx->aws_access_key_id = NULL;
     ctx->aws_secret_access_key = NULL;
     ctx->aws_session_token = NULL;
     ctx->ciphertext_b64 = NULL;
-    ctx->key_id = NULL;
+    ctx->kms_key_id = NULL;
     ctx->key_spec = -1;
-    ctx->encryption_algorithm = NULL;
+    ctx->kms_algorithm = NULL;
     ctx->length = -1;
 
     aws_cli_optind = 2;
@@ -177,9 +177,9 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
             case 0:
                 break;
             case 'r':
-                ctx->region = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                ctx->aws_region = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                 break;
-            case 'x':          
+            case 'x':
                 ctx->proxy_port = atoi(aws_cli_optarg);
                 break;
             case 'k':
@@ -200,25 +200,25 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
                     s_usage_genrandom(1);
                 break;
             default:
-                if (strncmp(subcommand, DECRYPT_CMD, MAX_SUB_COMMAND_LENGTH) == 0) { 
+                if (strncmp(subcommand, DECRYPT_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
                     switch (c) {
                         case 'c':
                             ctx->ciphertext_b64 = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                             break;
-                         case 'a':
-                            ctx->encryption_algorithm = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                        case 'a':
+                            ctx->kms_algorithm = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                             break;
-                         case 'K':
-                            ctx->key_id = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                        case 'K':
+                            ctx->kms_key_id = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                             break;
                         default:
                             fprintf(stderr, "Unknown option: %s\n", aws_cli_optarg);
                             s_usage_decrypt(1);
                     }
                 } else if (strncmp(subcommand, GENKEY_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
-                    switch(c) {
+                    switch (c) {
                         case 'K':
-                            ctx->key_id = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
+                            ctx->kms_key_id = aws_string_new_from_c_str(ctx->allocator, aws_cli_optarg);
                             break;
                         case 'p':
                             if (strncmp(aws_cli_optarg, AES_256_ARG, MAX_KEY_SPEC_LENGTH) == 0) {
@@ -232,7 +232,7 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
                             break;
                     }
                 } else if (strncmp(subcommand, GENRANDOM_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
-                    switch(c) {
+                    switch (c) {
                         case 'l':
                             ctx->length = atoi(aws_cli_optarg);
                             break;
@@ -259,9 +259,9 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
         exit(1);
     }
 
-    /* Set default AWS region if not specified */
-    if (ctx->region == NULL) {
-        ctx->region = aws_string_new_from_c_str(ctx->allocator, DEFAULT_REGION);
+    /* Set default AWS aws_region if not specified */
+    if (ctx->aws_region == NULL) {
+        ctx->aws_region = aws_string_new_from_c_str(ctx->allocator, DEFAULT_REGION);
     }
 
     if (strncmp(subcommand, DECRYPT_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
@@ -273,7 +273,7 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
 
     } else if (strncmp(subcommand, GENKEY_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
         /* Check if the key id is set */
-        if (ctx->key_id == NULL) {
+        if (ctx->kms_key_id == NULL) {
             fprintf(stderr, "--key-id must be set\n");
             exit(1);
         }
@@ -311,11 +311,17 @@ static void s_parse_options(int argc, char **argv, const char *subcommand, struc
  * @param[out] credentials: location to store the aws credentials
  * @param[out] client: location to store new kms client
  */
-static void init_kms_client(struct app_ctx *app_ctx, struct aws_credentials **credentials, struct aws_nitro_enclaves_kms_client **client) {
+static void init_kms_client(
+    struct app_ctx *app_ctx,
+    struct aws_credentials **credentials,
+    struct aws_nitro_enclaves_kms_client **client) {
     /* Parent is always on CID 3 */
     struct aws_socket_endpoint endpoint = {.address = DEFAULT_PARENT_CID, .port = app_ctx->proxy_port};
     struct aws_nitro_enclaves_kms_client_configuration configuration = {
-        .allocator = app_ctx->allocator, .endpoint = &endpoint, .domain = AWS_SOCKET_VSOCK, .region = app_ctx->region};
+        .allocator = app_ctx->allocator,
+        .endpoint = &endpoint,
+        .domain = AWS_SOCKET_VSOCK,
+        .aws_region = app_ctx->aws_region};
 
     /* Sets the AWS credentials and creates a KMS client with them. */
     struct aws_credentials *new_credentials = aws_credentials_new(
@@ -342,7 +348,7 @@ static void init_kms_client(struct app_ctx *app_ctx, struct aws_credentials **cr
  * @param[in]  app_ctx: contains the allocator required for memory management
  * @param[in]  text: pointer to where the original text is stored
  * @param[out] text_b64: pointer to where the encoded string should be stored
- */ 
+ */
 static int encode_b64(struct app_ctx *app_ctx, struct aws_byte_buf *text, struct aws_byte_buf *text_b64) {
     ssize_t rc = 0;
     size_t text_b64_len;
@@ -371,8 +377,7 @@ static int decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_decr
     struct aws_nitro_enclaves_kms_client *client = NULL;
 
     init_kms_client(app_ctx, &credentials, &client);
-   
-    
+
     /* Get decode base64 string into bytes. */
     size_t ciphertext_len;
     struct aws_byte_buf ciphertext;
@@ -387,8 +392,8 @@ static int decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_decr
     /* Decrypt the data with KMS. */
     struct aws_byte_buf ciphertext_decrypted;
     rc = aws_kms_decrypt_blocking(
-        client, app_ctx->key_id, app_ctx->encryption_algorithm, &ciphertext, &ciphertext_decrypted);
-    
+        client, app_ctx->kms_key_id, app_ctx->kms_algorithm, &ciphertext, &ciphertext_decrypted);
+
     aws_byte_buf_clean_up(&ciphertext);
     fail_on(rc != AWS_OP_SUCCESS, "Could not decrypt ciphertext");
 
@@ -399,7 +404,7 @@ static int decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_decr
     /* Cleaning up allocated memory */
     aws_nitro_enclaves_kms_client_destroy(client);
     aws_credentials_release(credentials);
-    
+
     return AWS_OP_SUCCESS;
 }
 
@@ -410,7 +415,10 @@ static int decrypt(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_decr
  * @param[out] ciphertext_decrypted_b64: Byte buffer where the ciphertext blob will be stored
  * @param[out] plaintext_b64: Byte buffer where the plaintext output will be stored
  */
-static int gen_datakey(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_b64, struct aws_byte_buf *plaintext_b64) {
+static int gen_datakey(
+    struct app_ctx *app_ctx,
+    struct aws_byte_buf *ciphertext_b64,
+    struct aws_byte_buf *plaintext_b64) {
     ssize_t rc = 0;
 
     struct aws_credentials *credentials = NULL;
@@ -421,13 +429,13 @@ static int gen_datakey(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_
     /* Generate data key with KMS. */
     struct aws_byte_buf plaintext;
     struct aws_byte_buf ciphertext;
-    rc = aws_kms_generate_data_key_blocking(client, app_ctx->key_id, app_ctx->key_spec, &plaintext, &ciphertext);
+    rc = aws_kms_generate_data_key_blocking(client, app_ctx->kms_key_id, app_ctx->key_spec, &plaintext, &ciphertext);
     fail_on(rc != AWS_OP_SUCCESS, "Could not generate data key");
-    
+
     /* Encode ciphertext into base64 for printing out the result. */
     rc = encode_b64(app_ctx, &ciphertext, ciphertext_b64);
     fail_on(rc != AWS_OP_SUCCESS, "Could not encode ciphertext");
-    
+
     /* Encode plaintext into base64 for printing out the result. */
     rc = encode_b64(app_ctx, &plaintext, plaintext_b64);
     fail_on(rc != AWS_OP_SUCCESS, "Could not encode plaintext");
@@ -435,7 +443,7 @@ static int gen_datakey(struct app_ctx *app_ctx, struct aws_byte_buf *ciphertext_
     /* Cleaning up allocated memory. */
     aws_nitro_enclaves_kms_client_destroy(client);
     aws_credentials_release(credentials);
-    
+
     return AWS_OP_SUCCESS;
 }
 
@@ -457,7 +465,7 @@ static int gen_random(struct app_ctx *app_ctx, struct aws_byte_buf *plaintext_b6
     struct aws_byte_buf plaintext;
     rc = aws_kms_generate_random_blocking(client, app_ctx->length, &plaintext);
     fail_on(rc != AWS_OP_SUCCESS, "Could not generate random bytes");
-    
+
     /* Encode random bytes into base64 for printing out the result. */
     rc = encode_b64(app_ctx, &plaintext, plaintext_b64);
     fail_on(rc != AWS_OP_SUCCESS, "Could not encode random bytes");
@@ -465,7 +473,7 @@ static int gen_random(struct app_ctx *app_ctx, struct aws_byte_buf *plaintext_b6
     /* Cleaning up allocated memory. */
     aws_nitro_enclaves_kms_client_destroy(client);
     aws_credentials_release(credentials);
-    
+
     return AWS_OP_SUCCESS;
 }
 
@@ -482,14 +490,14 @@ int main(int argc, char **argv) {
 
     /* Parse the commandline */
     app_ctx.allocator = aws_nitro_enclaves_get_allocator();
-    
-    /* Verifies there are at least two arguments */    
+
+    /* Verifies there are at least two arguments */
     if (argc < 2) {
         print_commands(1);
     }
-    
+
     subcommand = argv[1];
-    
+
     /* Optional: Enable logging for aws-c-* libraries */
     struct aws_logger err_logger;
     struct aws_logger_standard_options options = {
@@ -504,48 +512,48 @@ int main(int argc, char **argv) {
 
     if (strncmp(subcommand, DECRYPT_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
         struct aws_byte_buf ciphertext_decrypted_b64;
-    
+
         rc = decrypt(&app_ctx, &ciphertext_decrypted_b64);
-        
+
         /* Error out if ciphertext wasn't decrypted */
         fail_on(rc != AWS_OP_SUCCESS, "Could not decrypt\n");
 
         /* Print the base64-encoded plaintext to stdout */
         fprintf(stdout, "PLAINTEXT: %s\n", (const char *)ciphertext_decrypted_b64.buffer);
-    
+
         aws_byte_buf_clean_up(&ciphertext_decrypted_b64);
     } else if (strncmp(subcommand, GENKEY_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
         struct aws_byte_buf ciphertext_b64;
         struct aws_byte_buf plaintext_b64;
-        
+
         rc = gen_datakey(&app_ctx, &ciphertext_b64, &plaintext_b64);
-    
+
         /* Error if data key wasn't generated */
         fail_on(rc != AWS_OP_SUCCESS, "Could not generate data key\n");
 
         /* Print the base64-encoded ciphertext and plaintext to stdout */
         fprintf(stdout, "CIPHERTEXT: %s\n", (const char *)ciphertext_b64.buffer);
         fprintf(stdout, "PLAINTEXT: %s\n", (const char *)plaintext_b64.buffer);
-    
+
         aws_byte_buf_clean_up(&ciphertext_b64);
         aws_byte_buf_clean_up(&plaintext_b64);
     } else if (strncmp(subcommand, GENRANDOM_CMD, MAX_SUB_COMMAND_LENGTH) == 0) {
         struct aws_byte_buf plaintext_b64;
-        
+
         rc = gen_random(&app_ctx, &plaintext_b64);
-    
+
         /* Error if random bytes wasn't generated */
         fail_on(rc != AWS_OP_SUCCESS, "Could not generate random bytes\n");
 
         /* Print the base64-encoded ciphertext and plaintext to stdout */
         fprintf(stdout, "PLAINTEXT: %s\n", (const char *)plaintext_b64.buffer);
-    
+
         aws_byte_buf_clean_up(&plaintext_b64);
     } else {
         print_commands(1);
     }
-    
+
     aws_nitro_enclaves_library_clean_up();
-    
+
     return 0;
 }

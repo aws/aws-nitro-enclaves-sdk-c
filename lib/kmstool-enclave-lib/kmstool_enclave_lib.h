@@ -32,7 +32,7 @@ enum KMSTOOL_STATUS {
  * @brief Initialization parameters for the KMS Tool enclave
  *
  * This structure contains all the necessary parameters to initialize
- * the KMS Tool enclave, including AWS credentials, region settings,
+ * the KMS Tool enclave, including AWS credentials, aws_region settings,
  * and encryption parameters.
  */
 struct kmstool_init_params {
@@ -42,7 +42,7 @@ struct kmstool_init_params {
     const unsigned int proxy_port;
 
     /* AWS configuration */
-    const char *aws_region;            /* AWS region for KMS operations */
+    const char *aws_region;            /* AWS aws_region for KMS operations */
     const char *aws_access_key_id;     /* AWS access key ID */
     const char *aws_secret_access_key; /* AWS secret access key */
     const char *aws_session_token;     /* AWS session token */
