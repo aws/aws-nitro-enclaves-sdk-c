@@ -36,7 +36,7 @@ int app_lib_encrypt(
         return ENCLAVE_KMS_ERROR;
     }
 
-    if (strlen(params->plaintext) > MAX_ENCRYPT_DATA_SIZE) {
+    if (params->plaintext > MAX_ENCRYPT_DATA_SIZE) {
         fprintf(stderr, "plaintext too large\n");
         *ciphertext_out = NULL;
         *ciphertext_out_len = 0;
