@@ -1,29 +1,32 @@
 #include "../include/kmstool_init.h"
 
+/* Default parent CID for vsock communication with the parent enclave */
 #define DEFAULT_PARENT_CID "3"
 
+/* Initialize app context with the provided parameters */
 static void app_ctx_init_with_params(struct app_ctx *ctx, const struct kmstool_init_params *params) {
     ctx->proxy_port = params->proxy_port;
-    ctx->region = aws_string_new_from_c_str(ctx->allocator, params->region);
+    ctx->region = aws_string_new_from_c_str(ctx->allocator, params->aws_region);
     ctx->aws_access_key_id = aws_string_new_from_c_str(ctx->allocator, params->aws_access_key_id);
     ctx->aws_secret_access_key = aws_string_new_from_c_str(ctx->allocator, params->aws_secret_access_key);
     ctx->aws_session_token = aws_string_new_from_c_str(ctx->allocator, params->aws_session_token);
-    ctx->key_id = aws_string_new_from_c_str(ctx->allocator, params->key_id);
-    ctx->encryption_algorithm = aws_string_new_from_c_str(ctx->allocator, params->encryption_algorithm);
+    ctx->key_id = aws_string_new_from_c_str(ctx->allocator, params->kms_key_id);
+    ctx->encryption_algorithm = aws_string_new_from_c_str(ctx->allocator, params->kms_algorithm);
 }
 
+/* Initialize KMS client with AWS credentials and vsock endpoint configuration */
 static int kms_client_init(struct app_ctx *ctx) {
     if (ctx->kms_client != NULL || ctx->aws_credentials != NULL) {
-        fprintf(stderr, "kms client have already been initialized\n");
+        fprintf(stderr, "KMS client has already been initialized\n");
         return AWS_OP_SUCCESS;
     }
 
-    /* Parent is always on CID 3 */
+    /* Configure vsock endpoint for parent enclave communication */
     struct aws_socket_endpoint endpoint = {.address = DEFAULT_PARENT_CID, .port = ctx->proxy_port};
     struct aws_nitro_enclaves_kms_client_configuration configuration = {
         .allocator = ctx->allocator, .endpoint = &endpoint, .domain = AWS_SOCKET_VSOCK, .region = ctx->region};
 
-    /* Sets the AWS credentials and creates a KMS client with them. */
+    /* Create AWS credentials and KMS client */
     struct aws_credentials *new_credentials = aws_credentials_new(
         ctx->allocator,
         aws_byte_cursor_from_c_str((const char *)ctx->aws_access_key_id->bytes),
@@ -34,7 +37,7 @@ static int kms_client_init(struct app_ctx *ctx) {
 
     ctx->kms_client = aws_nitro_enclaves_kms_client_new(&configuration);
     if (ctx->kms_client == NULL) {
-        fprintf(stderr, "failed to init kms client\n");
+        fprintf(stderr, "Failed to initialize KMS client\n");
         aws_credentials_release(new_credentials);
         new_credentials = NULL;
         return AWS_OP_ERR;
@@ -45,17 +48,19 @@ static int kms_client_init(struct app_ctx *ctx) {
 }
 
 /**
- * Initializes the KMS Tool enclave.
+ * Initialize the KMS Tool enclave library.
  *
- * This function must be called before the KMS Tool enclave is used.
- * It initializes the AWS Nitro Enclaves library and creates a KMS client.
- * It also sets the AWS region, AWS access key ID, AWS secret access key,
- * AWS session token, key ID, and encryption algorithm.
+ * This function must be called before using any KMS operations.
+ * It performs the following initialization steps:
+ * 1. Validates all required parameters
+ * 2. Initializes AWS Nitro Enclaves library
+ * 3. Sets up logging if enabled
+ * 4. Creates KMS client with provided credentials
  *
- * @param ctx The KMS Tool enclave context.
- * @param params The KMS Tool enclave initialization parameters.
+ * @param ctx The KMS Tool enclave context to initialize
+ * @param params Configuration parameters including AWS credentials and KMS settings
  *
- * @return ENCLAVE_KMS_SUCCESS on success, or ENCLAVE_KMS_ERROR on failure.
+ * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure
  */
 int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) {
     if (ctx->allocator != NULL || ctx->kms_client != NULL) {
@@ -144,6 +149,19 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
     return ENCLAVE_KMS_SUCCESS;
 }
 
+/**
+ * Clean up all resources associated with the KMS Tool enclave library.
+ *
+ * This function releases all allocated resources including:
+ * - AWS strings (region, credentials, etc.)
+ * - KMS client
+ * - AWS credentials
+ * - Logger
+ * - AWS Nitro Enclaves library
+ *
+ * @param ctx The KMS Tool enclave context to clean up
+ * @return ENCLAVE_KMS_SUCCESS on success
+ */
 int app_lib_clean_up(struct app_ctx *ctx) {
     if (ctx->region) {
         aws_string_destroy(ctx->region);
@@ -196,6 +214,16 @@ int app_lib_clean_up(struct app_ctx *ctx) {
     return ENCLAVE_KMS_SUCCESS;
 }
 
+/**
+ * Update AWS credentials for an initialized KMS Tool enclave.
+ *
+ * This function updates the AWS credentials and reinitializes the KMS client.
+ * The enclave must be initialized before calling this function.
+ *
+ * @param ctx The KMS Tool enclave context
+ * @param params New AWS credentials
+ * @return ENCLAVE_KMS_SUCCESS on success, ENCLAVE_KMS_ERROR on failure
+ */
 int app_lib_update_aws_key(struct app_ctx *ctx, const struct kmstool_update_aws_key_params *params) {
     if (ctx->allocator == NULL) {
         fprintf(stderr, "should init kms tool lib before update\n");

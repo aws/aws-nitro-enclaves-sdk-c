@@ -2,7 +2,7 @@
 
 #define MAX_ENCRYPT_DATA_SIZE 4096
 
-/* Decrypt the given base64 encoded ciphertext via KMS and output its base64 encoded result */
+/* Encrypt the given plaintext using KMS and store the result in the ciphertext buffer */
 static int encrypt_from_kms(
     const struct app_ctx *ctx,
     const struct kmstool_encrypt_params *params,
@@ -11,7 +11,7 @@ static int encrypt_from_kms(
 
     struct aws_byte_buf plaintext = aws_byte_buf_from_array(params->plaintext, params->plaintext_len);
 
-    /* Encrypt the data with KMS. */
+    /* Encrypt the data with KMS using the configured key and algorithm */
     rc = aws_kms_encrypt_blocking(ctx->kms_client, ctx->key_id, &plaintext, ciphertext);
     aws_byte_buf_clean_up_secure(&plaintext);
     if (rc != AWS_OP_SUCCESS) {

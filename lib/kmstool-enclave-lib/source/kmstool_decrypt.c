@@ -1,6 +1,6 @@
 #include "../include/kmstool_decrypt.h"
 
-/* Decrypt the given base64 encoded ciphertext via KMS and output its base64 encoded result */
+/* Decrypt the given ciphertext using KMS and store the result in the plaintext buffer */
 static int decrypt_from_kms(
     const struct app_ctx *ctx,
     const struct kmstool_decrypt_params *params,
@@ -9,7 +9,7 @@ static int decrypt_from_kms(
 
     struct aws_byte_buf ciphertext = aws_byte_buf_from_array(params->ciphertext, params->ciphertext_len);
 
-    /* Decrypt the data with KMS. */
+    /* Decrypt the data with KMS using the configured key and algorithm */
     rc = aws_kms_decrypt_blocking(ctx->kms_client, ctx->key_id, ctx->encryption_algorithm, &ciphertext, plaintext);
     aws_byte_buf_clean_up_secure(&ciphertext);
     if (rc != AWS_OP_SUCCESS) {
