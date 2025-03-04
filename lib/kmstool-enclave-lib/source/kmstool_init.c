@@ -24,7 +24,7 @@ static int kms_client_init(struct app_ctx *ctx) {
     /* Configure vsock endpoint for parent enclave communication */
     struct aws_socket_endpoint endpoint = {.address = DEFAULT_PARENT_CID, .port = ctx->proxy_port};
     struct aws_nitro_enclaves_kms_client_configuration configuration = {
-        .allocator = ctx->allocator, .endpoint = &endpoint, .domain = AWS_SOCKET_VSOCK, .aws_region = ctx->aws_region};
+        .allocator = ctx->allocator, .endpoint = &endpoint, .domain = AWS_SOCKET_VSOCK, .region = ctx->aws_region};
 
     /* Create AWS credentials and KMS client */
     struct aws_credentials *new_credentials = aws_credentials_new(
