@@ -7,7 +7,7 @@ static int encrypt_from_kms(const struct app_ctx *ctx, const char *plaintext_str
     struct aws_byte_buf plaintext = aws_byte_buf_from_c_str(plaintext_str);
 
     /* Encrypt the data with KMS. */
-    rc = aws_kms_encrypt_blocking(ctx->kms_client, ctx->key_id, &plaintext, &ciphertext);
+    rc = aws_kms_encrypt_blocking(ctx->kms_client, ctx->key_id, &plaintext, ciphertext);
     aws_byte_buf_clean_up_secure(&plaintext);
     if (rc != AWS_OP_SUCCESS) {
         fprintf(stderr, "Could not encrypt plaintext\n");
