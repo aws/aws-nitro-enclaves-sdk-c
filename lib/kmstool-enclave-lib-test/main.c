@@ -14,27 +14,26 @@ int main(int argc, char **argv) {
     struct kmstool_init_params params_init = {
         .region = "ap-southeast-1",
         .proxy_port = 8000,
-        .aws_access_key_id = "ASIA5WLTTLBCXTRTDNY7",
-        .aws_secret_access_key = "7Ehagx/BFsxsdF6JY7KqI9RNc3R7SAJoScheG5tr",
+        .aws_access_key_id = "ASIA5WLTTLBCX46GJQF2",
+        .aws_secret_access_key = "nbNTIox3QX9qdrUIqzf1b1JVAUfJOQ+O3egHqpAo",
         .aws_session_token =
-            "IQoJb3JpZ2luX2VjEK7//////////wEaDmFwLXNvdXRoZWFzdC0xIkgwRgIhAMeWwiXnGOMZxnVzGY5kDdUf29P97jQ5xmh1P+l/"
-            "9nxFAiEA9y5bNaWl+1ZYSBmpCfgDHy0pWxA3djln3U02A33M108q0wUI5///////////"
-            "ARAAGgw5NDEzNzcxNDg5OTciDDtn1KkrJghiOUBjfCqnBVXpsN6GjtSvkj/"
-            "dkfelufTIolBXJGz1b3+LvQ7WcbP42L3D5td86pSDEfRa1o7mokNunIKVEcIeZwuiwtEfU3D2Jw9WnzV/"
-            "oUwKdE+LO1Wh+w3UcDm8AU3vlXCld9dw9BUROqc7lDsLznZtV+KW8+5lx6EisW4BW9AfGbeOHHcqxqQs38JKCaf9JikSc4jugS7+"
-            "3rukzddDHEewsa1oDeOql/"
-            "KWlt0MNvF36iK1HRZsYVTo6MXfDn4YPz2gwEBgcnaFouU4F8ILuFXmiGhaUM79dBnPXTPSGt1muNwVho47Syu0spq53lqU+"
-            "MF0tioVCJTLmTo5l6p3TbUWz9X6dTHIRG+OdFO+NK1fbwabt5j9fUZHsLXxRS7PvbFQEKyDpXH+"
-            "o36JfoGZ5ivT4tS1lzvKqu1WYvjJhWu0+Dnc1obcJAHzuclWIqUa9XRYrsnDeCTD/"
-            "oqn94NePdemEtQhC6fpKQ710uPV2kq3+1980UZ1xBUEHa7LhmPXFIhznt+"
-            "ffmSG1FrHDD7m6xLxlH8hs4rjjMm3Fc9H6tE52yMBxFKqFWcFOOCWrEqLQXSd15QyVJugBuJQb2nUaWFDfhBgiXE03tZriBmq2ukuCRiT6"
-            "25Fcut47gA97e8BLdLPoNPTDL/MUmI3oMNpY8c+Q4bwaW4H6AJsYRkTJDLtEseYpsH3O6dd81Gn/"
-            "iTRuEcWspw+9gS1Tr6H8gwNKY6hsN9kYR0evs9wYIA87b/"
-            "uRpHG+1VeJEW9e4IIfgIxUqtLTfWmysQPOIEOatW4Ajc0WGipgAjEYRaxPZ64FVwmTjMok1kFLQYonxUi0xjYp5RtF/6Wy7xRsC8bL/"
-            "PX4I0yqdKoxdHr747QQpruhKJZx1vNAggk7qn6k8EoTc7uFNSgkdnXsYqakrgDsT8wzaeavgY6sAEbU5FB3T+FKlvr/"
-            "zVSdsmZvO4A4pxBglW8kQ06RWJRJBDVnTLBJADcjFyEYZGdz283BwTt4/vEzUjbHQxk35AkvwNXuiw58/"
-            "Bzig8FQHOihC75KePumSWHmn1kFCWweRumYvFHmuJ5/"
-            "QO7JOmhaNo0mVZZk7As52YRG8cLyHfyfF0P3VaBbXaIzyb+9wmsvcTu1j0ta5cDqYNETU8+iQ3QWXL4x2CWRjS2OJ6Seh6umw==",
+            "IQoJb3JpZ2luX2VjELD//////////"
+            "wEaDmFwLXNvdXRoZWFzdC0xIkYwRAIgRhqIAMtNeYrVBlIHu3fVZYJbfuiIT+yjSMac9K2S7BkCIEbWMkIheTfZzHRqT1LHkQKZ/"
+            "rxBDJuJBZ6gjym1zkMkKtMFCOn//////////wEQABoMOTQxMzc3MTQ4OTk3IgxU/"
+            "ipnpDHmzv2vsBcqpwVC9zpLbqTjjYc0MDrVr8g5AvhD9l1QroOacRt2zf5A50IXop1WuTDB26eK/1XV7/"
+            "i98D+cLPAwFDQ4S0moBWU+uQWK5CwiEH70nBmI3RS3EzyeDPpwP3n6D+"
+            "z5MkxYDLHWuttxo2JYvLAMW4uGk261IcSCua6VS8AklTC5fiFzS1GMjceUxjEMC20Egr6ulOGviLp+"
+            "ysYyHp5kpJ0wWgPYRu2UvaN8nnOI2GcKRx39BkWZce4NKv50REMnmbcCMwSF7U9yiDEK7fr285PQKaSkBSngOQ4AJOQrCQTMAnrr814Omr"
+            "K03xqaGlSiTdSx803jyzBUNhAEL/KXbJOJk4SCnMzRGGb93L9VbTCBVGgTG3eJPAH6xsCs6sK18LNp9IbuPT+baAv0oCMD6NkKcZY/"
+            "RPbxQebZMwQ17MUsyz3TrY4xytgF3g/vZUp4jdVMYXpt0BpiS/fgH02xN+/1ZAFA0+AOTG7rf/+PfeEC+OWxvRujTWo7mmAz/"
+            "TQTOfh29R799wx3EAGC8ObGZvdMQF2uyKyjZ5JsJHW/qr/PYP+C0+qlaHBgcaNfjfWJ8Ob9ibVtyAf/"
+            "8L8i8LfOe48VjKQnGZGFcl13IGWYebkMPreLTGdDsBISdjnX63CPYtcn+KcSsyEXpc7IY4F1zlHT7Q2zEIr+xfoNAuEXLR8xvuLU7/"
+            "sCt4Mog0vJZXanxwSeSbf44Y8og1hukyIUKeba3oWGB7c1slrF2gQkA6kRpq2eciRUqw069Y1QcyrKNyIH5/"
+            "8l7GXNtX4Z6QtxV6+xLeJDi+uSnPKyoddpKunG3HwZSH2f8UMiHHF+EAtPMug99s5USgU3BMJOrV203o/"
+            "T3GgZ+j6KKa+AvNaNMxwQXnio9+uHJrUZ0onFNAK2J3LkIasV20aoLD6tMIHhmr4GOrIBRQZlMzhKr7yvUo/"
+            "HSLvjlE8FYLzZzJZRwizoOafe4KHK0dxofxZzCyHHNqhPY+MNLvafF2zhJ4gBcjas4w36S5o8awa3Cn/"
+            "UStL5uPcpce3YfrqUuYxjvUrAI5qron6pXmOndkWWD8OijpsDEGu8B+Yr6K0QpUnuXQ0KoKN0XQM95YLZX7523eam/"
+            "9+V8pysXJbZf0HZsffLI91T3AOM5XFMkQp+ynSF8ao92FkLVuX+4A==",
         .key_id = "60b8ce3a-7466-42b7-96a7-a3868f0fd1bf",
         .encryption_algorithm = "SYMMETRIC_DEFAULT",
         .with_logs = 1,
@@ -56,6 +55,8 @@ int main(int argc, char **argv) {
             fprintf(stderr, "Encryption failed at iteration %d\n", i);
             exit(EXIT_FAILURE);
         }
+
+        fprintf(stderr, "Encryption success with data %s\n", output_enc);
 
         struct kmstool_decrypt_params params_decrypt = {
             .ciphertext_b64 = output_enc,
