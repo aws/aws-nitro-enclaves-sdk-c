@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 
         free(output_enc);
         free(output_dec);
-
+        fprintf(stderr, "success with i: %d\n", i);
         sleep(2);
     }
     return 0;
