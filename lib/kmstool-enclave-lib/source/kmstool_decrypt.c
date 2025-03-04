@@ -1,7 +1,7 @@
 #include "../include/kmstool_decrypt.h"
 
 /* Decrypt the given base64 encoded ciphertext via KMS and output its base64 encoded result */
-static int decrypt_from_kms(const struct app_ctx *ctx, const char *ciphertext_str, char *plaintext) {
+static int decrypt_from_kms(const struct app_ctx *ctx, const char *ciphertext_str, struct aws_byte_buf *plaintext) {
     ssize_t rc = AWS_OP_ERR;
 
     struct aws_byte_buf ciphertext = aws_byte_buf_from_c_str(ciphertext_str);
