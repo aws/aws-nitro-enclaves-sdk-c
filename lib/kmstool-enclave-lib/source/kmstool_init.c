@@ -32,7 +32,7 @@ static int kms_client_init(struct app_ctx *ctx) {
         UINT64_MAX);
     configuration.credentials = new_credentials;
 
-    ctx->kms_client= aws_nitro_enclaves_kms_client_new(&configuration);
+    ctx->kms_client = aws_nitro_enclaves_kms_client_new(&configuration);
     if (ctx->kms_client == NULL) {
         fprintf(stderr, "failed to init kms client\n");
         aws_credentials_release(new_credentials);
@@ -59,7 +59,7 @@ static int kms_client_init(struct app_ctx *ctx) {
  */
 int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) {
     if (ctx->allocator != NULL || ctx->kms_client != NULL) {
-        fprintf(stderr, "kms tool enclave lib have already been initialized\n");
+        fprintf(stderr, "kms tool enclave lib has already been initialized\n");
         return ENCLAVE_KMS_SUCCESS;
     }
 
@@ -98,7 +98,6 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
         return ENCLAVE_KMS_ERROR;
     }
 
-
     /* Initialize the AWS Nitro Enclaves library */
     aws_nitro_enclaves_library_init(NULL);
 
@@ -108,26 +107,37 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
     }
 
     ctx->allocator = aws_nitro_enclaves_get_allocator();
+    if (ctx->allocator == NULL) {
+        aws_nitro_enclaves_library_clean_up();
+        return ENCLAVE_KMS_ERROR;
+    }
 
     if (params->with_logs == 1) {
         ctx->logger = malloc(sizeof(struct aws_logger));
+        if (ctx->logger == NULL) {
+            aws_nitro_enclaves_library_clean_up();
+            return ENCLAVE_KMS_ERROR;
+        }
         struct aws_logger_standard_options options = {
             .file = stderr,
             .level = AWS_LL_INFO,
             .filename = NULL,
         };
-        aws_logger_init_standard(ctx->logger, ctx->allocator, &options);
+        if (aws_logger_init_standard(ctx->logger, ctx->allocator, &options) != AWS_OP_SUCCESS) {
+            free(ctx->logger);
+            ctx->logger = NULL;
+            aws_nitro_enclaves_library_clean_up();
+            return ENCLAVE_KMS_ERROR;
+        }
         aws_logger_set(ctx->logger);
     }
 
     app_ctx_init_with_params(ctx, params);
 
-    ssize_t rc = AWS_OP_ERR;
-    rc = kms_client_init(ctx);
+    ssize_t rc = kms_client_init(ctx);
     if (rc != AWS_OP_SUCCESS) {
-        ctx->allocator = NULL;
-        aws_nitro_enclaves_library_clean_up();
-        fprintf(stderr, "failed to init kms client \n");
+        app_lib_clean_up(ctx);
+        fprintf(stderr, "failed to init kms client: %s\n", aws_error_str(aws_last_error()));
         return ENCLAVE_KMS_ERROR;
     }
 

@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 
     /* Global static application context */
     struct kmstool_init_params params_init = {
-        .region = "ap-southeast-1",
+        .region = "",
         .proxy_port = 8000,
         .aws_access_key_id = "",
         .aws_secret_access_key = "",

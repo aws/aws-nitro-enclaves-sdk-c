@@ -30,30 +30,39 @@ int app_lib_encrypt(
     ssize_t rc = AWS_OP_ERR;
 
     if (params->plaintext == NULL || params->plaintext_len == 0) {
-        fprintf(stderr, "plaintext should not be NULL\n");
+        fprintf(stderr, "plaintext should not be NULL or empty\n");
         *ciphertext_out = NULL;
         *ciphertext_out_len = 0;
         return ENCLAVE_KMS_ERROR;
     }
 
     if (params->plaintext_len > MAX_ENCRYPT_DATA_SIZE) {
-        fprintf(stderr, "plaintext too large\n");
+        fprintf(stderr, "plaintext too large (max size: %d bytes)\n", MAX_ENCRYPT_DATA_SIZE);
         *ciphertext_out = NULL;
         *ciphertext_out_len = 0;
         return ENCLAVE_KMS_ERROR;
     }
 
-    struct aws_byte_buf ciphertext_buf;
+    struct aws_byte_buf ciphertext_buf = {0};
     rc = encrypt_from_kms(ctx, params, &ciphertext_buf);
     if (rc != AWS_OP_SUCCESS) {
-        fprintf(stderr, "failed to encrypt\n");
+        fprintf(stderr, "KMS encryption failed: %s\n", aws_error_str(aws_last_error()));
         *ciphertext_out = NULL;
         *ciphertext_out_len = 0;
         return rc;
     }
 
-    *ciphertext_out = malloc(ciphertext_buf.len);
-    memcpy(*ciphertext_out, ciphertext_buf.buffer, ciphertext_buf.len);
+    uint8_t *output = malloc(ciphertext_buf.len);
+    if (output == NULL) {
+        fprintf(stderr, "Failed to allocate memory for ciphertext output\n");
+        aws_byte_buf_clean_up_secure(&ciphertext_buf);
+        *ciphertext_out = NULL;
+        *ciphertext_out_len = 0;
+        return ENCLAVE_KMS_ERROR;
+    }
+
+    memcpy(output, ciphertext_buf.buffer, ciphertext_buf.len);
+    *ciphertext_out = output;
     *ciphertext_out_len = ciphertext_buf.len;
     aws_byte_buf_clean_up_secure(&ciphertext_buf);
     return ENCLAVE_KMS_SUCCESS;

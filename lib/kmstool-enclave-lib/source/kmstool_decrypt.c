@@ -28,23 +28,32 @@ int app_lib_decrypt(
     ssize_t rc = AWS_OP_ERR;
 
     if (params->ciphertext == NULL || params->ciphertext_len == 0) {
-        fprintf(stderr, "ciphertext should not be NULL\n");
+        fprintf(stderr, "ciphertext should not be NULL or empty\n");
         *plaintext_out = NULL;
         *plaintext_out_len = 0;
         return ENCLAVE_KMS_ERROR;
     }
 
-    struct aws_byte_buf plaintext_buf;
+    struct aws_byte_buf plaintext_buf = {0};
     rc = decrypt_from_kms(ctx, params, &plaintext_buf);
     if (rc != AWS_OP_SUCCESS) {
-        fprintf(stderr, "failed to decrypt\n");
+        fprintf(stderr, "KMS decryption failed: %s\n", aws_error_str(aws_last_error()));
         *plaintext_out = NULL;
         *plaintext_out_len = 0;
         return rc;
     }
 
-    *plaintext_out = malloc(plaintext_buf.len);
-    memcpy(*plaintext_out, plaintext_buf.buffer, plaintext_buf.len);
+    uint8_t *output = malloc(plaintext_buf.len);
+    if (output == NULL) {
+        fprintf(stderr, "Failed to allocate memory for plaintext output\n");
+        aws_byte_buf_clean_up_secure(&plaintext_buf);
+        *plaintext_out = NULL;
+        *plaintext_out_len = 0;
+        return ENCLAVE_KMS_ERROR;
+    }
+
+    memcpy(output, plaintext_buf.buffer, plaintext_buf.len);
+    *plaintext_out = output;
     *plaintext_out_len = plaintext_buf.len;
     aws_byte_buf_clean_up_secure(&plaintext_buf);
     return ENCLAVE_KMS_SUCCESS;
