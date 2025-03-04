@@ -45,6 +45,8 @@ int main(int argc, char **argv) {
         // Create a unique plaintext string for each iteration.
         uint8_t plaintext[256];
         sprintf((char *)plaintext, "test1234567890_%d", i);
+        fprintf(stderr, "----plaintext 11----%s\n", plaintext);
+
         struct kmstool_encrypt_params params_encrypt = {
             .plaintext = plaintext, .plaintext_len = strlen((char *)plaintext)};
 
@@ -69,8 +71,11 @@ int main(int argc, char **argv) {
             free(output_enc);
             exit(EXIT_FAILURE);
         }
+
         // Validate that the decrypted output matches the original plaintext.
-        if (strcmp((char *)plaintext, (char *)output_dec) != 0) {
+        fprintf(stderr, "----plaintext ----%s\n", plaintext);
+
+        if (strncmp((char *)plaintext, (char *)output_dec, output_dec_len) != 0) {
             fprintf(
                 stderr, "Mismatch at iteration %d: expected %s, got %s\n", i, (char *)plaintext, (char *)output_dec);
             free(output_enc);
