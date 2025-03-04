@@ -17,7 +17,7 @@ static void app_ctx_init_with_params(struct app_ctx *ctx, const struct kmstool_i
 /* Initialize KMS client with AWS credentials and vsock endpoint configuration */
 static int kms_client_init(struct app_ctx *ctx) {
     if (ctx->kms_client != NULL || ctx->aws_credentials != NULL) {
-        fprintf(stderr, "KMS client has already been initialized\n");
+        fprintf(stderr, "Error: KMS client has already been initialized\n");
         return AWS_OP_SUCCESS;
     }
 
@@ -37,7 +37,7 @@ static int kms_client_init(struct app_ctx *ctx) {
 
     ctx->kms_client = aws_nitro_enclaves_kms_client_new(&configuration);
     if (ctx->kms_client == NULL) {
-        fprintf(stderr, "Failed to initialize KMS client\n");
+        fprintf(stderr, "Error: Failed to create KMS client: %s\n", aws_error_str(aws_last_error()));
         aws_credentials_release(new_credentials);
         new_credentials = NULL;
         return AWS_OP_ERR;
@@ -70,32 +70,32 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
 
     /* Validate required parameters */
     if (params->aws_region == NULL) {
-        fprintf(stderr, "AWS aws_region must be set\n");
+        fprintf(stderr, "Error: AWS region parameter is NULL\n");
         return KMSTOOL_ERROR;
     }
 
     if (params->aws_access_key_id == NULL) {
-        fprintf(stderr, "AWS access key ID must be set\n");
+        fprintf(stderr, "Error: AWS access key ID parameter is NULL\n");
         return KMSTOOL_ERROR;
     }
 
     if (params->aws_secret_access_key == NULL) {
-        fprintf(stderr, "AWS secret access key must be set\n");
+        fprintf(stderr, "Error: AWS secret access key parameter is NULL\n");
         return KMSTOOL_ERROR;
     }
 
     if (params->aws_session_token == NULL) {
-        fprintf(stderr, "AWS session token must be set\n");
+        fprintf(stderr, "Error: AWS session token parameter is NULL\n");
         return KMSTOOL_ERROR;
     }
 
     if (params->kms_key_id == NULL) {
-        fprintf(stderr, "KMS key ID must be set\n");
+        fprintf(stderr, "Error: KMS key ID parameter is NULL\n");
         return KMSTOOL_ERROR;
     }
 
     if (params->kms_algorithm == NULL) {
-        fprintf(stderr, "KMS algorithm must be set\n");
+        fprintf(stderr, "Error: KMS algorithm parameter is NULL\n");
         return KMSTOOL_ERROR;
     }
 
@@ -103,12 +103,14 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
     aws_nitro_enclaves_library_init(NULL);
 
     if (aws_nitro_enclaves_library_seed_entropy(1024) != AWS_OP_SUCCESS) {
+        fprintf(stderr, "Error: Failed to seed entropy for AWS Nitro Enclaves library\n");
         aws_nitro_enclaves_library_clean_up();
         return KMSTOOL_ERROR;
     }
 
     ctx->allocator = aws_nitro_enclaves_get_allocator();
     if (ctx->allocator == NULL) {
+        fprintf(stderr, "Error: Failed to get AWS Nitro Enclaves allocator\n");
         aws_nitro_enclaves_library_clean_up();
         return KMSTOOL_ERROR;
     }
@@ -117,6 +119,7 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
     if (params->enable_logging == 1) {
         ctx->logger = malloc(sizeof(struct aws_logger));
         if (ctx->logger == NULL) {
+            fprintf(stderr, "Error: Failed to allocate memory for logger\n");
             aws_nitro_enclaves_library_clean_up();
             return KMSTOOL_ERROR;
         }
@@ -126,6 +129,7 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
             .filename = NULL,
         };
         if (aws_logger_init_standard(ctx->logger, ctx->allocator, &options) != AWS_OP_SUCCESS) {
+            fprintf(stderr, "Error: Failed to initialize AWS logger\n");
             free(ctx->logger);
             ctx->logger = NULL;
             aws_nitro_enclaves_library_clean_up();
@@ -140,8 +144,8 @@ int app_lib_init(struct app_ctx *ctx, const struct kmstool_init_params *params) 
     /* Initialize KMS client */
     ssize_t rc = kms_client_init(ctx);
     if (rc != AWS_OP_SUCCESS) {
+        fprintf(stderr, "Error: Failed to initialize KMS client: %s\n", aws_error_str(aws_last_error()));
         app_lib_clean_up(ctx);
-        fprintf(stderr, "Failed to initialize KMS client: %s\n", aws_error_str(aws_last_error()));
         return KMSTOOL_ERROR;
     }
 
