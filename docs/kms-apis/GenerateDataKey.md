@@ -25,7 +25,7 @@ You can use the optional encryption context to add additional security to the en
 `EncryptionContext`, you must specify the same encryption context (a case-sensitive exact match) when decrypting the
 encrypted data key. Otherwise, the request to decrypt fails with an `InvalidCiphertextException`. For more
 information, see [Encryption
-Context](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context) in the *AWS Key
+Context](https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html) in the *AWS Key
 Management Service Developer Guide*.
 
 The CMK that you use for this operation must be in a compatible key state. For details, see [Key state: Effect on your
@@ -133,7 +133,7 @@ encryption context to decrypt the data. An encryption context is optional when e
 is highly recommended.
 
 For more information, see [Encryption
-Context](https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html#encrypt_context) in the *AWS Key
+Context](https://docs.aws.amazon.com/kms/latest/developerguide/encrypt_context.html) in the *AWS Key
 Management Service Developer Guide*.
 
 Type: String to string map
