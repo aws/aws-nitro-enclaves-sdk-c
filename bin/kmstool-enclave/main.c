@@ -119,7 +119,7 @@ struct aws_credentials *s_read_credentials(struct aws_allocator *allocator, stru
         return NULL;
     }
 
-    if (aws_session_token != NULL && !json_object_is_type(aws_access_key_id, json_type_string)) {
+    if (aws_session_token != NULL && !json_object_is_type(aws_session_token, json_type_string)) {
         fprintf(stderr, "Error parsing JSON object: credentials not correct");
         return NULL;
     }
