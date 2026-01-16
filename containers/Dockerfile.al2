@@ -16,7 +16,7 @@ RUN yum install -y \
 	ninja-build \
 	doxygen
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.71
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain 1.92
 
 # We keep the build artifacts in the -build directory
 WORKDIR /tmp/crt-builder
