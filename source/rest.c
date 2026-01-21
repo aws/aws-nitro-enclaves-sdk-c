@@ -18,6 +18,7 @@
 #include <aws/io/tls_channel_handler.h>
 
 #include <inttypes.h>
+#include <string.h>
 
 #define ALPN_STRING "h2;http/1.1"
 #define CONNECT_TIMEOUT_MS 3000UL
@@ -58,6 +59,28 @@ static void s_on_client_connection_shutdown(struct aws_http_connection *connecti
     }
 }
 
+static const char *s_get_dns_suffix_for_region(const char *region) {
+    if (region == NULL)
+        goto out;
+
+    if (strncmp(region, "cn-", 3) == 0) {
+        return "amazonaws.com.cn";
+    } else if (strncmp(region, "eusc-", 5) == 0) {
+        return "amazonaws.eu";
+    } else if (strncmp(region, "us-iso-", 7) == 0) {
+        return "c2s.ic.gov";
+    } else if (strncmp(region, "us-isob-", 8) == 0) {
+        return "sc2s.sgov.gov";
+    } else if (strncmp(region, "eu-isoe-", 8) == 0) {
+        return "cloud.adc-e.uk";
+    } else if (strncmp(region, "us-isof-", 8) == 0) {
+        return "csp.hci.ic.gov";
+    }
+
+out:
+    return "amazonaws.com";
+}
+
 struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     struct aws_nitro_enclaves_rest_client_configuration *configuration) {
     AWS_PRECONDITION(aws_string_is_valid(configuration->service));
@@ -88,12 +111,14 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
         rest_client->host_name = aws_string_clone_or_reuse(rest_client->allocator, configuration->host_name);
         host_name = aws_byte_cursor_from_string(rest_client->host_name);
     } else {
+        const char *dns_suffix = s_get_dns_suffix_for_region(aws_string_c_str(configuration->region));
         snprintf(
             host_name_str,
             sizeof(host_name_str),
-            "%s.%s.amazonaws.com",
+            "%s.%s.%s",
             aws_string_c_str(configuration->service),
-            aws_string_c_str(configuration->region));
+            aws_string_c_str(configuration->region),
+            dns_suffix);
         host_name = aws_byte_cursor_from_c_str(host_name_str);
         rest_client->host_name = aws_string_new_from_c_str(rest_client->allocator, host_name_str);
     }
