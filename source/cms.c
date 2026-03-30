@@ -186,6 +186,11 @@ int aws_cms_parse_enveloped_data(
     const uint8_t *iv_data = CBS_data(&iv_string);
     size_t iv_data_len = CBS_len(&iv_string);
 
+    /* RFC 3565 4.1: AES-IV ::= OCTET STRING (SIZE(16)) */
+    if (iv_data_len != (size_t)EVP_CIPHER_iv_length(EVP_aes_256_cbc())) {
+        goto err;
+    }
+
     cursor = aws_byte_cursor_from_array(iv_data, iv_data_len);
     if (AWS_OP_SUCCESS != aws_byte_buf_init_copy_from_cursor(iv, aws_nitro_enclaves_get_allocator(), cursor)) {
         goto err;
@@ -279,7 +284,8 @@ int aws_cms_cipher_decrypt(
     AWS_PRECONDITION(aws_byte_buf_is_valid(key));
     AWS_PRECONDITION(aws_byte_buf_is_valid(iv));
 
-    if (key->len != EVP_CIPHER_key_length(EVP_aes_256_cbc())) {
+    if (key->len != (size_t)EVP_CIPHER_key_length(EVP_aes_256_cbc()) ||
+        iv->len != (size_t)EVP_CIPHER_iv_length(EVP_aes_256_cbc())) {
         return AWS_OP_ERR;
     }
 
