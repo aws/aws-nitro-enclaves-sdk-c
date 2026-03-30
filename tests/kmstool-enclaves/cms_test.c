@@ -7,6 +7,9 @@
 #include <aws/nitro_enclaves/nitro_enclaves.h>
 #include <aws/testing/aws_test_harness.h>
 
+#include <sys/mman.h>
+#include <unistd.h>
+
 /* CMS response from KMS. Enveloped Data. RSA-OAEP envelope with AES256-CBC encrypted content */
 static const uint8_t input_ber[] = {
     0x30, 0x80, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x07, 0x03, 0xa0, 0x80, 0x30, 0x80, 0x02, 0x01,
@@ -232,6 +235,56 @@ static int s_test_cms_large_ciphertext(struct aws_allocator *allocator, void *ct
     aws_byte_buf_clean_up(&large_ciphertext);
     aws_byte_buf_clean_up(&key);
     aws_byte_buf_clean_up(&iv);
+
+    aws_nitro_enclaves_library_clean_up();
+
+    return SUCCESS;
+}
+
+/* Test that a short IV is rejected before reaching EVP_DecryptInit_ex.
+ * AES-256-CBC requires a 16-byte IV (RFC 3565 4.1); EVP_DecryptInit_ex reads
+ * 16 bytes from the IV pointer unconditionally, so passing a shorter buffer
+ * causes a heap over-read.
+ *
+ * We place the 1-byte IV at the end of a page with a PROT_NONE guard page
+ * immediately after it, so the 16-byte over-read hits unmapped memory and
+ * causes SIGSEGV if the length check is missing. */
+
+AWS_TEST_CASE(test_cms_cipher_decrypt_rejects_short_iv, s_test_cms_cipher_decrypt_rejects_short_iv)
+static int s_test_cms_cipher_decrypt_rejects_short_iv(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    aws_nitro_enclaves_library_init(allocator);
+
+    long page_size = sysconf(_SC_PAGESIZE);
+
+    /* Map two pages: one accessible, one guard */
+    uint8_t *pages = mmap(NULL, 2 * page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    ASSERT_TRUE(pages != MAP_FAILED);
+    ASSERT_SUCCESS(mprotect(pages + page_size, page_size, PROT_NONE));
+
+    /* Place 1-byte IV at the very end of the accessible page */
+    uint8_t *iv_ptr = pages + page_size - 1;
+    iv_ptr[0] = 0x00;
+
+    struct aws_byte_buf ciphertext, key, iv, plaintext;
+
+    ASSERT_SUCCESS(aws_byte_buf_init(&ciphertext, allocator, 16));
+    memset(ciphertext.buffer, 0x00, 16);
+    ciphertext.len = 16;
+
+    ASSERT_SUCCESS(aws_byte_buf_init(&key, allocator, 32));
+    memset(key.buffer, 0x00, 32);
+    key.len = 32;
+
+    iv = (struct aws_byte_buf){.len = 1, .buffer = iv_ptr, .capacity = 1, .allocator = NULL};
+
+    int result = aws_cms_cipher_decrypt(&ciphertext, &key, &iv, &plaintext);
+    ASSERT_TRUE(result == AWS_OP_ERR);
+
+    aws_byte_buf_clean_up(&ciphertext);
+    aws_byte_buf_clean_up(&key);
+    munmap(pages, 2 * page_size);
 
     aws_nitro_enclaves_library_clean_up();
 

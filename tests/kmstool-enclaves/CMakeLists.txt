@@ -50,6 +50,7 @@ add_test_case(test_rest_call_blocking)
 add_test_case(test_cms_parsing_correctness)
 add_test_case(test_cms_envelope_ctx_specific)
 add_test_case(test_cms_large_ciphertext)
+add_test_case(test_cms_cipher_decrypt_rejects_short_iv)
 
 set(TEST_BINARY_NAME ${PROJECT_NAME}-tests)
 generate_test_driver(${TEST_BINARY_NAME})
