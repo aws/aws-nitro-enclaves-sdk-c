@@ -204,6 +204,47 @@ static int s_test_cms_envelope_ctx_specific(struct aws_allocator *allocator, voi
     return SUCCESS;
 }
 
+/* Test that a parse failure does not read or free uninitialized output buffers.
+ *
+ * aws_cms_parse_enveloped_data must fail on malformed BER. Its error path
+ * inspects the output buffers with aws_byte_buf_is_valid() and frees them, so it
+ * has to zero them itself: callers pass uninitialized stack buffers, and if the
+ * parser bailed out before initializing them it would otherwise call
+ * aws_byte_buf_clean_up_secure() on garbage pointers (arbitrary free).
+ *
+ * We fill the output buffers with non-zero garbage first, parse input that fails
+ * immediately (not a SEQUENCE), and assert the call fails without crashing. */
+AWS_TEST_CASE(test_cms_parse_error_does_not_free_uninitialized, s_test_cms_parse_error_does_not_free_uninitialized)
+static int s_test_cms_parse_error_does_not_free_uninitialized(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    aws_nitro_enclaves_library_init(allocator);
+
+    /* Malformed input: a bare INTEGER, so the very first SEQUENCE check fails
+     * before any output buffer is initialized. */
+    static const uint8_t bad_ber[] = {0x02, 0x01, 0x00};
+
+    struct aws_byte_buf in_ber;
+    struct aws_byte_cursor cursor = aws_byte_cursor_from_array(bad_ber, sizeof(bad_ber));
+    ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(&in_ber, allocator, cursor));
+
+    /* Poison the output buffers with non-zero bytes to emulate an uninitialized
+     * stack. If the parser's error path does not zero them first, it would treat
+     * the garbage len/buffer/allocator fields as a live buffer and free them. */
+    struct aws_byte_buf cipherkey, iv, ciphertext;
+    memset(&cipherkey, 0xAB, sizeof(cipherkey));
+    memset(&iv, 0xCD, sizeof(iv));
+    memset(&ciphertext, 0xEF, sizeof(ciphertext));
+
+    ASSERT_TRUE(aws_cms_parse_enveloped_data(&in_ber, &cipherkey, &iv, &ciphertext) == AWS_OP_ERR);
+
+    aws_byte_buf_clean_up_secure(&in_ber);
+
+    aws_nitro_enclaves_library_clean_up();
+
+    return SUCCESS;
+}
+
 /* Test that large ciphertext doesn't cause stack exhaustion and is handled gracefully */
 AWS_TEST_CASE(test_cms_large_ciphertext, s_test_cms_large_ciphertext)
 static int s_test_cms_large_ciphertext(struct aws_allocator *allocator, void *ctx) {
@@ -285,6 +326,64 @@ static int s_test_cms_cipher_decrypt_rejects_short_iv(struct aws_allocator *allo
     aws_byte_buf_clean_up(&ciphertext);
     aws_byte_buf_clean_up(&key);
     munmap(pages, 2 * page_size);
+
+    aws_nitro_enclaves_library_clean_up();
+
+    return SUCCESS;
+}
+
+/* Test that a parse failure part way through the message is also safe.
+ *
+ * test_cms_parse_error_does_not_free_uninitialized covers input that fails the
+ * very first check, before any output buffer is written. The parser fills its
+ * three outputs at different points, though, so a message that parses for a
+ * while and then runs out has some outputs already owning heap while the rest
+ * are still whatever the caller's stack held. Every one of those exits reaches
+ * the same err: label, which inspects and frees all three.
+ *
+ * Walk every truncation of a known-good message with the outputs poisoned. A
+ * truncation that fails must leave all three buffers empty, so the caller can
+ * clean up without tracking how far the parser got. Note that not every
+ * truncation fails: the parser accepts some short messages, and those are
+ * checked for a consistent success state instead. */
+AWS_TEST_CASE(test_cms_parse_truncated_is_safe, s_test_cms_parse_truncated_is_safe)
+static int s_test_cms_parse_truncated_is_safe(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+
+    aws_nitro_enclaves_library_init(allocator);
+
+    for (size_t len = 1; len < sizeof(input_ber); ++len) {
+        struct aws_byte_buf in_ber;
+        struct aws_byte_cursor cursor = aws_byte_cursor_from_array(input_ber, len);
+        ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(&in_ber, allocator, cursor));
+
+        /* Poison the outputs, as an uninitialized caller stack would. */
+        struct aws_byte_buf cipherkey, iv, ciphertext;
+        memset(&cipherkey, 0xAB, sizeof(cipherkey));
+        memset(&iv, 0xCD, sizeof(iv));
+        memset(&ciphertext, 0xEF, sizeof(ciphertext));
+
+        if (aws_cms_parse_enveloped_data(&in_ber, &cipherkey, &iv, &ciphertext) == AWS_OP_ERR) {
+            /* Nothing left owned, so a caller may clean up without tracking
+             * which outputs the parser got as far as writing. */
+            ASSERT_NULL(cipherkey.buffer);
+            ASSERT_NULL(iv.buffer);
+            ASSERT_NULL(ciphertext.buffer);
+            ASSERT_UINT_EQUALS(0, cipherkey.capacity);
+            ASSERT_UINT_EQUALS(0, iv.capacity);
+            ASSERT_UINT_EQUALS(0, ciphertext.capacity);
+        } else {
+            /* On success the outputs must be self-consistent, never poison. */
+            ASSERT_TRUE(aws_byte_buf_is_valid(&cipherkey));
+            ASSERT_TRUE(aws_byte_buf_is_valid(&iv));
+            ASSERT_TRUE(aws_byte_buf_is_valid(&ciphertext));
+            aws_byte_buf_clean_up_secure(&cipherkey);
+            aws_byte_buf_clean_up_secure(&iv);
+            aws_byte_buf_clean_up_secure(&ciphertext);
+        }
+
+        aws_byte_buf_clean_up_secure(&in_ber);
+    }
 
     aws_nitro_enclaves_library_clean_up();
 

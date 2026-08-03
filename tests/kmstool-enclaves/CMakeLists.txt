@@ -53,6 +53,8 @@ add_test_case(test_cms_parsing_correctness)
 add_test_case(test_cms_envelope_ctx_specific)
 add_test_case(test_cms_large_ciphertext)
 add_test_case(test_cms_cipher_decrypt_rejects_short_iv)
+add_test_case(test_cms_parse_error_does_not_free_uninitialized)
+add_test_case(test_cms_parse_truncated_is_safe)
 
 set(TEST_BINARY_NAME ${PROJECT_NAME}-tests)
 generate_test_driver(${TEST_BINARY_NAME})
