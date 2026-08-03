@@ -477,8 +477,11 @@ int main(int argc, char **argv) {
     /* Initialize the SDK */
     aws_nitro_enclaves_library_init(NULL);
 
-    /* Initialize the entropy pool: this is relevant for TLS */
-    AWS_ASSERT(aws_nitro_enclaves_library_seed_entropy(1024) == AWS_OP_SUCCESS);
+    /* Seed the entropy pool for TLS. */
+    if (aws_nitro_enclaves_library_seed_entropy(1024) != AWS_OP_SUCCESS) {
+        fprintf(stderr, "Could not seed entropy pool\n");
+        exit(1);
+    }
 
     /* Parse the commandline */
     app_ctx.allocator = aws_nitro_enclaves_get_allocator();
