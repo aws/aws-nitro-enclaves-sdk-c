@@ -64,6 +64,13 @@ int aws_cms_parse_enveloped_data(
 
     AWS_PRECONDITION(aws_byte_buf_is_valid(in_ber));
 
+    /* Callers pass uninitialized stack buffers, and the err: path below inspects
+     * and frees all three however early parsing fails. Zero them so it never
+     * acts on stack residue. */
+    AWS_ZERO_STRUCT(*cipherkey);
+    AWS_ZERO_STRUCT(*iv);
+    AWS_ZERO_STRUCT(*ciphertext);
+
     /* This function consumes BER encoded tags and gets relevant inner values
      * in accordance with the CMS General Syntax. Since we currently do not
      * have a usecase where KMS responses with multiple recipient keys, this

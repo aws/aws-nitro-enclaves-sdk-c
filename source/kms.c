@@ -2580,6 +2580,10 @@ static int s_decrypt_ciphertext_for_recipient(
     AWS_PRECONDITION(keypair != NULL);
 
     struct aws_byte_buf encrypted_symm_key, decrypted_symm_key, iv, ciphertext_out;
+    AWS_ZERO_STRUCT(encrypted_symm_key);
+    AWS_ZERO_STRUCT(decrypted_symm_key);
+    AWS_ZERO_STRUCT(iv);
+    AWS_ZERO_STRUCT(ciphertext_out);
     int rc = aws_cms_parse_enveloped_data(ciphertext_for_recipient, &encrypted_symm_key, &iv, &ciphertext_out);
     if (rc != AWS_OP_SUCCESS) {
         fprintf(stderr, "Cannot parse CMS enveloped data.\n");
