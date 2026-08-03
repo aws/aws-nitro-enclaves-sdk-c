@@ -411,6 +411,9 @@ static struct aws_http_message *s_make_request(
 static void s_on_sign_complete(struct aws_signing_result *signing_result, int error_code, void *userdata) {
     struct request_ctx *ctx = userdata;
 
+    /* NULL: err_clean is reachable before this is assigned. */
+    struct aws_http_stream *stream = NULL;
+
     if (error_code != AWS_OP_SUCCESS) {
         goto err_clean;
     }
@@ -430,7 +433,7 @@ static void s_on_sign_complete(struct aws_signing_result *signing_result, int er
         .on_complete = s_on_stream_complete_fn,
     };
 
-    struct aws_http_stream *stream = aws_http_connection_make_request(ctx->rest_client->connection, &request_options);
+    stream = aws_http_connection_make_request(ctx->rest_client->connection, &request_options);
 
     if (stream == NULL || aws_http_stream_activate(stream) != AWS_OP_SUCCESS) {
         fprintf(stderr, "failed to create request.");
@@ -456,6 +459,9 @@ struct aws_nitro_enclaves_rest_response *aws_nitro_enclaves_rest_client_request_
     struct request_ctx ctx;
     AWS_ZERO_STRUCT(ctx);
 
+    /* NULL: err_clean is reachable before this is assigned. */
+    struct aws_signable *sign_request = NULL;
+
     if (aws_mutex_init(&ctx.mutex) != AWS_OP_SUCCESS || aws_condition_variable_init(&ctx.c_var) != AWS_OP_SUCCESS) {
         goto err_clean;
     }
@@ -476,7 +482,7 @@ struct aws_nitro_enclaves_rest_response *aws_nitro_enclaves_rest_client_request_
     }
     aws_byte_buf_init(&ctx.response->__data, rest_client->allocator, 0);
 
-    struct aws_signable *sign_request = aws_signable_new_http_request(rest_client->allocator, ctx.request);
+    sign_request = aws_signable_new_http_request(rest_client->allocator, ctx.request);
 
     struct aws_signing_config_aws signing_config = {
         .config_type = AWS_SIGNING_CONFIG_AWS,
