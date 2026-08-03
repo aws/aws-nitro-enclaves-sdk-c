@@ -273,18 +273,28 @@ static void handle_connection(struct app_ctx *app_ctx, int peer_fd) {
             struct aws_credentials *new_credentials = s_read_credentials(app_ctx->allocator, object);
             fail_on(new_credentials == NULL, loop_next_err, "Could not read credentials");
 
+            /* Read the region before tearing down the old client: this can fail
+             * on parent-supplied input, and freeing first would leave client and
+             * credentials dangling for the next message to reuse. */
+            struct aws_string *new_region = s_read_region(app_ctx, object);
+            if (new_region == NULL) {
+                aws_credentials_release(new_credentials);
+            }
+            fail_on(new_region == NULL, loop_next_err, "Could not set region correctly, check configuration.");
+
             /* If credentials or client already exists, replace them. */
             if (credentials != NULL) {
                 aws_nitro_enclaves_kms_client_destroy(client);
                 aws_credentials_release(credentials);
+                client = NULL;
+                credentials = NULL;
             }
 
             if (aws_string_is_valid(region)) {
                 aws_string_destroy(region);
                 region = NULL;
             }
-            region = s_read_region(app_ctx, object);
-            fail_on(region == NULL, loop_next_err, "Could not set region correctly, check configuration.");
+            region = new_region;
 
             credentials = new_credentials;
             configuration.credentials = new_credentials;
