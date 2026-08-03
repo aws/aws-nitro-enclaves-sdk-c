@@ -445,8 +445,13 @@ static int s_aws_hash_table_from_json(
     struct aws_hash_table *map) {
 
     AWS_PRECONDITION(aws_allocator_is_valid(allocator));
-    AWS_PRECONDITION(obj);
     AWS_PRECONDITION(map);
+
+    /* obj is untrusted; reject non-objects before json_object_object_length()
+     * below dereferences it as an lh_table. */
+    if (obj == NULL || json_object_get_type(obj) != json_type_object) {
+        return AWS_OP_ERR;
+    }
 
     if (aws_hash_table_init(
             map,
