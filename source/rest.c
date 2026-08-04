@@ -59,6 +59,25 @@ static void s_on_client_connection_shutdown(struct aws_http_connection *connecti
     }
 }
 
+/*
+ * The region comes from the untrusted parent and is interpolated into the TLS
+ * server name. A long one pushes the real suffix out of the fixed-size buffer,
+ * leaving a domain the parent owns. The longest real region is 15 characters;
+ * the limit is set to 32 to leave headroom for future regions.
+ */
+static bool s_region_is_valid(const struct aws_string *region) {
+    if (region == NULL || region->len == 0 || region->len > 32) {
+        return false;
+    }
+    for (size_t i = 0; i < region->len; i++) {
+        uint8_t c = region->bytes[i];
+        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-')) {
+            return false;
+        }
+    }
+    return true;
+}
+
 static const char *s_get_dns_suffix_for_region(const char *region) {
     if (region == NULL)
         goto out;
@@ -107,18 +126,30 @@ struct aws_nitro_enclaves_rest_client *aws_nitro_enclaves_rest_client_new(
     }
     rest_client->allocator = allocator;
 
+    /* The region is used for signing whichever branch below runs, so validate it
+     * before either. */
+    if (!s_region_is_valid(configuration->region)) {
+        goto err_clean;
+    }
+
     if (aws_string_is_valid(configuration->host_name)) {
         rest_client->host_name = aws_string_clone_or_reuse(rest_client->allocator, configuration->host_name);
         host_name = aws_byte_cursor_from_string(rest_client->host_name);
     } else {
         const char *dns_suffix = s_get_dns_suffix_for_region(aws_string_c_str(configuration->region));
-        snprintf(
+        int written = snprintf(
             host_name_str,
             sizeof(host_name_str),
             "%s.%s.%s",
             aws_string_c_str(configuration->service),
             aws_string_c_str(configuration->region),
             dns_suffix);
+        /* Truncation would drop the suffix and leave the parent owning the
+         * domain. The region length limit rules that out, but the limit and
+         * this buffer are declared apart, so do not rely on them agreeing. */
+        if (written < 0 || (size_t)written >= sizeof(host_name_str)) {
+            goto err_clean;
+        }
         host_name = aws_byte_cursor_from_c_str(host_name_str);
         rest_client->host_name = aws_string_new_from_c_str(rest_client->allocator, host_name_str);
     }
