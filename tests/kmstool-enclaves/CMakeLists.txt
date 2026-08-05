@@ -45,6 +45,7 @@ add_test_case(test_kms_generate_random_request_from_json)
 add_test_case(test_kms_generate_random_response_to_json)
 add_test_case(test_kms_generate_random_response_from_json)
 add_test_case(test_kms_generate_random_response_from_json_with_unknown)
+add_test_case(test_kms_context_sink_rejects_non_object)
 add_test_case(test_basic_rest_client)
 add_test_case(test_rest_call_blocking)
 add_test_case(test_cms_parsing_correctness)
@@ -54,3 +55,12 @@ add_test_case(test_cms_cipher_decrypt_rejects_short_iv)
 
 set(TEST_BINARY_NAME ${PROJECT_NAME}-tests)
 generate_test_driver(${TEST_BINARY_NAME})
+
+# test_kms_context_sink_rejects_non_object drives a code path that requests an
+# attestation document, which needs the NSM device. Redirect the NSM calls to
+# stubs in the test so the path is reachable off-enclave.
+# target_link_options needs CMake 3.13; this project declares 3.1, so use the
+# LINK_FLAGS property instead of raising the minimum.
+set_property(TARGET ${TEST_BINARY_NAME} APPEND_STRING PROPERTY LINK_FLAGS
+    " -Wl,--wrap=nsm_lib_init -Wl,--wrap=nsm_lib_exit -Wl,--wrap=nsm_get_attestation_doc")
+

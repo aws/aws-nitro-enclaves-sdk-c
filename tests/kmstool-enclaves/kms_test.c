@@ -4,6 +4,7 @@
  */
 
 #include <aws/nitro_enclaves/kms.h>
+#include <aws/nitro_enclaves/nitro_enclaves.h>
 #include <aws/testing/aws_test_harness.h>
 
 /**
@@ -2066,6 +2067,125 @@ static int s_test_kms_generate_random_response_from_json_with_unknown(struct aws
     aws_string_destroy(json);
     aws_string_destroy(json_second);
     aws_kms_generate_random_response_destroy(response);
+
+    return SUCCESS;
+}
+
+/*
+ * The reported crash was found through aws_kms_*_blocking_with_context, which
+ * re-parses the parent-supplied EncryptionContext and hands the result to
+ * s_aws_hash_table_from_json. test_kms_from_json_rejects_non_object covers the
+ * nine exported parsers; this covers that sink, which is the vsock-reachable
+ * path the report actually describes.
+ *
+ * Reaching it needs an attestation document, so the NSM calls are stubbed via
+ * -Wl,--wrap. No KMS connection is required: the context is parsed before the
+ * request goes out, and the call is expected to fail afterwards either way.
+ */
+int __wrap_nsm_lib_init(void);
+void __wrap_nsm_lib_exit(int fd);
+int __wrap_nsm_get_attestation_doc(
+    int fd,
+    uint8_t *user_data,
+    uint32_t user_data_len,
+    uint8_t *nonce,
+    uint32_t nonce_len,
+    uint8_t *pub_key,
+    uint32_t pub_key_len,
+    uint8_t *att_doc,
+    uint32_t *att_doc_len);
+
+int __wrap_nsm_lib_init(void) {
+    return 1;
+}
+
+void __wrap_nsm_lib_exit(int fd) {
+    (void)fd;
+}
+
+int __wrap_nsm_get_attestation_doc(
+    int fd,
+    uint8_t *user_data,
+    uint32_t user_data_len,
+    uint8_t *nonce,
+    uint32_t nonce_len,
+    uint8_t *pub_key,
+    uint32_t pub_key_len,
+    uint8_t *att_doc,
+    uint32_t *att_doc_len) {
+    (void)fd;
+    (void)user_data;
+    (void)user_data_len;
+    (void)nonce;
+    (void)nonce_len;
+    (void)pub_key;
+    (void)pub_key_len;
+
+    if (att_doc == NULL || att_doc_len == NULL || *att_doc_len < 4) {
+        return 1;
+    }
+    memcpy(att_doc, "FAKE", 4);
+    *att_doc_len = 4;
+    return 0;
+}
+
+AWS_TEST_CASE(test_kms_context_sink_rejects_non_object, s_test_kms_context_sink_rejects_non_object)
+static int s_test_kms_context_sink_rejects_non_object(struct aws_allocator *allocator, void *ctx) {
+    (void)ctx;
+    aws_nitro_enclaves_library_init(allocator);
+
+    struct aws_string *region = aws_string_new_from_c_str(allocator, "us-east-1");
+    ASSERT_NOT_NULL(region);
+
+    struct aws_credentials *credentials = aws_credentials_new(
+        allocator,
+        aws_byte_cursor_from_c_str("AKIDEXAMPLE"),
+        aws_byte_cursor_from_c_str("secret"),
+        aws_byte_cursor_from_c_str("token"),
+        UINT64_MAX);
+    ASSERT_NOT_NULL(credentials);
+
+    struct aws_nitro_enclaves_kms_client_configuration configuration = {
+        .allocator = allocator,
+        .region = region,
+        .credentials = credentials,
+    };
+
+    struct aws_nitro_enclaves_kms_client *client = aws_nitro_enclaves_kms_client_new(&configuration);
+    ASSERT_NOT_NULL(client);
+
+    struct aws_byte_buf plaintext_in;
+    ASSERT_SUCCESS(aws_byte_buf_init_copy_from_cursor(&plaintext_in, allocator, aws_byte_cursor_from_c_str("data")));
+
+    /* Encrypt requires a key id. */
+    struct aws_string *key_id = aws_string_new_from_c_str(allocator, KEY_ID);
+    ASSERT_NOT_NULL(key_id);
+
+    /* An array is the case that aborted inside json-c; the others are covered to
+     * keep them from regressing into the same sink. */
+    const char *const non_objects[] = {"[1,2,3]", "[]", "12345", "\"a string\"", "true"};
+
+    for (size_t i = 0; i < AWS_ARRAY_SIZE(non_objects); ++i) {
+        struct aws_string *context = aws_string_new_from_c_str(allocator, non_objects[i]);
+        ASSERT_NOT_NULL(context);
+
+        struct aws_byte_buf ciphertext_blob;
+        AWS_ZERO_STRUCT(ciphertext_blob);
+        /* Must report an error rather than abort. Encrypt is used rather than
+         * Decrypt because the kmstool-enclave test wraps the Decrypt entry
+         * point, which would intercept the call before it reaches the sink. */
+        ASSERT_FAILS(aws_kms_encrypt_blocking_with_context(client, key_id, &plaintext_in, context, &ciphertext_blob));
+        aws_byte_buf_clean_up(&ciphertext_blob);
+
+        aws_string_destroy(context);
+    }
+
+    aws_byte_buf_clean_up(&plaintext_in);
+    aws_string_destroy(key_id);
+    aws_nitro_enclaves_kms_client_destroy(client);
+    aws_credentials_release(credentials);
+    aws_string_destroy(region);
+    aws_nitro_enclaves_library_clean_up();
 
     return SUCCESS;
 }
