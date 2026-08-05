@@ -46,6 +46,7 @@ add_test_case(test_kms_generate_random_response_to_json)
 add_test_case(test_kms_generate_random_response_from_json)
 add_test_case(test_kms_generate_random_response_from_json_with_unknown)
 add_test_case(test_kms_context_sink_rejects_non_object)
+add_test_case(test_kmstool_enclave_setclient_failure_does_not_reuse_client)
 add_test_case(test_basic_rest_client)
 add_test_case(test_rest_call_blocking)
 add_test_case(test_cms_parsing_correctness)
@@ -64,3 +65,9 @@ generate_test_driver(${TEST_BINARY_NAME})
 set_property(TARGET ${TEST_BINARY_NAME} APPEND_STRING PROPERTY LINK_FLAGS
     " -Wl,--wrap=nsm_lib_init -Wl,--wrap=nsm_lib_exit -Wl,--wrap=nsm_get_attestation_doc")
 
+# test_kmstool_enclave_setclient_failure_does_not_reuse_client includes the
+# kmstool-enclave translation unit to reach its static handle_connection, and
+# stubs the KMS entry points it calls.
+target_include_directories(${TEST_BINARY_NAME} PRIVATE ${PROJECT_SOURCE_DIR})
+set_property(TARGET ${TEST_BINARY_NAME} APPEND_STRING PROPERTY LINK_FLAGS
+    " -Wl,--wrap=aws_nitro_enclaves_kms_client_new -Wl,--wrap=aws_nitro_enclaves_kms_client_destroy -Wl,--wrap=aws_kms_decrypt_blocking_with_context")
